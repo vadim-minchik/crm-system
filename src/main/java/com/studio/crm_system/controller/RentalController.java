@@ -2,6 +2,7 @@ package com.studio.crm_system.controller;
 
 import com.studio.crm_system.entity.User;
 import com.studio.crm_system.repository.UserRepository;
+import com.studio.crm_system.service.BookingService;
 import com.studio.crm_system.service.RentalService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -14,12 +15,14 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
+import java.util.List;
 
 @Controller
 @RequestMapping("/rentals")
 public class RentalController {
 
 	@Autowired private RentalService rentalService;
+	@Autowired private BookingService bookingService;
 	@Autowired private UserRepository userRepository;
 
 	private User getCurrentUser() {
@@ -39,6 +42,9 @@ public class RentalController {
 		model.addAttribute("completedRentals", rentalService.findCompleted());
 		model.addAttribute("debtorRentals", rentalService.findDebtors());
 		model.addAttribute("soonDebtorRentals", rentalService.findSoonDebtors());
+		model.addAttribute("cancelledRentals", rentalService.findCancelled());
+		model.addAttribute("bookings", bookingService.findAll());
+		model.addAttribute("freeEquipmentForBooking", bookingService.findFreeEquipment());
 		model.addAttribute("clients", rentalService.findAllClients());
 		model.addAttribute("equipmentOptions", rentalService.getEquipmentOptionsForSelect());
 		model.addAttribute("currentUser", user);
@@ -66,13 +72,15 @@ public class RentalController {
 
 	@PostMapping("/add")
 	public String add(@RequestParam Long clientId,
-	                  @RequestParam Long equipmentId,
+	                  @RequestParam List<Long> equipmentId,
 	                  @RequestParam String dateFrom,
-	                  @RequestParam String dateTo,
-	                  @RequestParam(required = false) BigDecimal totalAmount) {
+	                  @RequestParam String dateTo) {
 		LocalDateTime from = parseDateTime(dateFrom);
 		LocalDateTime to = parseDateTime(dateTo);
-		String error = rentalService.createRental(clientId, equipmentId, from, to, totalAmount);
+		if (equipmentId == null || equipmentId.isEmpty()) {
+			return "redirect:/rentals?error=equipment_required";
+		}
+		String error = rentalService.createRentals(clientId, equipmentId, from, to);
 		if (error != null) return "redirect:/rentals?error=" + error;
 		return "redirect:/rentals?success=rental_added";
 	}
@@ -94,6 +102,38 @@ public class RentalController {
 		String error = rentalService.completeRental(id);
 		if (error != null) return "redirect:/rentals?error=" + error;
 		return "redirect:/rentals?success=rental_completed";
+	}
+
+	@PostMapping("/cancel")
+	public String cancel(@RequestParam Long id) {
+		String error = rentalService.cancelRental(id);
+		if (error != null) return "redirect:/rentals?error=" + error;
+		return "redirect:/rentals?success=rental_cancelled";
+	}
+
+	@PostMapping("/booking/add")
+	public String addBooking(@RequestParam String phoneNumber,
+	                        @RequestParam List<Long> equipmentId,
+	                        @RequestParam String dateTo,
+	                        @RequestParam(required = false) String comment) {
+		LocalDateTime to = parseDateTime(dateTo);
+		String error;
+		if (equipmentId == null || equipmentId.isEmpty()) {
+			error = "equipment_required";
+		} else if (equipmentId.size() == 1) {
+			error = bookingService.create(phoneNumber, equipmentId.get(0), to, comment);
+		} else {
+			error = bookingService.createBatch(phoneNumber, equipmentId, to, comment);
+		}
+		if (error != null) return "redirect:/rentals?error=" + error;
+		return "redirect:/rentals?success=booking_added";
+	}
+
+	@PostMapping("/booking/delete")
+	public String deleteBooking(@RequestParam Long id) {
+		String error = bookingService.delete(id);
+		if (error != null) return "redirect:/rentals?error=" + error;
+		return "redirect:/rentals?success=booking_deleted";
 	}
 
 	private static final DateTimeFormatter DATETIME_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm");

@@ -62,7 +62,7 @@
 								th:if="${currentUserRole.name() != 'WORKER'}">Действия</th>
 						</tr>
 					</thead>
-					<tbody>
+					<tbody id="tbody-staff">
 						<tr th:each="u : ${allUsers}">
 							<td class="ps-4">
 								<div class="fw-bold" th:text="${u.surname + ' ' + u.name}">ФИО</div>

@@ -24,14 +24,12 @@ public interface RentalRepository extends JpaRepository<Rental, Long> {
 
 	List<Rental> findByClientIdOrderByDateFromDesc(Long clientId);
 
-	List<Rental> findByEquipmentIdOrderByDateFromDesc(Long equipmentId);
+	List<Rental> findByEquipment_IdOrderByDateFromDesc(Long equipmentId);
 
 	/** Прокаты со статусами из списка (для фоновой перераспределения) */
 	List<Rental> findByStatusInOrderByDateFromDesc(java.util.Collection<RentalStatus> statuses);
 
-	/** Активный прокат по оборудованию (для отображения «в прокате до …») */
-	Optional<Rental> findFirstByEquipmentIdAndStatusOrderByDateToDesc(Long equipmentId, RentalStatus status);
+	Optional<Rental> findFirstByEquipment_IdAndStatusOrderByDateToDesc(Long equipmentId, RentalStatus status);
 
-	/** Оборудование в прокате (ACTIVE, SOON_DEBTOR, DEBTOR) — для подписи в списке оборудования */
-	Optional<Rental> findFirstByEquipmentIdAndStatusInOrderByDateToDesc(Long equipmentId, List<RentalStatus> statuses);
+	Optional<Rental> findFirstByEquipment_IdAndStatusInOrderByDateToDesc(Long equipmentId, List<RentalStatus> statuses);
 }

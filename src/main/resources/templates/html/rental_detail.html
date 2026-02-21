@@ -67,13 +67,19 @@
             <i class="bi bi-arrow-left me-1"></i> К журналу
           </a>
           <div class="d-flex align-items-center gap-2">
-            <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#editRentalModal" title="Редактировать">
+            <button th:if="${rental.status.name() == 'ACTIVE' || rental.status.name() == 'SOON_DEBTOR' || rental.status.name() == 'DEBTOR'}" type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#editRentalModal" title="Редактировать">
               <i class="bi bi-pencil me-1"></i> Редактировать
             </button>
-            <form th:if="${rental.status.name() == 'ACTIVE' || rental.status.name() == 'SOON_DEBTOR' || rental.status.name() == 'DEBTOR'}" th:action="@{/rentals/complete}" method="post" class="d-inline mb-0">
+            <form th:if="${rental.status.name() == 'SOON_DEBTOR' || rental.status.name() == 'DEBTOR'}" th:action="@{/rentals/complete}" method="post" class="d-inline mb-0">
               <input type="hidden" name="id" th:value="${rental.id}">
               <button type="submit" class="btn btn-success">
                 <i class="bi bi-check-circle me-1"></i> Завершить прокат
+              </button>
+            </form>
+            <form th:if="${rental.status.name() == 'ACTIVE'}" th:action="@{/rentals/cancel}" method="post" class="d-inline mb-0" onsubmit="return confirm('Отменить прокат? Оборудование станет свободным.');">
+              <input type="hidden" name="id" th:value="${rental.id}">
+              <button type="submit" class="btn btn-outline-secondary">
+                <i class="bi bi-x-circle me-1"></i> Отменить прокат
               </button>
             </form>
           </div>
@@ -115,18 +121,19 @@
       <!-- Оборудование -->
       <div class="info-block">
         <div class="section-title"><i class="bi bi-box-seam me-1"></i>Оборудование</div>
-        <div class="info-row">
-          <span class="info-label">Название</span>
-          <span class="info-value">
-            <a th:if="${rental.equipment != null && rental.equipment.toolName != null}"
-               th:href="@{/inventory/{id}(id=${rental.equipment.toolName.id})}"
-               th:text="${rental.equipment.getTitle()}">—</a>
-            <span th:if="${rental.equipment == null || rental.equipment.toolName == null}" th:text="${rental.equipment != null ? rental.equipment.getTitle() : '—'}">—</span>
-          </span>
-        </div>
-        <div class="info-row">
-          <span class="info-label">Серийный номер</span>
-          <span class="info-value font-monospace" th:text="${rental.equipment != null ? rental.equipment.serialNumber : '—'}">—</span>
+        <div th:if="${rental.equipment == null}" class="info-row"><span class="info-label">—</span><span class="info-value text-muted">Нет данных</span></div>
+        <div th:if="${rental.equipment != null}" class="mb-2">
+          <div class="info-row">
+            <span class="info-label">Название</span>
+            <span class="info-value">
+              <a th:if="${rental.equipment.toolName != null}" th:href="@{/inventory/{id}(id=${rental.equipment.toolName.id})}" th:text="${rental.equipment.getTitle()}">—</a>
+              <span th:if="${rental.equipment.toolName == null}" th:text="${rental.equipment.getTitle()}">—</span>
+            </span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Серийный номер</span>
+            <span class="info-value font-monospace" th:text="${rental.equipment.serialNumber}">—</span>
+          </div>
         </div>
       </div>
 
@@ -157,6 +164,7 @@
             <label class="form-label fw-semibold">С какого числа и времени *</label>
             <input type="datetime-local" name="dateFrom" class="form-control" required step="60"
                    th:value="${rentalDateFromInput}">
+            <div class="form-text text-muted">Можно указать любую дату, в том числе позже текущей — ограничение только: «по какое» должно быть позже «с какого».</div>
           </div>
           <div class="col-12">
             <label class="form-label fw-semibold">По какое число и время *</label>
