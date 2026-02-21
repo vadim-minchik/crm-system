@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+<meta charset="UTF-8">
+<title th:text="'Прокат #' + ${rental.id} + ' | STUDIO.CRM'">Прокат | STUDIO.CRM</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+<link rel="stylesheet" th:href="@{/css/style.css}">
+<style>
+  .info-block { background: #f8fafc; border-radius: 12px; padding: 20px 24px; margin-bottom: 16px; }
+  .info-block .section-title {
+    font-size: 0.72rem; font-weight: 700; letter-spacing: 0.08em;
+    text-transform: uppercase; color: #94a3b8; margin-bottom: 14px;
+  }
+  .info-row { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 10px; }
+  .info-label { font-size: 0.8rem; color: #64748b; min-width: 180px; flex-shrink: 0; }
+  .info-value { font-size: 0.9rem; font-weight: 500; color: #1e293b; word-break: break-word; }
+</style>
+</head>
+<body>
+
+<div th:replace="~{html/fragments :: sidebar('rentals')}"></div>
+
+<div class="main-content">
+
+  <!-- Хлебные крошки -->
+  <nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb" style="font-size:0.85rem;">
+      <li class="breadcrumb-item"><a th:href="@{/rentals}" class="text-decoration-none">Журнал прокатов</a></li>
+      <li class="breadcrumb-item active" th:text="'Прокат #' + ${rental.id}">Прокат</li>
+    </ol>
+  </nav>
+
+  <!-- Уведомления -->
+  <div th:if="${param.error}" class="alert alert-danger alert-dismissible fade show" role="alert">
+    <i class="bi bi-exclamation-triangle-fill me-2"></i><strong>Ошибка: </strong>
+    <span th:if="${param.error[0] == 'not_found'}">Прокат не найден.</span>
+    <span th:if="${param.error[0] == 'date_from_required'}">Укажите дату и время начала.</span>
+    <span th:if="${param.error[0] == 'date_to_required'}">Укажите дату и время окончания.</span>
+    <span th:if="${param.error[0] == 'date_to_before_from'}">Окончание не может быть раньше начала.</span>
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+  </div>
+  <div th:if="${param.success}" class="alert alert-success alert-dismissible fade show" role="alert">
+    <i class="bi bi-check-circle-fill me-2"></i>
+    <span th:if="${param.success[0] == 'rental_updated'}">Изменения сохранены.</span>
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+  </div>
+
+  <div class="row g-4">
+    <div class="col-lg-8">
+      <!-- Заголовок -->
+      <div class="d-flex align-items-center gap-3 mb-4">
+        <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center"
+             style="width:56px;height:56px;font-size:1.4rem;flex-shrink:0;">
+          <i class="bi bi-journal-text"></i>
+        </div>
+        <div class="flex-grow-1">
+          <h2 class="mb-0 fw-bold" th:text="'Прокат #' + ${rental.id}">Прокат</h2>
+          <div class="d-flex align-items-center gap-3 mt-1">
+            <span class="badge"
+                  th:classappend="${rental.status.name() == 'ACTIVE' ? 'bg-primary' : (rental.status.name() == 'COMPLETED' ? 'bg-success' : (rental.status.name() == 'DEBTOR' ? 'bg-danger' : (rental.status.name() == 'SOON_DEBTOR' ? 'bg-warning text-dark' : (rental.status.name() == 'BOOKED' ? 'bg-info' : 'bg-secondary'))))}"
+                  th:text="${rental.status.name() == 'ACTIVE' ? 'В прокате' : (rental.status.name() == 'COMPLETED' ? 'Завершён' : (rental.status.name() == 'DEBTOR' ? 'Должник' : (rental.status.name() == 'SOON_DEBTOR' ? 'К приёмке' : (rental.status.name() == 'BOOKED' ? 'Забронирован' : 'Отменён'))))}">—</span>
+          </div>
+        </div>
+        <div class="d-flex align-items-center flex-wrap gap-2">
+          <a th:href="@{/rentals}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i> К журналу
+          </a>
+          <div class="d-flex align-items-center gap-2">
+            <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#editRentalModal" title="Редактировать">
+              <i class="bi bi-pencil me-1"></i> Редактировать
+            </button>
+            <form th:if="${rental.status.name() == 'ACTIVE' || rental.status.name() == 'SOON_DEBTOR' || rental.status.name() == 'DEBTOR'}" th:action="@{/rentals/complete}" method="post" class="d-inline mb-0">
+              <input type="hidden" name="id" th:value="${rental.id}">
+              <button type="submit" class="btn btn-success">
+                <i class="bi bi-check-circle me-1"></i> Завершить прокат
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+
+      <!-- Клиент -->
+      <div class="info-block">
+        <div class="section-title"><i class="bi bi-person me-1"></i>Клиент</div>
+        <div class="info-row">
+          <span class="info-label">ФИО</span>
+          <span class="info-value">
+            <a th:href="@{/clients/{id}(id=${rental.client.id})}" th:text="${rental.client.surname + ' ' + rental.client.name + ' ' + (rental.client.patronymic != null ? rental.client.patronymic : '')}">—</a>
+          </span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Телефон</span>
+          <span class="info-value" th:text="${rental.client.phoneNumber}">—</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Паспорт</span>
+          <span class="info-value" th:text="${rental.client.passportNumber}">—</span>
+        </div>
+      </div>
+
+      <!-- Период -->
+      <div class="info-block">
+        <div class="section-title"><i class="bi bi-calendar-event me-1"></i>Период</div>
+        <div class="info-row">
+          <span class="info-label">С</span>
+          <span class="info-value" th:text="${#temporals.format(rental.dateFrom, 'dd.MM.yyyy HH:mm')}">—</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">По</span>
+          <span class="info-value" th:text="${#temporals.format(rental.dateTo, 'dd.MM.yyyy HH:mm')}">—</span>
+        </div>
+      </div>
+
+      <!-- Оборудование -->
+      <div class="info-block">
+        <div class="section-title"><i class="bi bi-box-seam me-1"></i>Оборудование</div>
+        <div class="info-row">
+          <span class="info-label">Название</span>
+          <span class="info-value">
+            <a th:if="${rental.equipment != null && rental.equipment.toolName != null}"
+               th:href="@{/inventory/{id}(id=${rental.equipment.toolName.id})}"
+               th:text="${rental.equipment.getTitle()}">—</a>
+            <span th:if="${rental.equipment == null || rental.equipment.toolName == null}" th:text="${rental.equipment != null ? rental.equipment.getTitle() : '—'}">—</span>
+          </span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Серийный номер</span>
+          <span class="info-value font-monospace" th:text="${rental.equipment != null ? rental.equipment.serialNumber : '—'}">—</span>
+        </div>
+      </div>
+
+      <!-- Итог -->
+      <div class="info-block">
+        <div class="section-title"><i class="bi bi-currency-exchange me-1"></i>Сумма</div>
+        <div class="info-row">
+          <span class="info-label">Итог (BYN)</span>
+          <span class="info-value fw-bold fs-5 text-primary" th:text="|${#numbers.formatDecimal(rental.totalAmount, 0, 'NONE', 2, 'POINT')} BYN|">—</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Модальное окно: редактирование проката -->
+<div class="modal fade" id="editRentalModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <form th:action="@{/rentals/edit}" method="post" class="modal-content">
+      <div class="modal-header">
+        <h5><i class="bi bi-pencil me-2"></i>Редактирование проката</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" name="id" th:value="${rental.id}">
+        <div class="row g-3">
+          <div class="col-12">
+            <label class="form-label fw-semibold">С какого числа и времени *</label>
+            <input type="datetime-local" name="dateFrom" class="form-control" required step="60"
+                   th:value="${rentalDateFromInput}">
+          </div>
+          <div class="col-12">
+            <label class="form-label fw-semibold">По какое число и время *</label>
+            <input type="datetime-local" name="dateTo" class="form-control" required step="60"
+                   th:value="${rentalDateToInput}">
+          </div>
+          <div class="col-12">
+            <label class="form-label fw-semibold">Итог (BYN) *</label>
+            <div class="input-group">
+              <input type="text" name="totalAmount" class="form-control" required
+                     pattern="[0-9]+(\.[0-9]{1,2})?"
+                     th:value="${#numbers.formatDecimal(rental.totalAmount, 0, 'NONE', 2, 'POINT')}">
+              <span class="input-group-text">BYN</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Отмена</button>
+        <button type="submit" class="btn btn-primary">
+          <i class="bi bi-check-circle me-1"></i> Сохранить
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

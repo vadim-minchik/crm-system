@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+<meta charset="UTF-8">
+<title th:text="${toolName.name} + ' | Склад | STUDIO.CRM'">Раздел | STUDIO.CRM</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+<link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+<body>
+
+<div th:replace="~{html/fragments :: sidebar('inventory')}"></div>
+
+<div class="main-content">
+
+  <!-- Хлебные крошки + заголовок -->
+  <div class="page-header">
+    <div class="page-title">
+      <nav aria-label="breadcrumb">
+        <ol class="breadcrumb mb-1" style="font-size: 0.85rem;">
+          <li class="breadcrumb-item">
+            <a th:href="@{/inventory}" class="text-decoration-none">
+              <i class="bi bi-collection me-1"></i>Склад
+            </a>
+          </li>
+          <li class="breadcrumb-item">
+            <a th:href="@{/inventory/precategory/{id}(id=${preCategory.id})}"
+               th:text="${preCategory.name}" class="text-decoration-none">Раздел</a>
+          </li>
+          <li class="breadcrumb-item">
+            <a th:href="@{/inventory/category/{id}(id=${category.id})}"
+               th:text="${category.name}" class="text-decoration-none">Категория</a>
+          </li>
+          <li class="breadcrumb-item active" th:text="${toolName.name}">Модель</li>
+        </ol>
+      </nav>
+      <h2><i class="bi bi-box-seam me-2 text-primary"></i><span th:text="${toolName.name}">Модель</span></h2>
+      <p th:text="${toolName.description != null ? toolName.description : 'Единицы оборудования этой модели'}">Описание</p>
+    </div>
+    <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#modalAddUnit">
+      <i class="bi bi-plus-circle"></i> Добавить экземпляр
+    </button>
+  </div>
+
+  <!-- Уведомления -->
+  <div th:if="${param.error}" class="alert alert-danger alert-dismissible fade show" role="alert">
+    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+    <strong>Ошибка!</strong>
+    <span th:if="${param.error[0] == 'serial_required'}">Введите серийный номер.</span>
+    <span th:if="${param.error[0] == 'price_required'}">Введите корректную цену.</span>
+    <span th:if="${param.error[0] == 'base_value_required'}">Введите оценочную стоимость.</span>
+    <span th:if="${param.error[0] == 'save_failed'}">Не удалось сохранить. Проверьте данные.</span>
+    <span th:if="${param.error[0] == 'unit_in_use'}">Нельзя удалить: оборудование используется.</span>
+    <span th:if="${param.error[0] == 'unit_not_found'}">Экземпляр не найден.</span>
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+  </div>
+  <div th:if="${param.success}" class="alert alert-success alert-dismissible fade show" role="alert">
+    <i class="bi bi-check-circle-fill me-2"></i>
+    <strong>Готово!</strong>
+    <span th:if="${param.success[0] == 'unit_added'}">Экземпляр успешно добавлен.</span>
+    <span th:if="${param.success[0] == 'unit_updated'}">Данные обновлены.</span>
+    <span th:if="${param.success[0] == 'unit_deleted'}">Экземпляр удалён.</span>
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+  </div>
+
+  <!-- Таблица единиц оборудования -->
+  <div class="card-table">
+    <table class="table table-hover mb-0">
+      <thead>
+        <tr>
+          <th class="ps-4">Серийный №</th>
+          <th>Состояние</th>
+          <th>Сутки (BYN)</th>
+          <th>Оценочная стоимость</th>
+          <th>Статус</th>
+          <th class="text-center">Действия</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr th:each="u : ${units}">
+          <td class="ps-4">
+            <code class="text-muted" th:text="${u.serialNumber}">SN-12345</code>
+          </td>
+          <td>
+            <span th:text="${u.condition} + '/10'"
+                  th:classappend="${u.condition >= 8 ? 'text-success' : (u.condition >= 5 ? 'text-warning' : 'text-danger')}"
+                  class="fw-semibold">10/10</span>
+          </td>
+          <td>
+            <strong class="text-primary" th:text="${#numbers.formatDecimal(u.pricePerDay, 0, 'NONE', 2, 'POINT')} + ' BYN'">0 BYN</strong>
+          </td>
+          <td class="small text-muted" th:text="${#numbers.formatDecimal(u.baseValue, 0, 'NONE', 2, 'POINT')} + ' BYN'">0 BYN</td>
+          <td>
+            <span class="badge"
+                  th:classappend="${u.status.name() == 'FREE' ? 'bg-success' : (u.status.name() == 'BUSY' ? 'bg-danger' : 'bg-warning text-dark')}"
+                  th:text="${u.status.name() == 'FREE' ? 'Свободно' : (u.status.name() == 'BUSY' ? 'Занят' : 'Забронирован')}">OK</span>
+          </td>
+          <td class="text-center">
+            <div class="d-flex justify-content-center gap-1">
+              <!-- Редактировать -->
+              <button type="button" class="btn-icon"
+                      th:data-id="${u.id}"
+                      th:data-serial="${u.serialNumber}"
+                      th:data-price-day="${u.pricePerDay}"
+                      th:data-base-value="${u.baseValue}"
+                      th:data-condition="${u.condition}"
+                      onclick="openEditModal(this)"
+                      title="Редактировать">
+                <i class="bi bi-pencil"></i>
+              </button>
+              <!-- Удалить: только если СВОБОДЕН -->
+              <button th:if="${u.status.name() == 'FREE'}"
+                      type="button" class="btn-icon text-danger"
+                      th:data-id="${u.id}"
+                      th:data-serial="${u.serialNumber}"
+                      onclick="openDeleteUnit(this)"
+                      title="Удалить">
+                <i class="bi bi-trash"></i>
+              </button>
+              <!-- Заблокировано: нельзя удалить пока используется/забронировано -->
+              <span th:if="${u.status.name() != 'FREE'}"
+                    class="btn-icon text-muted"
+                    style="cursor: default;"
+                    th:title="${u.status.name() == 'BUSY' ? 'Нельзя удалить: сейчас используется' : 'Нельзя удалить: забронировано'}">
+                <i class="bi bi-lock"></i>
+              </span>
+            </div>
+          </td>
+        </tr>
+        <tr th:if="${#lists.isEmpty(units)}">
+          <td colspan="6" class="text-center py-5 text-muted">
+            <i class="bi bi-inbox fs-3 d-block mb-2"></i>
+            В этом разделе пока нет экземпляров
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Модальное окно: добавить экземпляр (БЕЗ поля "название" — оно берётся из раздела) -->
+<div class="modal fade" id="modalAddUnit" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <form th:action="@{/inventory/{id}/add(id=${toolName.id})}" method="post" class="modal-content">
+      <div class="modal-header">
+        <h5>
+          <i class="bi bi-plus-circle me-2"></i>
+          Новый экземпляр
+          <span class="badge bg-primary ms-1" th:text="${toolName.name}">Название</span>
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="row g-3">
+          <div class="col-12">
+            <label class="form-label fw-semibold">Серийный номер *</label>
+            <input type="text" name="serialNumber" class="form-control"
+                   placeholder="S/N" required autofocus>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">Стоимость/день *</label>
+            <div class="input-group">
+              <input type="text" name="pricePerDay" class="form-control"
+                     placeholder="0.00" pattern="[0-9]+(\.[0-9]{1,2})?" step="0.01" min="0.01" required>
+              <span class="input-group-text">BYN</span>
+            </div>
+            <div class="form-text">Час, неделя, месяц рассчитается автоматически</div>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">Оценочная стоимость *</label>
+            <div class="input-group">
+              <input type="text" name="baseValue" class="form-control"
+                     placeholder="0.00" pattern="[0-9]+(\.[0-9]{1,2})?" step="0.01" min="0.01" required>
+              <span class="input-group-text">BYN</span>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">Состояние</label>
+            <input type="number" name="condition" class="form-control"
+                   min="1" max="10" value="10">
+            <div class="form-text">от 1 (плохое) до 10 (отличное)</div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="submit" class="btn btn-success w-100">
+          <i class="bi bi-check-circle me-1"></i> Добавить в раздел
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Модальное окно: редактировать экземпляр -->
+<div class="modal fade" id="modalEditUnit" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <form th:action="@{/inventory/edit}" method="post" class="modal-content">
+      <div class="modal-header">
+        <h5><i class="bi bi-pencil me-2"></i>Редактировать экземпляр</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" name="id" id="edit-unit-id">
+        <div class="row g-3">
+          <div class="col-12">
+            <label class="form-label fw-semibold">Серийный номер</label>
+            <input type="text" name="serialNumber" id="edit-unit-serial"
+                   class="form-control" required>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">Стоимость/день</label>
+            <div class="input-group">
+              <input type="text" name="pricePerDay" id="edit-unit-price"
+                     class="form-control" pattern="[0-9]+(\.[0-9]{1,2})?" step="0.01" min="0.01" required>
+              <span class="input-group-text">BYN</span>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">Оценочная стоимость</label>
+            <div class="input-group">
+              <input type="text" name="baseValue" id="edit-unit-base-value"
+                     class="form-control" pattern="[0-9]+(\.[0-9]{1,2})?" step="0.01" min="0.01" required>
+              <span class="input-group-text">BYN</span>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">Состояние (1-10)</label>
+            <input type="number" name="condition" id="edit-unit-condition"
+                   class="form-control" min="1" max="10">
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="submit" class="btn btn-primary w-100">
+          <i class="bi bi-check-circle me-1"></i> Сохранить изменения
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+
+<!-- Скрытая форма удаления единицы -->
+<form id="deleteUnitForm" th:action="@{/inventory/delete}" method="post" style="display:none;">
+  <input type="hidden" name="id" id="delete-unit-id">
+</form>
+
+<!-- Модал подтверждения удаления единицы -->
+<div class="modal fade" id="modalDeleteUnit" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header bg-danger text-white">
+        <h5><i class="bi bi-exclamation-triangle-fill me-2"></i>Удаление серийного номера</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body px-4 py-3">
+        <p class="text-muted mb-1" style="font-size:0.85rem;">Вы собираетесь удалить серийный номер:</p>
+        <p class="fw-bold font-monospace fs-5 mb-4" id="del-unit-serial" style="word-break:break-all;">—</p>
+        <div class="rounded-3 p-3" style="background:#fef2f2; border:1px solid #fca5a5;">
+          <i class="bi bi-shield-x me-2" style="color:#dc2626;"></i>
+          <strong style="color:#dc2626;">Это действие необратимо.</strong>
+          <span class="text-muted" style="font-size:0.88rem;"> Серийный номер будет помечен как удалённый.</span>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary flex-fill" data-bs-dismiss="modal">Отмена</button>
+        <button type="button" class="btn btn-danger flex-fill" onclick="confirmDeleteUnit()">
+          <i class="bi bi-trash me-1"></i> Удалить
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+  function openEditModal(btn) {
+    document.getElementById('edit-unit-id').value = btn.getAttribute('data-id');
+    document.getElementById('edit-unit-serial').value = btn.getAttribute('data-serial');
+    // Форматируем цену с 2 знаками после запятой
+    const priceDay = parseFloat(btn.getAttribute('data-price-day'));
+    document.getElementById('edit-unit-price').value = isNaN(priceDay) ? '' : priceDay.toFixed(2);
+    const baseValue = parseFloat(btn.getAttribute('data-base-value'));
+    document.getElementById('edit-unit-base-value').value = isNaN(baseValue) ? '' : baseValue.toFixed(2);
+    document.getElementById('edit-unit-condition').value = btn.getAttribute('data-condition');
+    new bootstrap.Modal(document.getElementById('modalEditUnit')).show();
+  }
+
+  function openDeleteUnit(btn) {
+    document.getElementById('delete-unit-id').value = btn.getAttribute('data-id');
+    document.getElementById('del-unit-serial').textContent = btn.getAttribute('data-serial');
+    new bootstrap.Modal(document.getElementById('modalDeleteUnit')).show();
+  }
+
+  function confirmDeleteUnit() {
+    document.getElementById('deleteUnitForm').submit();
+  }
+</script>
+</body>
+</html>

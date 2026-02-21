@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+<meta charset="UTF-8">
+<title>Журнал прокатов | STUDIO.CRM</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+<link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+<body>
+
+<div th:replace="~{html/fragments :: sidebar('rentals')}"></div>
+
+<div class="main-content">
+  <div class="page-header">
+    <div class="page-title">
+      <h2><i class="bi bi-journal-text me-2 text-primary"></i>Журнал прокатов</h2>
+      <p>Кто взял, с какой по какую дату, какой инструмент — итог считается по дням и неделям</p>
+    </div>
+    <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#modalAddRental">
+      <i class="bi bi-plus-circle"></i> Оформить прокат
+    </button>
+  </div>
+
+  <!-- Уведомления -->
+  <div th:if="${param.error}" class="alert alert-danger alert-dismissible fade show" role="alert">
+    <i class="bi bi-exclamation-triangle-fill me-2"></i><strong>Ошибка: </strong>
+    <span th:if="${param.error[0] == 'client_required'}">Выберите клиента.</span>
+    <span th:if="${param.error[0] == 'equipment_required'}">Выберите оборудование.</span>
+    <span th:if="${param.error[0] == 'date_from_required'}">Укажите дату начала.</span>
+    <span th:if="${param.error[0] == 'date_to_required'}">Укажите дату окончания.</span>
+    <span th:if="${param.error[0] == 'date_to_before_from'}">Дата и время окончания не могут быть раньше начала.</span>
+    <span th:if="${param.error[0] == 'date_from_in_past'}">Нельзя указать прошедшую дату и время.</span>
+    <span th:if="${param.error[0] == 'client_not_found'}">Клиент не найден.</span>
+    <span th:if="${param.error[0] == 'equipment_not_found'}">Оборудование не найдено.</span>
+    <span th:if="${param.error[0] == 'equipment_not_free'}">Это оборудование уже в прокате.</span>
+    <span th:if="${param.error[0] == 'not_found'}">Прокат не найден.</span>
+    <span th:if="${param.error[0] == 'not_active'}">Прокат уже завершён или отменён.</span>
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+  </div>
+  <div th:if="${param.success}" class="alert alert-success alert-dismissible fade show" role="alert">
+    <i class="bi bi-check-circle-fill me-2"></i><strong>Готово! </strong>
+    <span th:if="${param.success[0] == 'rental_added'}">Прокат оформлен. Оборудование отмечено как занятое.</span>
+    <span th:if="${param.success[0] == 'rental_completed'}">Прокат завершён. Оборудование снова свободно.</span>
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+  </div>
+
+  <!-- Вкладки: Активные, История, Должники, Приёмка -->
+  <ul class="nav nav-tabs mb-3" role="tablist">
+    <li class="nav-item">
+      <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-active" type="button">
+        <i class="bi bi-play-circle me-1"></i> Активные
+        <span class="badge bg-primary ms-1" th:text="${#lists.size(activeRentals)}">0</span>
+      </button>
+    </li>
+    <li class="nav-item">
+      <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-history" type="button">
+        <i class="bi bi-clock-history me-1"></i> История
+        <span class="badge bg-secondary ms-1" th:text="${#lists.size(completedRentals)}">0</span>
+      </button>
+    </li>
+    <li class="nav-item">
+      <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-debtors" type="button">
+        <i class="bi bi-exclamation-triangle me-1"></i> Должники
+        <span class="badge bg-danger ms-1" th:text="${#lists.size(debtorRentals)}">0</span>
+      </button>
+    </li>
+    <li class="nav-item">
+      <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-soon" type="button">
+        <i class="bi bi-box-arrow-in-down me-1"></i> Приёмка
+        <span class="badge bg-warning text-dark ms-1" th:text="${#lists.size(soonDebtorRentals)}">0</span>
+      </button>
+    </li>
+  </ul>
+
+  <div class="tab-content">
+    <!-- Активные -->
+    <div class="tab-pane fade show active" id="tab-active">
+      <div class="card-table">
+        <table class="table table-hover mb-0">
+          <thead><tr><th class="ps-4">Кто берёт</th><th>С</th><th>По</th><th>Инструмент</th><th>Итог (BYN)</th><th class="text-center">Действия</th></tr></thead>
+          <tbody>
+            <tr th:each="r : ${activeRentals}">
+              <td class="ps-4" th:text="${r.client.surname + ' ' + r.client.name + ' ' + (r.client.patronymic != null ? r.client.patronymic : '')}">—</td>
+              <td th:text="${#temporals.format(r.dateFrom, 'dd.MM.yyyy HH:mm')}">—</td>
+              <td th:text="${#temporals.format(r.dateTo, 'dd.MM.yyyy HH:mm')}">—</td>
+              <td><span th:text="${r.equipment.getTitle()}">—</span><small class="text-muted d-block" th:text="'S/N ' + ${r.equipment.serialNumber}">—</small></td>
+              <td><strong th:text="|${#numbers.formatDecimal(r.totalAmount, 0, 'NONE', 2, 'POINT')} BYN|">—</strong></td>
+              <td class="text-center">
+                <a th:href="@{/rentals/{id}(id=${r.id})}" class="btn btn-sm btn-outline-primary me-1"><i class="bi bi-eye"></i></a>
+                <form th:action="@{/rentals/complete}" method="post" class="d-inline"><input type="hidden" name="id" th:value="${r.id}"><button type="submit" class="btn btn-sm btn-outline-success">Завершить</button></form>
+              </td>
+            </tr>
+            <tr th:if="${#lists.isEmpty(activeRentals)}"><td colspan="6" class="text-center py-5 text-muted">Нет активных прокатов</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <!-- История -->
+    <div class="tab-pane fade" id="tab-history">
+      <div class="card-table">
+        <table class="table table-hover mb-0">
+          <thead><tr><th class="ps-4">Кто берёт</th><th>С</th><th>По</th><th>Инструмент</th><th>Итог (BYN)</th><th class="text-center">Действия</th></tr></thead>
+          <tbody>
+            <tr th:each="r : ${completedRentals}">
+              <td class="ps-4" th:text="${r.client.surname + ' ' + r.client.name + ' ' + (r.client.patronymic != null ? r.client.patronymic : '')}">—</td>
+              <td th:text="${#temporals.format(r.dateFrom, 'dd.MM.yyyy HH:mm')}">—</td>
+              <td th:text="${#temporals.format(r.dateTo, 'dd.MM.yyyy HH:mm')}">—</td>
+              <td><span th:text="${r.equipment.getTitle()}">—</span><small class="text-muted d-block" th:text="'S/N ' + ${r.equipment.serialNumber}">—</small></td>
+              <td><strong th:text="|${#numbers.formatDecimal(r.totalAmount, 0, 'NONE', 2, 'POINT')} BYN|">—</strong></td>
+              <td class="text-center"><a th:href="@{/rentals/{id}(id=${r.id})}" class="btn btn-sm btn-outline-primary"><i class="bi bi-eye"></i></a></td>
+            </tr>
+            <tr th:if="${#lists.isEmpty(completedRentals)}"><td colspan="6" class="text-center py-5 text-muted">История пуста</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <!-- Должники -->
+    <div class="tab-pane fade" id="tab-debtors">
+      <div class="card-table">
+        <table class="table table-hover mb-0">
+          <thead><tr><th class="ps-4">Кто берёт</th><th>С</th><th>По</th><th>Инструмент</th><th>Итог (BYN)</th><th class="text-center">Действия</th></tr></thead>
+          <tbody>
+            <tr th:each="r : ${debtorRentals}">
+              <td class="ps-4" th:text="${r.client.surname + ' ' + r.client.name + ' ' + (r.client.patronymic != null ? r.client.patronymic : '')}">—</td>
+              <td th:text="${#temporals.format(r.dateFrom, 'dd.MM.yyyy HH:mm')}">—</td>
+              <td th:text="${#temporals.format(r.dateTo, 'dd.MM.yyyy HH:mm')}">—</td>
+              <td><span th:text="${r.equipment.getTitle()}">—</span><small class="text-muted d-block" th:text="'S/N ' + ${r.equipment.serialNumber}">—</small></td>
+              <td><strong th:text="|${#numbers.formatDecimal(r.totalAmount, 0, 'NONE', 2, 'POINT')} BYN|">—</strong></td>
+              <td class="text-center">
+                <a th:href="@{/rentals/{id}(id=${r.id})}" class="btn btn-sm btn-outline-primary me-1"><i class="bi bi-eye"></i></a>
+                <form th:action="@{/rentals/complete}" method="post" class="d-inline"><input type="hidden" name="id" th:value="${r.id}"><button type="submit" class="btn btn-sm btn-outline-success">Завершить</button></form>
+              </td>
+            </tr>
+            <tr th:if="${#lists.isEmpty(debtorRentals)}"><td colspan="6" class="text-center py-5 text-muted">Нет должников</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <!-- Приёмка -->
+    <div class="tab-pane fade" id="tab-soon">
+      <div class="card-table">
+        <table class="table table-hover mb-0">
+          <thead><tr><th class="ps-4">Кто берёт</th><th>С</th><th>По</th><th>Инструмент</th><th>Итог (BYN)</th><th class="text-center">Действия</th></tr></thead>
+          <tbody>
+            <tr th:each="r : ${soonDebtorRentals}">
+              <td class="ps-4" th:text="${r.client.surname + ' ' + r.client.name + ' ' + (r.client.patronymic != null ? r.client.patronymic : '')}">—</td>
+              <td th:text="${#temporals.format(r.dateFrom, 'dd.MM.yyyy HH:mm')}">—</td>
+              <td th:text="${#temporals.format(r.dateTo, 'dd.MM.yyyy HH:mm')}">—</td>
+              <td><span th:text="${r.equipment.getTitle()}">—</span><small class="text-muted d-block" th:text="'S/N ' + ${r.equipment.serialNumber}">—</small></td>
+              <td><strong th:text="|${#numbers.formatDecimal(r.totalAmount, 0, 'NONE', 2, 'POINT')} BYN|">—</strong></td>
+              <td class="text-center">
+                <a th:href="@{/rentals/{id}(id=${r.id})}" class="btn btn-sm btn-outline-primary me-1"><i class="bi bi-eye"></i></a>
+                <form th:action="@{/rentals/complete}" method="post" class="d-inline"><input type="hidden" name="id" th:value="${r.id}"><button type="submit" class="btn btn-sm btn-outline-success">Завершить</button></form>
+              </td>
+            </tr>
+            <tr th:if="${#lists.isEmpty(soonDebtorRentals)}"><td colspan="6" class="text-center py-5 text-muted">Нет прокатов к приёмке</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Модальное окно: оформить прокат -->
+<div class="modal fade" id="modalAddRental" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <form th:action="@{/rentals/add}" method="post" class="modal-content">
+      <div class="modal-header">
+        <h5><i class="bi bi-plus-circle me-2"></i>Оформить прокат</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="row g-3">
+          <div class="col-12">
+            <label class="form-label fw-semibold">Кто берёт *</label>
+            <div class="client-search-wrap position-relative">
+              <input type="text" id="client-search" class="form-control" autocomplete="off"
+                     placeholder="Поиск по фамилии, телефону или идентификационному номеру...">
+              <input type="hidden" name="clientId" id="client-id" required>
+              <div id="client-dropdown" class="client-dropdown list-group position-absolute w-100 shadow-sm" style="display: none; max-height: 220px; overflow-y: auto; z-index: 1050;"></div>
+            </div>
+            <div id="client-search-placeholder" class="form-text text-muted">Введите фамилию, телефон или идентификационный номер и выберите клиента из списка.</div>
+            <div id="client-selected-label" class="form-text text-success fw-semibold" style="display: none;"></div>
+            <!-- Источник вариантов для поиска (скрыт) -->
+            <div id="client-list-source" style="display: none;" aria-hidden="true">
+              <div th:each="c : ${clients}" class="client-option list-group-item list-group-item-action list-group-item-light py-2"
+                   th:data-id="${c.id}"
+                   th:data-surname="${c.surname}"
+                   th:data-name="${c.name}"
+                   th:data-patronymic="${c.patronymic != null ? c.patronymic : ''}"
+                   th:data-phone="${c.phoneNumber}"
+                   th:data-ident="${c.identificationNumber}"
+                   role="button"
+                   th:text="${c.surname + ' ' + c.name + (c.patronymic != null ? ' ' + c.patronymic : '') + ' · ' + c.phoneNumber + ' · ' + c.identificationNumber}">Клиент</div>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">С какого числа и времени *</label>
+            <input type="datetime-local" name="dateFrom" id="rental-date-from" class="form-control" required step="60">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">По какое число и время *</label>
+            <input type="datetime-local" name="dateTo" id="rental-date-to" class="form-control" required step="60">
+          </div>
+          <div class="col-12">
+            <label class="form-label fw-semibold">Какой инструмент *</label>
+            <div class="equipment-search-wrap position-relative">
+              <input type="text" id="equipment-search" class="form-control" autocomplete="off"
+                     placeholder="Поиск по названию инструмента или серийному номеру...">
+              <input type="hidden" name="equipmentId" id="equipment-id" required>
+              <input type="hidden" id="equipment-price-day" value="">
+              <input type="hidden" id="equipment-price-week" value="">
+              <input type="hidden" id="equipment-price-hour" value="">
+              <div id="equipment-dropdown" class="equipment-dropdown list-group position-absolute w-100 shadow-sm" style="display: none; max-height: 260px; overflow-y: auto; z-index: 1050;"></div>
+            </div>
+            <div id="equipment-search-placeholder" class="form-text text-muted">Введите название или серийный номер. В списке: свободные (можно выбрать), в прокате до даты, забронированные.</div>
+            <div id="equipment-selected-label" class="form-text text-success fw-semibold" style="display: none;"></div>
+            <div id="equipment-list-source" style="display: none;" aria-hidden="true">
+              <div th:each="e : ${equipmentOptions}" class="equipment-option list-group-item list-group-item-action py-2"
+                   th:data-id="${e.id}"
+                   th:data-title="${e.title}"
+                   th:data-serial="${e.serialNumber}"
+                   th:data-status-label="${e.statusLabel}"
+                   th:data-price-day="${e.pricePerDay}"
+                   th:data-price-week="${e.pricePerWeek}"
+                   th:data-price-hour="${e.pricePerHour}"
+                   th:data-free="${e.free}"
+                   th:classappend="${!e.free ? 'list-group-item-secondary' : 'list-group-item-light'}"
+                   role="button"
+                   th:text="${e.title + ' — S/N ' + e.serialNumber + ' · ' + e.statusLabel}">—</div>
+            </div>
+          </div>
+          <div class="col-12">
+            <label class="form-label fw-semibold">Итог (BYN) *</label>
+            <div class="input-group">
+              <input type="text" name="totalAmount" id="rental-total" class="form-control"
+                     placeholder="0.00" pattern="[0-9]+(\.[0-9]{1,2})?" step="0.01" required>
+              <span class="input-group-text">BYN</span>
+            </div>
+            <div class="form-text">До суток — по часам; от суток — по дням и остатку часов. Можно изменить вручную.</div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="submit" class="btn btn-success w-100">
+          <i class="bi bi-check-circle me-1"></i> Оформить прокат
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<style>
+  .client-dropdown { top: 100%; margin-top: 2px; border-radius: 8px; }
+  .client-dropdown .list-group-item { cursor: pointer; border-left: 0; border-right: 0; }
+  .client-dropdown .list-group-item:first-child { border-top: 0; }
+  .client-search-wrap .form-control:focus { border-color: #86b7fe; box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25); }
+  .equipment-dropdown { top: 100%; margin-top: 2px; border-radius: 8px; }
+  .equipment-dropdown .list-group-item { border-left: 0; border-right: 0; }
+  .equipment-dropdown .list-group-item:first-child { border-top: 0; }
+  .equipment-search-wrap .form-control:focus { border-color: #86b7fe; box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25); }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+(function() {
+  var dateFrom = document.getElementById('rental-date-from');
+  var dateTo = document.getElementById('rental-date-to');
+  var totalInput = document.getElementById('rental-total');
+  var priceDayInput = document.getElementById('equipment-price-day');
+  var priceWeekInput = document.getElementById('equipment-price-week');
+  var priceHourInput = document.getElementById('equipment-price-hour');
+
+  function parseNum(val) {
+    var n = parseFloat(String(val || '').replace(',', '.'));
+    return isNaN(n) ? 0 : n;
+  }
+
+  function toIsoMin(d) {
+    var y = d.getFullYear();
+    var m = ('0' + (d.getMonth() + 1)).slice(-2);
+    var day = ('0' + d.getDate()).slice(-2);
+    var h = ('0' + d.getHours()).slice(-2);
+    var min = ('0' + d.getMinutes()).slice(-2);
+    return y + '-' + m + '-' + day + 'T' + h + ':' + min;
+  }
+
+  function setMinNow() {
+    var now = new Date();
+    var min = toIsoMin(now);
+    if (dateFrom) dateFrom.setAttribute('min', min);
+  }
+
+  function updateTotal() {
+    if (!dateFrom || !dateTo || !totalInput || !priceHourInput) return;
+    var from = dateFrom.value;
+    var to = dateTo.value;
+    var priceDay = parseNum(priceDayInput && priceDayInput.value);
+    var priceWeek = parseNum(priceWeekInput && priceWeekInput.value);
+    var priceHour = parseNum(priceHourInput.value);
+
+    if (!from || !to || priceHour <= 0) {
+      totalInput.value = '';
+      return;
+    }
+
+    var start = new Date(from);
+    var end = new Date(to);
+    if (end <= start) {
+      totalInput.value = '';
+      return;
+    }
+
+    var durationMs = end - start;
+    var hours = durationMs / (60 * 60 * 1000);
+
+    var total;
+    if (hours < 24) {
+      total = hours * priceHour;
+    } else {
+      var fullDays = Math.floor(hours / 24);
+      var remainderHours = hours - fullDays * 24;
+      total = fullDays * priceDay + remainderHours * priceHour;
+    }
+    totalInput.value = total.toFixed(2);
+  }
+
+  if (dateFrom && dateTo && totalInput) {
+    dateFrom.addEventListener('change', function() {
+      if (dateFrom.value) dateTo.setAttribute('min', dateFrom.value);
+      updateTotal();
+    });
+    dateFrom.addEventListener('input', function() {
+      if (dateFrom.value) dateTo.setAttribute('min', dateFrom.value);
+      updateTotal();
+    });
+    dateTo.addEventListener('input', updateTotal);
+    dateTo.addEventListener('change', updateTotal);
+  }
+
+  setMinNow();
+  window.rentalUpdateTotal = updateTotal;
+  window.rentalSetMinNow = setMinNow;
+})();
+
+// Поиск клиента по фамилии, телефону, идентификационному номеру
+(function() {
+  var source = document.getElementById('client-list-source');
+  var searchInput = document.getElementById('client-search');
+  var hiddenId = document.getElementById('client-id');
+  var dropdown = document.getElementById('client-dropdown');
+  var placeholder = document.getElementById('client-search-placeholder');
+  var selectedLabel = document.getElementById('client-selected-label');
+  var modal = document.getElementById('modalAddRental');
+
+  if (!source || !searchInput || !hiddenId || !dropdown) return;
+
+  var options = source.querySelectorAll('.client-option');
+
+  function norm(s) { return (s || '').toLowerCase().trim(); }
+
+  function getSearchText(el) {
+    var s = norm(el.getAttribute('data-surname'));
+    var n = norm(el.getAttribute('data-name'));
+    var p = norm(el.getAttribute('data-patronymic'));
+    var ph = norm(el.getAttribute('data-phone'));
+    var id = norm(el.getAttribute('data-ident'));
+    return [s, n, p, ph, id].join(' ');
+  }
+
+  function showDropdown() {
+    var q = norm(searchInput.value);
+    dropdown.innerHTML = '';
+    var count = 0;
+    options.forEach(function(el) {
+    var searchable = getSearchText(el);
+      var match = !q || searchable.indexOf(q) !== -1;
+      if (match) {
+        var clone = el.cloneNode(true);
+        clone.addEventListener('click', function() {
+          hiddenId.value = el.getAttribute('data-id');
+          searchInput.value = el.textContent.trim();
+          dropdown.style.display = 'none';
+          placeholder.style.display = 'none';
+          selectedLabel.style.display = 'block';
+          selectedLabel.textContent = 'Выбран: ' + el.textContent.trim();
+        });
+        dropdown.appendChild(clone);
+        count++;
+      }
+    });
+    if (count === 0) {
+      var empty = document.createElement('div');
+      empty.className = 'list-group-item text-muted';
+      empty.textContent = 'Ничего не найдено';
+      dropdown.appendChild(empty);
+    }
+    dropdown.style.display = 'block';
+  }
+
+  function hideDropdown() {
+    setTimeout(function() { dropdown.style.display = 'none'; }, 150);
+  }
+
+  searchInput.addEventListener('focus', function() {
+    if (hiddenId.value) return;
+    showDropdown();
+  });
+  searchInput.addEventListener('input', function() {
+    if (!searchInput.value.trim()) {
+      hiddenId.value = '';
+      placeholder.style.display = 'block';
+      selectedLabel.style.display = 'none';
+    }
+    showDropdown();
+  });
+  searchInput.addEventListener('blur', hideDropdown);
+  dropdown.addEventListener('mousedown', function(e) { e.preventDefault(); }); // чтобы blur не закрыл до клика
+
+  if (modal) {
+    modal.addEventListener('show.bs.modal', function() {
+      searchInput.value = '';
+      hiddenId.value = '';
+      placeholder.style.display = 'block';
+      selectedLabel.style.display = 'none';
+      dropdown.style.display = 'none';
+    });
+  }
+
+  var form = searchInput.closest('form');
+  if (form) {
+    form.addEventListener('submit', function(e) {
+      if (!hiddenId.value) {
+        e.preventDefault();
+        searchInput.focus();
+        searchInput.classList.add('is-invalid');
+        return;
+      }
+      searchInput.classList.remove('is-invalid');
+    });
+  }
+  searchInput.addEventListener('input', function() { searchInput.classList.remove('is-invalid'); });
+})();
+
+// Поиск оборудования по названию и серийному номеру; в списке — статус (свободен / в прокате до … / забронирован)
+(function() {
+  var source = document.getElementById('equipment-list-source');
+  var searchInput = document.getElementById('equipment-search');
+  var hiddenId = document.getElementById('equipment-id');
+  var priceDayInput = document.getElementById('equipment-price-day');
+  var priceWeekInput = document.getElementById('equipment-price-week');
+  var priceHourInput = document.getElementById('equipment-price-hour');
+  var dropdown = document.getElementById('equipment-dropdown');
+  var placeholder = document.getElementById('equipment-search-placeholder');
+  var selectedLabel = document.getElementById('equipment-selected-label');
+  var modal = document.getElementById('modalAddRental');
+
+  if (!source || !searchInput || !hiddenId || !dropdown) return;
+
+  var options = source.querySelectorAll('.equipment-option');
+
+  function norm(s) { return (s || '').toLowerCase().trim(); }
+
+  function getSearchText(el) {
+    var title = norm(el.getAttribute('data-title'));
+    var serial = norm(el.getAttribute('data-serial'));
+    return title + ' ' + serial;
+  }
+
+  function showDropdown() {
+    var q = norm(searchInput.value);
+    dropdown.innerHTML = '';
+    var count = 0;
+    options.forEach(function(el) {
+      var searchable = getSearchText(el);
+      var match = !q || searchable.indexOf(q) !== -1;
+      if (match) {
+        var clone = el.cloneNode(true);
+        var free = el.getAttribute('data-free') === 'true';
+        if (free) {
+          clone.addEventListener('click', function() {
+            hiddenId.value = el.getAttribute('data-id');
+            if (priceDayInput) priceDayInput.value = el.getAttribute('data-price-day') || '';
+            if (priceWeekInput) priceWeekInput.value = el.getAttribute('data-price-week') || '';
+            if (priceHourInput) priceHourInput.value = el.getAttribute('data-price-hour') || '';
+            searchInput.value = el.textContent.trim();
+            dropdown.style.display = 'none';
+            placeholder.style.display = 'none';
+            selectedLabel.style.display = 'block';
+            selectedLabel.textContent = 'Выбрано: ' + el.textContent.trim();
+            if (window.rentalUpdateTotal) window.rentalUpdateTotal();
+          });
+        } else {
+          clone.classList.add('pe-none');
+          clone.style.cursor = 'default';
+          clone.title = 'Выбрать можно только свободное оборудование';
+        }
+        dropdown.appendChild(clone);
+        count++;
+      }
+    });
+    if (count === 0) {
+      var empty = document.createElement('div');
+      empty.className = 'list-group-item text-muted';
+      empty.textContent = 'Ничего не найдено';
+      dropdown.appendChild(empty);
+    }
+    dropdown.style.display = 'block';
+  }
+
+  function hideDropdown() {
+    setTimeout(function() { dropdown.style.display = 'none'; }, 150);
+  }
+
+  searchInput.addEventListener('focus', function() {
+    if (hiddenId.value) return;
+    showDropdown();
+  });
+  searchInput.addEventListener('input', function() {
+    if (!searchInput.value.trim()) {
+      hiddenId.value = '';
+      if (priceDayInput) priceDayInput.value = '';
+      if (priceWeekInput) priceWeekInput.value = '';
+      if (priceHourInput) priceHourInput.value = '';
+      placeholder.style.display = 'block';
+      selectedLabel.style.display = 'none';
+      if (window.rentalUpdateTotal) window.rentalUpdateTotal();
+    }
+    showDropdown();
+  });
+  searchInput.addEventListener('blur', hideDropdown);
+  dropdown.addEventListener('mousedown', function(e) { e.preventDefault(); });
+
+  if (modal) {
+    modal.addEventListener('show.bs.modal', function() {
+      searchInput.value = '';
+      hiddenId.value = '';
+      if (priceDayInput) priceDayInput.value = '';
+      if (priceWeekInput) priceWeekInput.value = '';
+      if (priceHourInput) priceHourInput.value = '';
+      placeholder.style.display = 'block';
+      selectedLabel.style.display = 'none';
+      dropdown.style.display = 'none';
+      if (window.rentalSetMinNow) window.rentalSetMinNow();
+      if (window.rentalUpdateTotal) window.rentalUpdateTotal();
+    });
+  }
+
+  var form = searchInput.closest('form');
+  if (form) {
+    form.addEventListener('submit', function(e) {
+      if (!hiddenId.value) {
+        e.preventDefault();
+        searchInput.focus();
+        searchInput.classList.add('is-invalid');
+        return;
+      }
+      searchInput.classList.remove('is-invalid');
+    });
+  }
+  searchInput.addEventListener('input', function() { searchInput.classList.remove('is-invalid'); });
+})();
+</script>
+</body>
+</html>

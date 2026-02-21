@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+<meta charset="UTF-8">
+</head>
+<body>
+
+	<div th:fragment="sidebar(activeTab)" class="sidebar">
+		
+		<!-- LOGO -->
+		<div class="logo">
+			<h3><i class="bi bi-camera-reels-fill"></i> STUDIO.CRM</h3>
+			<p>SYSTEM v3.0</p>
+		</div>
+
+		<!-- НАВИГАЦИЯ -->
+		<nav class="sidebar-nav">
+			<a href="/staff" class="nav-link" th:classappend="${activeTab == 'staff' ? 'active' : ''}">
+				<i class="bi bi-person-badge"></i>
+				<span>Штат сотрудников</span>
+			</a>
+			
+			<a href="/clients" class="nav-link" th:classappend="${activeTab == 'clients' ? 'active' : ''}">
+				<i class="bi bi-people"></i>
+				<span>База клиентов</span>
+			</a>
+			
+			<a href="/inventory" class="nav-link" th:classappend="${activeTab == 'inventory' ? 'active' : ''}">
+				<i class="bi bi-box-seam"></i>
+				<span>Склад техники</span>
+			</a>
+
+			<a href="/points" class="nav-link" th:classappend="${activeTab == 'points' ? 'active' : ''}">
+				<i class="bi bi-geo-alt"></i>
+				<span>Точки выдачи</span>
+			</a>
+			
+			<a href="/rentals" class="nav-link" th:classappend="${activeTab == 'rentals' ? 'active' : ''}">
+				<i class="bi bi-journal-text"></i>
+				<span>Журнал прокатов</span>
+			</a>
+		</nav>
+
+		<!-- ПРОФИЛЬ ПОЛЬЗОВАТЕЛЯ -->
+		<div class="sidebar-footer">
+			<div class="user-info">
+				<div class="user-avatar">
+					<i class="bi bi-person-fill"></i>
+				</div>
+				<div class="user-details">
+					<strong th:text="${username}">User</strong>
+					<small th:if="${currentUserRole == 'SUPER_ADMIN'}" class="role-super">SUPER ADMIN</small>
+					<small th:if="${currentUserRole == 'ADMIN'}" class="role-admin">ADMIN</small>
+					<small th:if="${currentUserRole == 'WORKER'}" class="role-worker">WORKER</small>
+				</div>
+		</div>
+		
+		<form th:action="@{/logout}" method="post" class="mt-3">
+			<button type="submit" class="btn btn-danger w-100">
+				<i class="bi bi-box-arrow-left"></i>
+				<span>Завершить сеанс</span>
+			</button>
+		</form>
+	</div>
+	</div>
+
+</body>
+</html>

@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+<meta charset="UTF-8">
+<title th:text="${category.name} + ' | Склад | STUDIO.CRM'">Категория | STUDIO.CRM</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+<link rel="stylesheet" th:href="@{/css/style.css}">
+<style>
+  .model-card {
+    border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px 20px;
+    transition: box-shadow .2s, transform .2s; background: #fff;
+    cursor: pointer; text-decoration: none; color: inherit; display: block; height: 100%;
+  }
+  .model-card:hover { box-shadow: 0 6px 24px rgba(0,0,0,.10); transform: translateY(-2px); color: inherit; }
+  .model-card .model-name {
+    font-size: 1rem; font-weight: 700;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .model-card .model-desc {
+    font-size: 0.81rem; color: #6c757d; margin-bottom: 12px; min-height: 16px;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  }
+  .badge-pill { border-radius: 20px; padding: 3px 10px; font-size: 0.77rem; font-weight: 600; }
+  .badge-units { background: #f1f5f9; color: #475569; }
+  .badge-free  { background: #d1fae5; color: #065f46; }
+  .add-card {
+    border: 2px dashed #cbd5e1; border-radius: 12px; padding: 18px 20px;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    color: #64748b; cursor: pointer; transition: border-color .2s, color .2s;
+    background: transparent; min-height: 118px; width: 100%;
+  }
+  .add-card:hover { border-color: #6366f1; color: #6366f1; }
+  .card-actions {
+    position: absolute; top: 10px; right: 10px;
+    display: flex; gap: 4px; opacity: 0; transition: opacity .15s;
+  }
+  .card-wrapper:hover .card-actions { opacity: 1; }
+  .action-btn {
+    width: 28px; height: 28px; border-radius: 6px; border: 1px solid #e2e8f0;
+    background: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center;
+    font-size: 0.78rem; transition: background .15s, color .15s;
+  }
+  .action-btn:hover { background: #f1f5f9; }
+  .action-btn.danger:hover { background: #fee2e2; border-color: #fca5a5; color: #b91c1c; }
+</style>
+</head>
+<body>
+
+<div th:replace="~{html/fragments :: sidebar('inventory')}"></div>
+
+<div class="main-content">
+
+  <div class="page-header">
+    <div class="page-title">
+      <nav aria-label="breadcrumb">
+        <ol class="breadcrumb mb-1" style="font-size:0.84rem;">
+          <li class="breadcrumb-item">
+            <a th:href="@{/inventory}" class="text-decoration-none">
+              <i class="bi bi-collection me-1"></i>Склад
+            </a>
+          </li>
+          <li class="breadcrumb-item">
+            <a th:href="@{/inventory/precategory/{id}(id=${preCategory.id})}"
+               th:text="${preCategory.name}" class="text-decoration-none">Раздел</a>
+          </li>
+          <li class="breadcrumb-item active" th:text="${category.name}">Категория</li>
+        </ol>
+      </nav>
+      <h2><i class="bi bi-layers me-2 text-primary"></i><span th:text="${category.name}">Категория</span></h2>
+      <p th:text="${category.description != null ? category.description : 'Модели оборудования в этой категории'}">Описание</p>
+    </div>
+    <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#modalAddModel">
+      <i class="bi bi-plus-circle"></i> Добавить модель
+    </button>
+  </div>
+
+  <!-- Уведомления -->
+  <div th:if="${param.error}" class="alert alert-danger alert-dismissible fade show" role="alert">
+    <i class="bi bi-exclamation-triangle-fill me-2"></i><strong>Ошибка: </strong>
+    <span th:if="${param.error[0] == 'name_required'}">Введите название модели.</span>
+    <span th:if="${param.error[0] == 'name_exists'}">Модель с таким названием уже существует в этой категории.</span>
+    <span th:if="${param.error[0] == 'model_in_use'}">Нельзя удалить: есть оборудование используется.</span>
+    <span th:if="${param.error[0] == 'model_not_found'}">Модель не найдена.</span>
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+  </div>
+  <div th:if="${param.success}" class="alert alert-success alert-dismissible fade show" role="alert">
+    <i class="bi bi-check-circle-fill me-2"></i><strong>Готово! </strong>
+    <span th:if="${param.success[0] == 'model_added'}">Модель добавлена.</span>
+    <span th:if="${param.success[0] == 'model_deleted'}">Модель удалена.</span>
+    <span th:if="${param.success[0] == 'model_updated'}">Модель обновлена.</span>
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+  </div>
+
+  <!-- Сетка моделей -->
+  <div class="row g-3 mt-1">
+
+    <div class="col-md-4 col-lg-3" th:each="t : ${toolNames}">
+      <div class="card-wrapper" style="position: relative; height: 100%;">
+        <a th:href="@{/inventory/{id}(id=${t.id})}" class="model-card">
+          <div class="d-flex align-items-center gap-2 mb-1">
+            <i class="bi bi-box-seam text-primary"></i>
+            <div class="model-name" th:text="${t.name}">Модель</div>
+          </div>
+          <div class="model-desc" th:text="${t.description != null ? t.description : 'Нет описания'}">Описание</div>
+          <div class="d-flex flex-wrap gap-2">
+            <span class="badge-pill badge-free">
+              <i class="bi bi-check-circle me-1"></i><span th:text="${freeCount[t.id]}">0</span> свободно
+            </span>
+            <span class="badge-pill badge-units">
+              Всего: <span th:text="${totalCount[t.id]}">0</span>
+            </span>
+          </div>
+        </a>
+        <!-- Кнопки: редактировать + удалить -->
+        <div class="card-actions">
+          <button type="button" class="action-btn"
+                  th:data-id="${t.id}"
+                  th:data-name="${t.name}"
+                  th:data-desc="${t.description}"
+                  onclick="openEditModel(this)"
+                  title="Редактировать">
+            <i class="bi bi-pencil"></i>
+          </button>
+          <button type="button" class="action-btn danger"
+                  th:data-id="${t.id}"
+                  th:data-name="${t.name}"
+                  th:data-units="${totalCount[t.id]}"
+                  onclick="openDeleteModel(this)"
+                  title="Удалить">
+            <i class="bi bi-trash"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Добавить -->
+    <div class="col-md-4 col-lg-3">
+      <button class="add-card" data-bs-toggle="modal" data-bs-target="#modalAddModel">
+        <i class="bi bi-plus-circle fs-3"></i>
+        <span class="fw-semibold">Добавить модель</span>
+      </button>
+    </div>
+
+    <!-- Пусто -->
+    <div class="col-12" th:if="${#lists.isEmpty(toolNames)}">
+      <div class="text-center py-5 text-muted">
+        <i class="bi bi-box fs-1 d-block mb-2"></i>
+        В этой категории пока нет моделей. Создайте первую!
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Модал: добавить модель ===== -->
+<div class="modal fade" id="modalAddModel" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <form th:action="@{/inventory/category/{id}/model/add(id=${category.id})}" method="post" class="modal-content">
+      <div class="modal-header">
+        <h5>
+          <i class="bi bi-plus-circle me-2"></i>Новая модель
+          <span class="badge bg-primary ms-1" th:text="${category.name}">Категория</span>
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label class="form-label fw-semibold">Название модели *</label>
+          <input type="text" name="name" class="form-control" maxlength="60"
+                 placeholder="Например: Gibson Les Paul, Fender Stratocaster" required autofocus>
+          <div class="form-text">Внутри этой модели вы добавите единицы с серийными номерами.</div>
+        </div>
+        <div>
+          <label class="form-label fw-semibold">Описание <span class="text-muted small">(опционально)</span></label>
+          <input type="text" name="description" class="form-control" maxlength="150"
+                 placeholder="Краткое описание, цена и т.д.">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="submit" class="btn btn-success w-100">
+          <i class="bi bi-check-circle me-1"></i> Добавить модель
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ===== Модал: редактировать модель ===== -->
+<div class="modal fade" id="modalEditModel" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <form th:action="@{/inventory/model/edit}" method="post" class="modal-content">
+      <div class="modal-header">
+        <h5><i class="bi bi-pencil me-2"></i>Редактировать модель</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" name="id" id="edit-model-id">
+        <div class="mb-3">
+          <label class="form-label fw-semibold">Название *</label>
+          <input type="text" name="name" id="edit-model-name" class="form-control" maxlength="60" required>
+        </div>
+        <div>
+          <label class="form-label fw-semibold">Описание <span class="text-muted small">(опционально)</span></label>
+          <input type="text" name="description" id="edit-model-desc" class="form-control" maxlength="150">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Отмена</button>
+        <button type="submit" class="btn btn-primary">
+          <i class="bi bi-check-circle me-1"></i> Сохранить
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ===== Модал: подтверждение удаления модели ===== -->
+<div class="modal fade" id="modalDeleteModel" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header bg-danger text-white">
+        <h5><i class="bi bi-exclamation-triangle-fill me-2"></i>Удаление модели</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body px-4 py-3">
+        <p class="text-muted mb-1" style="font-size:0.85rem;">Вы собираетесь удалить модель:</p>
+        <p class="fw-bold fs-5 mb-4" id="del-model-name" style="word-break:break-word;">—</p>
+
+        <div class="rounded-3 p-3 mb-3" style="background:#fffbeb; border:1px solid #fcd34d;">
+          <div class="fw-semibold mb-2" style="color:#92400e;">
+            <i class="bi bi-exclamation-triangle me-1"></i> Будет удалено вместе с моделью:
+          </div>
+          <div class="d-flex gap-3">
+            <div class="text-center px-3 py-2 rounded-2" style="background:#fff; border:1px solid #fcd34d; min-width:80px;">
+              <div class="fw-bold fs-4" style="color:#b45309;" id="del-model-units">0</div>
+              <div style="font-size:0.75rem; color:#92400e;">серийных номеров</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="rounded-3 p-3" style="background:#fef2f2; border:1px solid #fca5a5;">
+          <i class="bi bi-shield-x me-2" style="color:#dc2626;"></i>
+          <strong style="color:#dc2626;">Это действие необратимо.</strong>
+          <span class="text-muted" style="font-size:0.88rem;"> Данные будут помечены как удалённые.</span>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <form th:action="@{/inventory/model/delete}" method="post" style="width:100%; display:flex; gap:8px;">
+          <input type="hidden" name="id" id="del-model-id">
+          <button type="button" class="btn btn-outline-secondary flex-fill" data-bs-dismiss="modal">Отмена</button>
+          <button type="submit" class="btn btn-danger flex-fill">
+            <i class="bi bi-trash me-1"></i> Удалить модель
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+  function openEditModel(btn) {
+    document.getElementById('edit-model-id').value   = btn.dataset.id;
+    document.getElementById('edit-model-name').value = btn.dataset.name;
+    document.getElementById('edit-model-desc').value = btn.dataset.desc !== 'null' ? (btn.dataset.desc || '') : '';
+    new bootstrap.Modal(document.getElementById('modalEditModel')).show();
+  }
+
+  function openDeleteModel(btn) {
+    document.getElementById('del-model-id').value          = btn.dataset.id;
+    document.getElementById('del-model-name').textContent  = btn.dataset.name;
+    document.getElementById('del-model-units').textContent = btn.dataset.units;
+    new bootstrap.Modal(document.getElementById('modalDeleteModel')).show();
+  }
+</script>
+</body>
+</html>

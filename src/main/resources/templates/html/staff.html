@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+<meta charset="UTF-8">
+<title>Сотрудники | STUDIO.CRM</title>
+<link
+	href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+	rel="stylesheet">
+<link rel="stylesheet"
+	href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+<link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+<body>
+
+	<div th:replace="~{html/fragments :: sidebar('staff')}"></div>
+
+	<div class="main-content">
+		<div class="page-header">
+			<div class="page-title">
+				<h2>Управление персоналом</h2>
+				<p>Список сотрудников и права доступа</p>
+			</div>
+			<button th:if="${currentUserRole.name() != 'WORKER'}"
+				class="btn btn-primary" data-bs-toggle="modal"
+				data-bs-target="#addModal">
+				<i class="bi bi-person-plus-fill"></i> Добавить
+			</button>
+		</div>
+
+		<!-- Сообщения об ошибках и успехе -->
+		<div th:if="${param.error}" class="alert alert-danger alert-dismissible fade show" role="alert">
+			<i class="bi bi-exclamation-triangle-fill me-2"></i>
+			<strong>Ошибка!</strong>
+			<span th:if="${param.error[0] == 'bad_chars'}">Имя и фамилия должны содержать только русские буквы.</span>
+			<span th:if="${param.error[0] == 'invalid_login'}">Логин может содержать только английские буквы и цифры (a-z, A-Z, 0-9).</span>
+			<span th:if="${param.error[0] == 'login_exists'}">Пользователь с таким логином уже существует.</span>
+			<span th:if="${param.error[0] == 'email_exists'}">Пользователь с таким email уже существует.</span>
+			<span th:if="${param.error[0] == 'password_too_short'}">Пароль должен содержать минимум 6 символов.</span>
+			<span th:if="${param.error[0] == 'save_failed'}">Не удалось сохранить данные. Попробуйте еще раз.</span>
+			<span th:if="${param.error[0] == 'access_denied'}">Недостаточно прав для выполнения операции.</span>
+			<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+		</div>
+
+		<div th:if="${param.success}" class="alert alert-success alert-dismissible fade show" role="alert">
+			<i class="bi bi-check-circle-fill me-2"></i>
+			<strong>Успешно!</strong>
+			<span th:if="${param.success[0] == 'user_added'}">Сотрудник успешно добавлен.</span>
+			<span th:if="${param.success[0] == 'user_updated'}">Данные сотрудника обновлены.</span>
+			<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+		</div>
+
+		<div class="card-table">
+			<div class="table-responsive">
+				<table class="table table-hover mb-0">
+					<thead>
+						<tr>
+							<th class="ps-4">Сотрудник</th>
+							<th>Логин</th>
+							<th>Роль</th>
+							<th>Контакты</th>
+							<th class="text-end pe-4"
+								th:if="${currentUserRole.name() != 'WORKER'}">Действия</th>
+						</tr>
+					</thead>
+					<tbody>
+						<tr th:each="u : ${allUsers}">
+							<td class="ps-4">
+								<div class="fw-bold" th:text="${u.surname + ' ' + u.name}">ФИО</div>
+								<small class="text-muted" th:text="${u.email}">email</small>
+							</td>
+							<td><code th:text="${u.login}">login</code></td>
+							<td><span class="role-badge"
+								th:classappend="${u.role.name() == 'SUPER_ADMIN' ? 'role-super' : (u.role.name() == 'ADMIN' ? 'role-admin' : 'role-worker')}"
+								th:text="${u.role}">ROLE</span></td>
+							<td>
+								<div th:text="${u.phoneNumber}">+7...</div>
+								<small class="text-muted" th:if="${u.telegram != null and !#strings.isEmpty(u.telegram)}" th:text="${u.telegram}">telegram</small>
+							</td>
+							<td class="text-end pe-4"
+								th:if="${currentUserRole.name() != 'WORKER'}">
+								<div
+									th:if="${(currentUserRole.name() == 'SUPER_ADMIN' and u.role.name() != 'SUPER_ADMIN') or (currentUserRole.name() == 'ADMIN' and u.role.name() == 'WORKER')}">
+									<button class="btn-icon"
+										th:data-id="${u.id}" th:data-login="${u.login}"
+										th:data-name="${u.name}" th:data-surname="${u.surname}"
+										th:data-patronymic="${u.patronymic}"
+										th:data-email="${u.email}" th:data-phone="${u.phoneNumber}"
+										th:data-role="${u.role}" th:data-tg="${u.telegram}"
+										th:data-wa="${u.whatsApp}" th:data-vk="${u.vk}"
+										th:data-inst="${u.instagram}" th:data-fb="${u.facebook}"
+										onclick="fillEdit(this)" data-bs-toggle="modal"
+										data-bs-target="#editModal">
+										<i class="bi bi-pencil"></i>
+									</button>
+									<form th:action="@{/staff/delete}" method="post"
+										style="display: inline;"
+										onsubmit="return confirm('Удалить сотрудника?')">
+										<input type="hidden" name="id" th:value="${u.id}">
+										<button type="submit" class="btn-icon">
+											<i class="bi bi-trash"></i>
+										</button>
+									</form>
+								</div>
+							</td>
+						</tr>
+					</tbody>
+				</table>
+			</div>
+		</div>
+	</div>
+
+	<div class="modal fade" id="addModal" tabindex="-1">
+		<div class="modal-dialog modal-dialog-centered modal-lg">
+			<form th:action="@{/staff/add}" method="post"
+				class="modal-content">
+				<div class="modal-header">
+					<h5>Регистрация сотрудника</h5>
+					<button type="button" class="btn-close"
+						data-bs-dismiss="modal"></button>
+				</div>
+				<div class="modal-body">
+					<div class="row g-3">
+						<div class="col-md-6">
+							<label class="form-label">Логин (a-z, 0-9)</label>
+							<input type="text" name="login" class="form-control" required>
+						</div>
+						<div class="col-md-6">
+							<label class="form-label">Пароль (минимум 6 символов)</label>
+							<div class="input-group">
+								<input type="password" name="password" id="add-password" class="form-control" minlength="6" required>
+								<button class="btn btn-outline-secondary" type="button" onclick="togglePassword('add-password', this)">
+									<i class="bi bi-eye"></i>
+								</button>
+							</div>
+							<small class="form-text text-muted">
+								<i class="bi bi-info-circle"></i> Используйте буквы и цифры
+							</small>
+						</div>
+						<div class="col-md-4">
+							<label class="form-label">Фамилия</label>
+							<input type="text" name="surname" class="form-control" required>
+						</div>
+						<div class="col-md-4">
+							<label class="form-label">Имя</label>
+							<input type="text" name="name" class="form-control" required>
+						</div>
+						<div class="col-md-4">
+							<label class="form-label">Отчество</label>
+							<input type="text" name="patronymic" class="form-control">
+						</div>
+						<div class="col-md-6">
+							<label class="form-label">Email</label>
+							<input type="email" name="email" class="form-control">
+						</div>
+						<div class="col-md-6">
+							<label class="form-label">Телефон</label>
+							<input type="text" name="phoneNumber" class="form-control">
+						</div>
+						<div class="col-md-4">
+							<label class="form-label">Роль</label>
+							<select name="role" class="form-select">
+								<option value="WORKER">WORKER</option>
+								<option th:if="${currentUserRole.name() == 'SUPER_ADMIN'}"
+									value="ADMIN">ADMIN</option>
+							</select>
+						</div>
+						<div class="col-md-4">
+							<label class="form-label">Telegram</label>
+							<input type="text" name="telegram" class="form-control">
+						</div>
+						<div class="col-md-4">
+							<label class="form-label">WhatsApp</label>
+							<input type="text" name="whatsApp" class="form-control">
+						</div>
+						<div class="col-md-4">
+							<label class="form-label">VK</label>
+							<input type="text" name="vk" class="form-control">
+						</div>
+						<div class="col-md-4">
+							<label class="form-label">Instagram</label>
+							<input type="text" name="instagram" class="form-control">
+						</div>
+						<div class="col-md-4">
+							<label class="form-label">Facebook</label>
+							<input type="text" name="facebook" class="form-control">
+						</div>
+					</div>
+				</div>
+				<div class="modal-footer">
+					<button type="submit" class="btn btn-primary px-4">Создать</button>
+				</div>
+			</form>
+		</div>
+	</div>
+
+	<div class="modal fade" id="editModal" tabindex="-1">
+		<div class="modal-dialog modal-dialog-centered modal-lg">
+			<form th:action="@{/staff/edit}" method="post"
+				class="modal-content">
+				<input type="hidden" name="id" id="e-id">
+				<div class="modal-header">
+					<h5>Редактирование сотрудника</h5>
+					<button type="button" class="btn-close"
+						data-bs-dismiss="modal"></button>
+				</div>
+				<div class="modal-body">
+					<div class="row g-3">
+						<div class="col-md-6">
+							<label class="form-label">Логин</label>
+							<input type="text" name="login" id="e-login" class="form-control"
+								th:readonly="${currentUserRole.name() != 'SUPER_ADMIN'}">
+						</div>
+						<div class="col-md-6">
+							<label class="form-label">Новый пароль (мин. 6 символов)</label>
+							<div class="input-group">
+								<input type="password" name="newPassword" id="edit-password" class="form-control"
+									placeholder="Пусто = не менять" minlength="6">
+								<button class="btn btn-outline-secondary" type="button" onclick="togglePassword('edit-password', this)">
+									<i class="bi bi-eye"></i>
+								</button>
+							</div>
+							<small class="form-text text-muted">
+								<i class="bi bi-info-circle"></i> Оставьте пустым, чтобы не менять пароль
+							</small>
+						</div>
+
+						<div class="col-md-4">
+							<label class="form-label">Фамилия</label>
+							<input type="text" name="surname" id="e-surname" class="form-control">
+						</div>
+						<div class="col-md-4">
+							<label class="form-label">Имя</label>
+							<input type="text" name="name" id="e-name" class="form-control">
+						</div>
+						<div class="col-md-4">
+							<label class="form-label">Отчество</label>
+							<input type="text" name="patronymic" id="e-patronymic" class="form-control">
+						</div>
+						<div class="col-md-6">
+							<label class="form-label">Email</label>
+							<input type="email" name="email" id="e-email" class="form-control">
+						</div>
+						<div class="col-md-6">
+							<label class="form-label">Телефон</label>
+							<input type="text" name="phoneNumber" id="e-phone" class="form-control">
+						</div>
+						<div class="col-md-4">
+							<label class="form-label">Роль</label>
+							<select name="role" id="e-role" class="form-select"
+								th:disabled="${currentUserRole.name() != 'SUPER_ADMIN'}">
+								<option value="WORKER">WORKER</option>
+								<option value="ADMIN">ADMIN</option>
+								<option value="SUPER_ADMIN">SUPER_ADMIN</option>
+							</select>
+						</div>
+						<div class="col-md-4">
+							<label class="form-label">Telegram</label>
+							<input type="text" name="telegram" id="e-tg" class="form-control">
+						</div>
+						<div class="col-md-4">
+							<label class="form-label">WhatsApp</label>
+							<input type="text" name="whatsApp" id="e-wa" class="form-control">
+						</div>
+						<div class="col-md-4">
+							<label class="form-label">VK</label>
+							<input type="text" name="vk" id="e-vk" class="form-control">
+						</div>
+						<div class="col-md-4">
+							<label class="form-label">Instagram</label>
+							<input type="text" name="instagram" id="e-inst" class="form-control">
+						</div>
+						<div class="col-md-4">
+							<label class="form-label">Facebook</label>
+							<input type="text" name="facebook" id="e-fb" class="form-control">
+						</div>
+					</div>
+				</div>
+				<div class="modal-footer">
+					<button type="submit" class="btn btn-primary w-100">
+						<i class="bi bi-check-circle"></i> Сохранить изменения
+					</button>
+				</div>
+			</form>
+		</div>
+	</div>
+
+	<script
+		src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+	<script>
+    function fillEdit(btn) {
+        document.getElementById('e-id').value = btn.getAttribute('data-id');
+        document.getElementById('e-login').value = btn.getAttribute('data-login');
+        document.getElementById('e-name').value = btn.getAttribute('data-name');
+        document.getElementById('e-surname').value = btn.getAttribute('data-surname');
+        document.getElementById('e-patronymic').value = btn.getAttribute('data-patronymic');
+        document.getElementById('e-email').value = btn.getAttribute('data-email');
+        document.getElementById('e-phone').value = btn.getAttribute('data-phone');
+        document.getElementById('e-role').value = btn.getAttribute('data-role');
+        document.getElementById('e-tg').value = btn.getAttribute('data-tg');
+        document.getElementById('e-wa').value = btn.getAttribute('data-wa');
+        document.getElementById('e-vk').value = btn.getAttribute('data-vk');
+        document.getElementById('e-inst').value = btn.getAttribute('data-inst');
+        document.getElementById('e-fb').value = btn.getAttribute('data-fb');
+    }
+
+    // Валидация кириллицы для ФИО (авто-капитализация первой буквы)
+    function validateCyrillic(input) {
+        // Удаляем все, кроме русских букв
+        input.value = input.value.replace(/[^А-Яа-яЁё\s-]/g, '');
+        // Капитализируем первую букву
+        if (input.value.length > 0) {
+            input.value = input.value.charAt(0).toUpperCase() + input.value.slice(1).toLowerCase();
+        }
+    }
+
+    // Проверка пароля (только латиница, цифры и спецсимволы)
+    function validatePassword(input) {
+        input.value = input.value.replace(/[^a-zA-Z0-9!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/g, '');
+        
+        // Визуальная индикация длины пароля
+        if (input.value.length > 0 && input.value.length < 6) {
+            input.classList.add('is-invalid');
+            input.classList.remove('is-valid');
+        } else if (input.value.length >= 6) {
+            input.classList.add('is-valid');
+            input.classList.remove('is-invalid');
+        } else {
+            input.classList.remove('is-invalid', 'is-valid');
+        }
+    }
+
+    // Проверка логина (только латиница и цифры, без пробелов)
+    function validateLogin(input) {
+        input.value = input.value.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+    }
+
+    // Применяем валидацию к полям ФИО во всех формах
+    document.querySelectorAll('input[name="surname"], input[name="name"], input[name="patronymic"]').forEach(input => {
+        input.addEventListener('input', function() {
+            validateCyrillic(this);
+        });
+    });
+
+    // Применяем валидацию к паролям
+    document.querySelectorAll('input[type="password"]').forEach(input => {
+        input.addEventListener('input', function() {
+            validatePassword(this);
+        });
+    });
+
+    // Применяем валидацию к логину
+    document.querySelectorAll('input[name="login"]').forEach(input => {
+        input.addEventListener('input', function() {
+            validateLogin(this);
+        });
+    });
+
+    // Показать/скрыть пароль
+    function togglePassword(inputId, button) {
+        const input = document.getElementById(inputId);
+        const icon = button.querySelector('i');
+        
+        if (input.type === 'password') {
+            input.type = 'text';
+            icon.classList.remove('bi-eye');
+            icon.classList.add('bi-eye-slash');
+        } else {
+            input.type = 'password';
+            icon.classList.remove('bi-eye-slash');
+            icon.classList.add('bi-eye');
+        }
+    }
+</script>
+
+</body>
+</html>
