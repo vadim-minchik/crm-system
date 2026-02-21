@@ -23,7 +23,6 @@
 
 <div class="main-content">
 
-  <!-- Хлебные крошки -->
   <nav aria-label="breadcrumb" class="mb-3">
     <ol class="breadcrumb" style="font-size:0.85rem;">
       <li class="breadcrumb-item"><a th:href="@{/rentals}" class="text-decoration-none">Журнал прокатов</a></li>
@@ -31,7 +30,6 @@
     </ol>
   </nav>
 
-  <!-- Уведомления -->
   <div th:if="${param.error}" class="alert alert-danger alert-dismissible fade show" role="alert">
     <i class="bi bi-exclamation-triangle-fill me-2"></i><strong>Ошибка: </strong>
     <span th:if="${param.error[0] == 'not_found'}">Прокат не найден.</span>
@@ -48,7 +46,6 @@
 
   <div class="row g-4">
     <div class="col-lg-8">
-      <!-- Заголовок -->
       <div class="d-flex align-items-center gap-3 mb-4">
         <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center"
              style="width:56px;height:56px;font-size:1.4rem;flex-shrink:0;">
@@ -86,7 +83,6 @@
         </div>
       </div>
 
-      <!-- Клиент -->
       <div class="info-block">
         <div class="section-title"><i class="bi bi-person me-1"></i>Клиент</div>
         <div class="info-row">
@@ -105,7 +101,6 @@
         </div>
       </div>
 
-      <!-- Период -->
       <div class="info-block">
         <div class="section-title"><i class="bi bi-calendar-event me-1"></i>Период</div>
         <div class="info-row">
@@ -118,38 +113,25 @@
         </div>
       </div>
 
-      <!-- Оборудование -->
       <div class="info-block">
         <div class="section-title"><i class="bi bi-box-seam me-1"></i>Оборудование</div>
-        <div th:if="${rental.equipment == null}" class="info-row"><span class="info-label">—</span><span class="info-value text-muted">Нет данных</span></div>
-        <div th:if="${rental.equipment != null}" class="mb-2">
-          <div class="info-row">
-            <span class="info-label">Название</span>
-            <span class="info-value">
-              <a th:if="${rental.equipment.toolName != null}" th:href="@{/inventory/{id}(id=${rental.equipment.toolName.id})}" th:text="${rental.equipment.getTitle()}">—</a>
-              <span th:if="${rental.equipment.toolName == null}" th:text="${rental.equipment.getTitle()}">—</span>
-            </span>
-          </div>
-          <div class="info-row">
-            <span class="info-label">Серийный номер</span>
-            <span class="info-value font-monospace" th:text="${rental.equipment.serialNumber}">—</span>
-          </div>
+        <div class="info-row">
+          <span class="info-label">Инструменты</span>
+          <span class="info-value" th:text="${rental.equipmentDisplayString}">—</span>
         </div>
       </div>
 
-      <!-- Итог -->
       <div class="info-block">
         <div class="section-title"><i class="bi bi-currency-exchange me-1"></i>Сумма</div>
         <div class="info-row">
           <span class="info-label">Итог (BYN)</span>
-          <span class="info-value fw-bold fs-5 text-primary" th:text="|${#numbers.formatDecimal(rental.totalAmount, 0, 'NONE', 2, 'POINT')} BYN|">—</span>
+          <span class="info-value fw-bold fs-5 text-primary" th:text="${rental.totalAmount != null ? (#numbers.formatDecimal(rental.totalAmount, 0, 'NONE', 2, 'POINT') + ' BYN') : '—'}">—</span>
         </div>
       </div>
     </div>
   </div>
 </div>
 
-<!-- Модальное окно: редактирование проката -->
 <div class="modal fade" id="editRentalModal" tabindex="-1">
   <div class="modal-dialog modal-dialog-centered">
     <form th:action="@{/rentals/edit}" method="post" class="modal-content">

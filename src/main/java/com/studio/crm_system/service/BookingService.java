@@ -31,37 +31,17 @@ public class BookingService {
 		return bookingRepository.findById(id);
 	}
 
-	/** Только свободное оборудование (для выбора в форме брони). */
 	public List<Equipment> findFreeEquipment() {
 		return equipmentRepository.findByStatusAndIsDeletedFalse(EquipmentStatus.FREE);
 	}
 
 	private static final int MAX_EQUIPMENT_PER_BOOKING = 50;
 
-	/** Одна бронь: один инструмент. */
 	@Transactional
 	public String create(String phoneNumber, Long equipmentId, LocalDateTime dateTo, String comment) {
-		if (phoneNumber == null || phoneNumber.isBlank()) return "phone_required";
-		if (equipmentId == null) return "equipment_required";
-		if (dateTo == null) return "date_to_required";
-		if (!dateTo.isAfter(LocalDateTime.now())) return "date_to_in_past";
-
-		Equipment equipment = equipmentRepository.findByIdAndIsDeletedFalse(equipmentId).orElse(null);
-		if (equipment == null) return "equipment_not_found";
-		if (equipment.getStatus() != EquipmentStatus.FREE) return "equipment_not_free";
-
-		Booking booking = new Booking();
-		booking.setPhoneNumber(phoneNumber.trim());
-		booking.setEquipment(equipment);
-		booking.setDateTo(dateTo);
-		if (comment != null && !comment.isBlank()) booking.setComment(comment.trim());
-		bookingRepository.save(booking);
-		equipment.setStatus(EquipmentStatus.RESERVED);
-		equipmentRepository.save(equipment);
-		return null;
+		return createBatch(phoneNumber, List.of(equipmentId), dateTo, comment);
 	}
 
-	/** Несколько броней: по одной на каждый выбранный инструмент (1–50). */
 	@Transactional
 	public String createBatch(String phoneNumber, List<Long> equipmentIds, LocalDateTime dateTo, String comment) {
 		if (phoneNumber == null || phoneNumber.isBlank()) return "phone_required";
@@ -78,27 +58,26 @@ public class BookingService {
 			toReserve.add(equipment);
 		}
 
+		Booking booking = new Booking();
+		booking.setPhoneNumber(phoneNumber.trim());
+		booking.setEquipmentList(toReserve);
+		booking.setDateTo(dateTo);
+		if (comment != null && !comment.isBlank()) booking.setComment(comment.trim());
+		bookingRepository.save(booking);
+
 		for (Equipment equipment : toReserve) {
-			Booking booking = new Booking();
-			booking.setPhoneNumber(phoneNumber.trim());
-			booking.setEquipment(equipment);
-			booking.setDateTo(dateTo);
-			if (comment != null && !comment.isBlank()) booking.setComment(comment.trim());
-			bookingRepository.save(booking);
 			equipment.setStatus(EquipmentStatus.RESERVED);
 			equipmentRepository.save(equipment);
 		}
 		return null;
 	}
 
-	/** Удалить бронь: один инструмент снова FREE. */
 	@Transactional
 	public String delete(Long id) {
 		Booking booking = bookingRepository.findById(id).orElse(null);
 		if (booking == null) return "not_found";
 
-		Equipment eq = booking.getEquipment();
-		if (eq != null) {
+		for (Equipment eq : booking.getEquipmentList()) {
 			eq.setStatus(EquipmentStatus.FREE);
 			equipmentRepository.save(eq);
 		}
@@ -106,21 +85,18 @@ public class BookingService {
 		return null;
 	}
 
-	/** Удалить просроченные брони: по каждой — освободить один инструмент. */
 	@Transactional
 	public void deleteExpiredBookings() {
 		LocalDateTime now = LocalDateTime.now();
 		for (Booking b : bookingRepository.findByDateToLessThanEqual(now)) {
-			Equipment eq = b.getEquipment();
-			if (eq != null) {
+			for (Equipment eq : b.getEquipmentList()) {
 				eq.setStatus(EquipmentStatus.FREE);
 				equipmentRepository.save(eq);
 			}
 			bookingRepository.delete(b);
 		}
 		for (Booking b : bookingRepository.findByDateToIsNull()) {
-			Equipment eq = b.getEquipment();
-			if (eq != null) {
+			for (Equipment eq : b.getEquipmentList()) {
 				eq.setStatus(EquipmentStatus.FREE);
 				equipmentRepository.save(eq);
 			}

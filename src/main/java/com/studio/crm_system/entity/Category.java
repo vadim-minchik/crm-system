@@ -16,7 +16,6 @@ public class Category {
 	@Column(length = 150)
 	private String description;
 
-	// Пред-категория, к которой относится эта категория
 	@ManyToOne(fetch = FetchType.EAGER)
 	@JoinColumn(name = "pre_category_id", nullable = false)
 	private PreCategory preCategory;

@@ -71,7 +71,6 @@
     </button>
   </div>
 
-  <!-- Уведомления -->
   <div th:if="${param.error}" class="alert alert-danger alert-dismissible fade show" role="alert">
     <i class="bi bi-exclamation-triangle-fill me-2"></i><strong>Ошибка: </strong>
     <span th:if="${param.error[0] == 'name_required'}">Введите название.</span>
@@ -88,7 +87,6 @@
     <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
   </div>
 
-  <!-- Сетка категорий -->
   <div class="row g-3 mt-1">
 
     <div class="col-md-4 col-lg-3" th:each="c : ${categories}">
@@ -143,7 +141,6 @@
   </div>
 </div>
 
-<!-- Модал: добавить категорию -->
 <div class="modal fade" id="modalAddCat" tabindex="-1">
   <div class="modal-dialog modal-dialog-centered">
     <form th:action="@{/inventory/precategory/{id}/category/add(id=${preCategory.id})}" method="post" class="modal-content">
@@ -175,7 +172,6 @@
   </div>
 </div>
 
-<!-- Модал: редактировать категорию -->
 <div class="modal fade" id="modalEditCat" tabindex="-1">
   <div class="modal-dialog modal-dialog-centered">
     <form th:action="@{/inventory/category/edit}" method="post" class="modal-content">
@@ -204,7 +200,6 @@
   </div>
 </div>
 
-<!-- Модал: подтверждение удаления категории -->
 <div class="modal fade" id="modalDeleteCat" tabindex="-1">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">

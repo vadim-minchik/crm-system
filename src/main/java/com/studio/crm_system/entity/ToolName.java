@@ -10,20 +10,16 @@ public class ToolName {
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long id;
 
-	// Название модели (например, "Sony A7III", "Gibson Les Paul")
 	@Column(nullable = false, length = 60)
 	private String name;
 
-	// Краткое описание (опционально)
 	@Column(length = 150)
 	private String description;
 
-	// Категория, к которой относится эта модель
 	@ManyToOne(fetch = FetchType.EAGER)
 	@JoinColumn(name = "category_id", nullable = false)
 	private Category category;
 
-	// Мягкое удаление
 	@Column(nullable = false)
 	private Boolean isDeleted = false;
 

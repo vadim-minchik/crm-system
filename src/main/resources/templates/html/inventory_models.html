@@ -75,7 +75,6 @@
     </button>
   </div>
 
-  <!-- Уведомления -->
   <div th:if="${param.error}" class="alert alert-danger alert-dismissible fade show" role="alert">
     <i class="bi bi-exclamation-triangle-fill me-2"></i><strong>Ошибка: </strong>
     <span th:if="${param.error[0] == 'name_required'}">Введите название модели.</span>
@@ -92,7 +91,6 @@
     <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
   </div>
 
-  <!-- Сетка моделей -->
   <div class="row g-3 mt-1">
 
     <div class="col-md-4 col-lg-3" th:each="t : ${toolNames}">
@@ -112,7 +110,6 @@
             </span>
           </div>
         </a>
-        <!-- Кнопки: редактировать + удалить -->
         <div class="card-actions">
           <button type="button" class="action-btn"
                   th:data-id="${t.id}"
@@ -134,7 +131,6 @@
       </div>
     </div>
 
-    <!-- Добавить -->
     <div class="col-md-4 col-lg-3">
       <button class="add-card" data-bs-toggle="modal" data-bs-target="#modalAddModel">
         <i class="bi bi-plus-circle fs-3"></i>
@@ -142,7 +138,6 @@
       </button>
     </div>
 
-    <!-- Пусто -->
     <div class="col-12" th:if="${#lists.isEmpty(toolNames)}">
       <div class="text-center py-5 text-muted">
         <i class="bi bi-box fs-1 d-block mb-2"></i>
@@ -152,7 +147,6 @@
   </div>
 </div>
 
-<!-- ===== Модал: добавить модель ===== -->
 <div class="modal fade" id="modalAddModel" tabindex="-1">
   <div class="modal-dialog modal-dialog-centered">
     <form th:action="@{/inventory/category/{id}/model/add(id=${category.id})}" method="post" class="modal-content">
@@ -185,7 +179,6 @@
   </div>
 </div>
 
-<!-- ===== Модал: редактировать модель ===== -->
 <div class="modal fade" id="modalEditModel" tabindex="-1">
   <div class="modal-dialog modal-dialog-centered">
     <form th:action="@{/inventory/model/edit}" method="post" class="modal-content">
@@ -214,7 +207,6 @@
   </div>
 </div>
 
-<!-- ===== Модал: подтверждение удаления модели ===== -->
 <div class="modal fade" id="modalDeleteModel" tabindex="-1">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">

@@ -18,6 +18,7 @@ import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -29,38 +30,32 @@ public class RentalService {
 	@Autowired private ClientRepository clientRepository;
 	@Autowired private EquipmentRepository equipmentRepository;
 
-	/** Список всех прокатов (новые сверху) */
 	public List<Rental> findAll() {
 		return rentalRepository.findAllByOrderByDateFromDesc();
 	}
 
-	/** Активные (в прокате) */
 	public List<Rental> findActive() {
 		return rentalRepository.findByStatusOrderByDateFromDesc(RentalStatus.ACTIVE);
 	}
 
-	/** История — завершённые */
 	public List<Rental> findCompleted() {
 		return rentalRepository.findByStatusOrderByDateFromDesc(RentalStatus.COMPLETED);
 	}
 
-	/** Должники — просрочили возврат */
 	public List<Rental> findDebtors() {
 		return rentalRepository.findByStatusOrderByDateFromDesc(RentalStatus.DEBTOR);
 	}
 
-	/** Приёмка — скоро срок возврата */
 	public List<Rental> findSoonDebtors() {
 		return rentalRepository.findByStatusOrderByDateFromDesc(RentalStatus.SOON_DEBTOR);
 	}
 
-	/** Отменённые прокаты */
 	public List<Rental> findCancelled() {
 		return rentalRepository.findByStatusOrderByDateFromDesc(RentalStatus.CANCELLED);
 	}
 
 	public Optional<Rental> findById(Long id) {
-		return rentalRepository.findById(id);
+		return rentalRepository.findByIdWithEquipment(id);
 	}
 
 	public Optional<Client> findClientById(Long id) {
@@ -71,17 +66,12 @@ public class RentalService {
 		return equipmentRepository.findByIdAndIsDeletedFalse(id);
 	}
 
-	/** Свободное оборудование для выбора в форме */
 	public List<Equipment> findFreeEquipment() {
 		return equipmentRepository.findByStatusAndIsDeletedFalse(EquipmentStatus.FREE);
 	}
 
 	private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("dd.MM.yyyy");
 
-	/**
-	 * Все оборудование (не удалённое) с подписью статуса для выпадающего списка:
-	 * «Свободен», «В прокате до ДД.ММ.ГГГГ», «Забронирован».
-	 */
 	public List<EquipmentSelectOption> getEquipmentOptionsForSelect() {
 		List<Equipment> all = equipmentRepository.findByIsDeletedFalse();
 		return all.stream().map(e -> {
@@ -90,7 +80,7 @@ public class RentalService {
 			if (e.getStatus() == EquipmentStatus.FREE) {
 				statusLabel = "Свободен";
 			} else if (e.getStatus() == EquipmentStatus.BUSY) {
-				Optional<Rental> active = rentalRepository.findFirstByEquipment_IdAndStatusInOrderByDateToDesc(e.getId(), java.util.List.of(RentalStatus.ACTIVE, RentalStatus.SOON_DEBTOR, RentalStatus.DEBTOR));
+				Optional<Rental> active = rentalRepository.findFirstByEquipmentIdAndStatusInOrderByDateToDesc(e.getId(), java.util.List.of(RentalStatus.ACTIVE, RentalStatus.SOON_DEBTOR, RentalStatus.DEBTOR));
 				statusLabel = active.map(r -> "В прокате до " + r.getDateTo().toLocalDate().format(DATE_FMT)).orElse("В прокате");
 			} else {
 				statusLabel = "Забронирован";
@@ -112,11 +102,6 @@ public class RentalService {
 		return clientRepository.findByIsDeletedFalse();
 	}
 
-	/**
-	 * Рассчитать итог по прокату по дате-времени:
-	 * — меньше суток: по часам (pricePerHour);
-	 * — сутки и больше: полные дни по pricePerDay + остаток часов по pricePerHour.
-	 */
 	public BigDecimal calculateTotal(LocalDateTime dateFrom, LocalDateTime dateTo, Equipment equipment) {
 		if (dateFrom == null || dateTo == null || equipment == null) return BigDecimal.ZERO;
 		if (!dateTo.isAfter(dateFrom)) return BigDecimal.ZERO;
@@ -133,11 +118,8 @@ public class RentalService {
 
 	private static final int MAX_EQUIPMENT_PER_RENTAL = 50;
 
-	/**
-	 * Несколько прокатов: один клиент, одни даты, по одному прокату на каждый инструмент (1–50).
-	 */
 	@Transactional
-	public String createRentals(Long clientId, List<Long> equipmentIds, LocalDateTime dateFrom, LocalDateTime dateTo) {
+	public String createRentals(Long clientId, List<Long> equipmentIds, LocalDateTime dateFrom, LocalDateTime dateTo, BigDecimal manualTotal) {
 		if (clientId == null) return "client_required";
 		if (equipmentIds == null || equipmentIds.isEmpty()) return "equipment_required";
 		if (equipmentIds.size() > MAX_EQUIPMENT_PER_RENTAL) return "too_many_equipment";
@@ -149,32 +131,44 @@ public class RentalService {
 		Client client = clientRepository.findByIdAndIsDeletedFalse(clientId).orElse(null);
 		if (client == null) return "client_not_found";
 
+		List<Equipment> toRent = new ArrayList<>();
 		for (Long eid : equipmentIds) {
 			Equipment equipment = equipmentRepository.findByIdAndIsDeletedFalse(eid).orElse(null);
 			if (equipment == null) return "equipment_not_found";
 			if (equipment.getStatus() != EquipmentStatus.FREE) return "equipment_not_free";
+			toRent.add(equipment);
+		}
 
-			BigDecimal total = calculateTotal(dateFrom, dateTo, equipment).setScale(2, RoundingMode.HALF_UP);
-			Rental rental = new Rental();
-			rental.setClient(client);
-			rental.setEquipment(equipment);
-			rental.setDateFrom(dateFrom);
-			rental.setDateTo(dateTo);
-			rental.setTotalAmount(total);
-			rental.setStatus(RentalStatus.ACTIVE);
-			rentalRepository.save(rental);
+		BigDecimal totalSum;
+		if (manualTotal != null && manualTotal.compareTo(BigDecimal.ZERO) > 0) {
+			totalSum = manualTotal.setScale(2, RoundingMode.HALF_UP);
+		} else {
+			totalSum = BigDecimal.ZERO;
+			for (Equipment e : toRent) {
+				totalSum = totalSum.add(calculateTotal(dateFrom, dateTo, e));
+			}
+			totalSum = totalSum.setScale(2, RoundingMode.HALF_UP);
+		}
+
+		Rental rental = new Rental();
+		rental.setClient(client);
+		rental.setEquipmentList(toRent);
+		rental.setDateFrom(dateFrom);
+		rental.setDateTo(dateTo);
+		rental.setTotalAmount(totalSum);
+		rental.setStatus(RentalStatus.ACTIVE);
+		rentalRepository.save(rental);
+
+		for (Equipment equipment : toRent) {
 			equipment.setStatus(EquipmentStatus.BUSY);
 			equipmentRepository.save(equipment);
 		}
 		return null;
 	}
 
-	/**
-	 * Обновить прокат: период и итог (редактирование с карточки проката).
-	 */
 	@Transactional
 	public String updateRental(Long id, LocalDateTime dateFrom, LocalDateTime dateTo, BigDecimal totalAmount) {
-		Rental rental = rentalRepository.findById(id).orElse(null);
+		Rental rental = rentalRepository.findByIdWithEquipment(id).orElse(null);
 		if (rental == null) return "not_found";
 		if (dateFrom == null) return "date_from_required";
 		if (dateTo == null) return "date_to_required";
@@ -182,20 +176,19 @@ public class RentalService {
 
 		rental.setDateFrom(dateFrom);
 		rental.setDateTo(dateTo);
+		List<Equipment> list = rental.getEquipmentList();
 		BigDecimal total = totalAmount != null && totalAmount.compareTo(BigDecimal.ZERO) > 0
 				? totalAmount.setScale(2, RoundingMode.HALF_UP)
-				: calculateTotal(dateFrom, dateTo, rental.getEquipment()).setScale(2, RoundingMode.HALF_UP);
+				: (list.isEmpty()
+						? BigDecimal.ZERO
+						: list.stream()
+								.map(e -> calculateTotal(dateFrom, dateTo, e))
+								.reduce(BigDecimal.ZERO, BigDecimal::add)).setScale(2, RoundingMode.HALF_UP);
 		rental.setTotalAmount(total);
 		rentalRepository.save(rental);
 		return null;
 	}
 
-	/**
-	 * Завершить прокат: статус COMPLETED, оборудованию вернуть FREE.
-	 * Разрешено для ACTIVE, SOON_DEBTOR, DEBTOR (вручную завершают только сотрудники).
-	 * Используется блокировка строки (PESSIMISTIC_WRITE): если два работника нажали «Завершить» на одном прокате,
-	 * второй подождёт, получит уже завершённый прокат и увидит «Прокат уже завершён или отменён».
-	 */
 	@Transactional
 	public String completeRental(Long rentalId) {
 		Rental rental = rentalRepository.findByIdForUpdate(rentalId).orElse(null);
@@ -207,18 +200,13 @@ public class RentalService {
 		rental.setStatus(RentalStatus.COMPLETED);
 		rentalRepository.save(rental);
 
-		Equipment eq = rental.getEquipment();
-		if (eq != null) {
+		for (Equipment eq : rental.getEquipmentList()) {
 			eq.setStatus(EquipmentStatus.FREE);
 			equipmentRepository.save(eq);
 		}
 		return null;
 	}
 
-	/**
-	 * Отменить прокат: статус CANCELLED, оборудованию вернуть FREE.
-	 * Разрешено только для ACTIVE (из должников и приёмки — только «Завершить» в историю).
-	 */
 	@Transactional
 	public String cancelRental(Long rentalId) {
 		Rental rental = rentalRepository.findByIdForUpdate(rentalId).orElse(null);
@@ -228,20 +216,13 @@ public class RentalService {
 		rental.setStatus(RentalStatus.CANCELLED);
 		rentalRepository.save(rental);
 
-		Equipment eq = rental.getEquipment();
-		if (eq != null) {
+		for (Equipment eq : rental.getEquipmentList()) {
 			eq.setStatus(EquipmentStatus.FREE);
 			equipmentRepository.save(eq);
 		}
 		return null;
 	}
 
-	/**
-	 * Фоновая перераспределение: прокаты с ACTIVE/SOON_DEBTOR/DEBTOR проверяются по времени.
-	 * — Если сейчас >= dateTo → DEBTOR (должник).
-	 * — Иначе если в зоне «приёмка»: по часам аренды 20 мин до конца, по дням 1 час до конца, по неделе 1 день до конца → SOON_DEBTOR.
-	 * — Иначе → ACTIVE.
-	 */
 	@Transactional
 	public void updateRentalStatuses() {
 		LocalDateTime now = LocalDateTime.now();

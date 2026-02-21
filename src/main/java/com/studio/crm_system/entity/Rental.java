@@ -4,6 +4,9 @@ import com.studio.crm_system.enums.RentalStatus;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 @Entity
 @Table(name = "rentals")
@@ -13,38 +16,32 @@ public class Rental {
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long id;
 
-	/** Кто берёт в прокат — ссылка на клиента */
 	@ManyToOne(fetch = FetchType.EAGER)
 	@JoinColumn(name = "client_id", nullable = false)
 	private Client client;
 
-	/** С какого числа и времени */
 	@Column(nullable = false)
 	private LocalDateTime dateFrom;
 
-	/** По какое число и время */
 	@Column(nullable = false)
 	private LocalDateTime dateTo;
 
-	/** Какой инструмент взят — ссылка на оборудование */
-	@ManyToOne(fetch = FetchType.EAGER)
-	@JoinColumn(name = "equipment_id", nullable = false)
-	private Equipment equipment;
+	@ManyToMany(fetch = FetchType.EAGER)
+	@JoinTable(name = "rental_equipment",
+			joinColumns = @JoinColumn(name = "rental_id"),
+			inverseJoinColumns = @JoinColumn(name = "equipment_id"))
+	private List<Equipment> equipmentList = new ArrayList<>();
 
-	/** Точка выдачи, где оформили прокат (null = старая запись до введения точек). */
 	@ManyToOne(fetch = FetchType.EAGER)
 	@JoinColumn(name = "point_id")
 	private Point point;
 
-	/** Итоговая сумма (BYN), рассчитанная по дням/неделям */
 	@Column(nullable = false, precision = 12, scale = 2)
 	private BigDecimal totalAmount;
 
 	@Column(nullable = false)
 	@Enumerated(EnumType.STRING)
 	private RentalStatus status = RentalStatus.ACTIVE;
-
-	// --- Геттеры и сеттеры ---
 
 	public Long getId() { return id; }
 	public void setId(Long id) { this.id = id; }
@@ -58,8 +55,24 @@ public class Rental {
 	public LocalDateTime getDateTo() { return dateTo; }
 	public void setDateTo(LocalDateTime dateTo) { this.dateTo = dateTo; }
 
-	public Equipment getEquipment() { return equipment; }
-	public void setEquipment(Equipment equipment) { this.equipment = equipment; }
+	public List<Equipment> getEquipmentList() {
+		return equipmentList != null ? equipmentList : Collections.emptyList();
+	}
+	public void setEquipmentList(List<Equipment> equipmentList) {
+		this.equipmentList = equipmentList != null ? equipmentList : new ArrayList<>();
+	}
+
+	public String getEquipmentDisplayString() {
+		List<Equipment> list = getEquipmentList();
+		if (list == null || list.isEmpty()) return "—";
+		StringBuilder sb = new StringBuilder();
+		for (int i = 0; i < list.size(); i++) {
+			Equipment eq = list.get(i);
+			if (i > 0) sb.append(", ");
+			sb.append(eq != null ? (eq.getTitle() + " — S/N " + eq.getSerialNumber()) : "—");
+		}
+		return sb.toString();
+	}
 
 	public Point getPoint() { return point; }
 	public void setPoint(Point point) { this.point = point; }

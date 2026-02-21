@@ -66,7 +66,6 @@
     </button>
   </div>
 
-  <!-- Уведомления -->
   <div th:if="${param.error}" class="alert alert-danger alert-dismissible fade show" role="alert">
     <i class="bi bi-exclamation-triangle-fill me-2"></i><strong>Ошибка: </strong>
     <span th:if="${param.error[0] == 'name_required'}">Введите название.</span>
@@ -83,7 +82,6 @@
     <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
   </div>
 
-  <!-- Сетка разделов -->
   <div class="row g-3 mt-1">
 
     <div class="col-md-4 col-lg-3" th:each="pc : ${preCategories}">
@@ -140,7 +138,6 @@
   </div>
 </div>
 
-<!-- Модал: добавить раздел -->
 <div class="modal fade" id="modalAddPC" tabindex="-1">
   <div class="modal-dialog modal-dialog-centered">
     <form th:action="@{/inventory/precategory/add}" method="post" class="modal-content">
@@ -169,7 +166,6 @@
   </div>
 </div>
 
-<!-- Модал: редактировать раздел -->
 <div class="modal fade" id="modalEditPC" tabindex="-1">
   <div class="modal-dialog modal-dialog-centered">
     <form th:action="@{/inventory/precategory/edit}" method="post" class="modal-content">
@@ -198,7 +194,6 @@
   </div>
 </div>
 
-<!-- Модал: подтверждение удаления раздела -->
 <div class="modal fade" id="modalDeletePC" tabindex="-1">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">

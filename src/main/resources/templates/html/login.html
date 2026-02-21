@@ -94,7 +94,6 @@ body {
 			<p class="text-muted small mb-0">Система управления студией</p>
 		</div>
 
-		<!-- Аккаунт заблокирован после N попыток -->
 		<div th:if="${param.error != null and param.error[0] == 'locked'}"
 			 class="alert alert-warning alert-dismissible fade show" role="alert">
 			<i class="bi bi-lock-fill me-2"></i>
@@ -103,7 +102,6 @@ body {
 			Повторите через <strong th:text="${param.minutes != null ? param.minutes[0] : '15'}">15</strong> мин.
 			<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
 		</div>
-		<!-- Неверный логин или пароль -->
 		<div th:if="${param.error != null and param.error[0] == 'bad_credentials'}"
 			 class="alert alert-danger alert-dismissible fade show" role="alert">
 			<i class="bi bi-exclamation-triangle-fill me-2"></i>

@@ -13,7 +13,6 @@
 
 <div class="main-content">
 
-  <!-- Хлебные крошки + заголовок -->
   <div class="page-header">
     <div class="page-title">
       <nav aria-label="breadcrumb">
@@ -42,7 +41,6 @@
     </button>
   </div>
 
-  <!-- Уведомления -->
   <div th:if="${param.error}" class="alert alert-danger alert-dismissible fade show" role="alert">
     <i class="bi bi-exclamation-triangle-fill me-2"></i>
     <strong>Ошибка!</strong>
@@ -63,7 +61,6 @@
     <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
   </div>
 
-  <!-- Таблица единиц оборудования -->
   <div class="card-table">
     <table class="table table-hover mb-0">
       <thead>
@@ -97,7 +94,6 @@
           </td>
           <td class="text-center">
             <div class="d-flex justify-content-center gap-1">
-              <!-- Редактировать -->
               <button type="button" class="btn-icon"
                       th:data-id="${u.id}"
                       th:data-serial="${u.serialNumber}"
@@ -108,7 +104,6 @@
                       title="Редактировать">
                 <i class="bi bi-pencil"></i>
               </button>
-              <!-- Удалить: только если СВОБОДЕН -->
               <button th:if="${u.status.name() == 'FREE'}"
                       type="button" class="btn-icon text-danger"
                       th:data-id="${u.id}"
@@ -117,7 +112,6 @@
                       title="Удалить">
                 <i class="bi bi-trash"></i>
               </button>
-              <!-- Заблокировано: нельзя удалить пока используется/забронировано -->
               <span th:if="${u.status.name() != 'FREE'}"
                     class="btn-icon text-muted"
                     style="cursor: default;"
@@ -138,7 +132,6 @@
   </div>
 </div>
 
-<!-- Модальное окно: добавить экземпляр (БЕЗ поля "название" — оно берётся из раздела) -->
 <div class="modal fade" id="modalAddUnit" tabindex="-1">
   <div class="modal-dialog modal-dialog-centered">
     <form th:action="@{/inventory/{id}/add(id=${toolName.id})}" method="post" class="modal-content">
@@ -191,7 +184,6 @@
   </div>
 </div>
 
-<!-- Модальное окно: редактировать экземпляр -->
 <div class="modal fade" id="modalEditUnit" tabindex="-1">
   <div class="modal-dialog modal-dialog-centered">
     <form th:action="@{/inventory/edit}" method="post" class="modal-content">
@@ -240,12 +232,10 @@
 </div>
 
 
-<!-- Скрытая форма удаления единицы -->
 <form id="deleteUnitForm" th:action="@{/inventory/delete}" method="post" style="display:none;">
   <input type="hidden" name="id" id="delete-unit-id">
 </form>
 
-<!-- Модал подтверждения удаления единицы -->
 <div class="modal fade" id="modalDeleteUnit" tabindex="-1">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">

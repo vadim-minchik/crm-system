@@ -33,7 +33,6 @@ public class StaffController {
 		return null;
 	}
 
-	// Метод для очистки от пробелов и проверки на русские буквы
 	private String cleanCyrillic(String input) {
 		if (input == null)
 			return "";
@@ -47,7 +46,6 @@ public class StaffController {
 		return input.trim().replaceAll("\\s+", "");
 	}
 	
-	// Валидация логина: только английские буквы и цифры (как в Steam)
 	private boolean isValidLogin(String login) {
 		if (login == null || login.isEmpty()) {
 			return false;
@@ -55,7 +53,6 @@ public class StaffController {
 		return login.matches("^[a-zA-Z0-9]+$");
 	}
 	
-	// Валидация пароля: минимум 6 символов
 	private boolean isValidPassword(String password) {
 		if (password == null || password.isEmpty()) {
 			return false;
@@ -69,11 +66,9 @@ public class StaffController {
 		if (actor == null)
 			return "redirect:/login";
 
-		// МЯГКОЕ УДАЛЕНИЕ: показываем только НЕудаленных пользователей
 		List<User> allUsers = userRepository.findByIsDeletedFalse();
 		List<User> filteredUsers;
 
-		// Админ видит ТОЛЬКО воркеров. Коллег и суперов — нет.
 		if (actor.getRole() == Role.SUPER_ADMIN) {
 			filteredUsers = allUsers;
 		} else {
@@ -94,7 +89,6 @@ public class StaffController {
 		if (actor == null || actor.getRole() == Role.WORKER)
 			return "redirect:/staff";
 
-		// Валидация при создании
 		String name = cleanCyrillic(newUser.getName());
 		String surname = cleanCyrillic(newUser.getSurname());
 		if (name == null || surname == null)
@@ -107,17 +101,14 @@ public class StaffController {
 		String login = cleanStrict(newUser.getLogin());
 		String email = cleanStrict(newUser.getEmail());
 		
-		// Валидация логина (только английские буквы и цифры)
 		if (!isValidLogin(login)) {
 			return "redirect:/staff?error=invalid_login";
 		}
 		
-		// Проверка уникальности login
 		if (userRepository.findByLogin(login).isPresent()) {
 			return "redirect:/staff?error=login_exists";
 		}
 		
-		// Проверка уникальности email
 		if (userRepository.findByEmail(email).isPresent()) {
 			return "redirect:/staff?error=email_exists";
 		}
@@ -126,7 +117,6 @@ public class StaffController {
 		newUser.setEmail(email);
 		newUser.setPhoneNumber(cleanStrict(newUser.getPhoneNumber()));
 
-		// Валидация пароля (минимум 6 символов)
 		String password = cleanStrict(newUser.getPassword());
 		if (!isValidPassword(password)) {
 			return "redirect:/staff?error=password_too_short";
@@ -149,13 +139,11 @@ public class StaffController {
 		User dbUser = userRepository.findById(details.getId()).orElse(null);
 
 		if (actor != null && dbUser != null) {
-			// Запрет Админу трогать кого-либо, кроме Воркеров
 			if (actor.getRole() == Role.ADMIN && dbUser.getRole() != Role.WORKER)
 				return "redirect:/staff";
 
 			boolean changed = false;
 
-			// 1. Проверка ФИО (только русские, без пробелов)
 			String cName = cleanCyrillic(details.getName());
 			String cSurname = cleanCyrillic(details.getSurname());
 			String cPatr = cleanCyrillic(details.getPatronymic());
@@ -173,11 +161,9 @@ public class StaffController {
 				changed = true;
 			}
 
-		// 2. Контакты (без пробелов)
 		String cEmail = cleanStrict(details.getEmail());
 		String cPhone = cleanStrict(details.getPhoneNumber());
 		if (!cEmail.equals(dbUser.getEmail())) {
-			// Проверка уникальности нового email
 			if (userRepository.findByEmail(cEmail).isPresent()) {
 				return "redirect:/staff?error=email_exists";
 			}
@@ -189,15 +175,12 @@ public class StaffController {
 			changed = true;
 		}
 
-		// 3. Логин и Роль (Только для Super Admin и не для самого себя)
 		if (actor.getRole() == Role.SUPER_ADMIN && !actor.getId().equals(dbUser.getId())) {
 			String cLogin = cleanStrict(details.getLogin());
 			if (!cLogin.isEmpty() && !cLogin.equals(dbUser.getLogin())) {
-				// Валидация логина (только английские буквы и цифры)
 				if (!isValidLogin(cLogin)) {
 					return "redirect:/staff?error=invalid_login";
 				}
-				// Проверка уникальности нового login
 				if (userRepository.findByLogin(cLogin).isPresent()) {
 					return "redirect:/staff?error=login_exists";
 				}
@@ -210,7 +193,6 @@ public class StaffController {
 			}
 		}
 
-			// 4. Пароль (если не пустой, минимум 6 символов)
 			String cPass = cleanStrict(newPassword);
 			if (!cPass.isEmpty()) {
 				if (!isValidPassword(cPass)) {
@@ -220,7 +202,6 @@ public class StaffController {
 				changed = true;
 			}
 
-			// Соцсети (просто чистим пробелы)
 			dbUser.setTelegram(cleanStrict(details.getTelegram()));
 			dbUser.setWhatsApp(cleanStrict(details.getWhatsApp()));
 
@@ -240,7 +221,6 @@ public class StaffController {
 		User actor = getCurrentUser();
 		User target = userRepository.findById(id).orElse(null);
 		if (actor != null && target != null) {
-			// Себя удалять нельзя ни при каких условиях
 			if (actor.getId().equals(target.getId()))
 				return "redirect:/staff";
 

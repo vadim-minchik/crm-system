@@ -13,7 +13,6 @@ public interface ClientRepository extends JpaRepository<Client, Long> {
 
 	List<Client> findBySurnameContainingIgnoreCaseAndIsDeletedFalse(String surname);
 
-	// Проверки уникальности
 	boolean existsByPhoneNumber(String phoneNumber);
 	boolean existsByPassportNumber(String passportNumber);
 	boolean existsByIdentificationNumber(String identificationNumber);

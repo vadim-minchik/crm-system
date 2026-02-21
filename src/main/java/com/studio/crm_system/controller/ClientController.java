@@ -44,7 +44,6 @@ public class ClientController {
 		return userRepository.findByLogin(username).orElse(null);
 	}
 
-	// ===== Утилита: парсинг даты с редиректом при ошибке =====
 	private LocalDate parseDate(String raw, String errorKey) {
 		if (raw == null || raw.isBlank()) return null;
 		try {
@@ -54,13 +53,11 @@ public class ClientController {
 		}
 	}
 
-	// ===== Утилита: адресное поле — пусто → "-" =====
 	private String addr(String value) {
 		if (value == null || value.trim().isEmpty()) return "-";
 		return value.trim();
 	}
 
-	// ===== Утилита: капитализация каждого слова =====
 	private String capitalize(String s) {
 		if (s == null || s.isBlank()) return s;
 		String[] words = s.trim().split("\\s+");
@@ -114,7 +111,6 @@ public class ClientController {
 		User user = getCurrentUser();
 		if (user == null) return "redirect:/login";
 
-		// --- Парсинг дат ---
 		LocalDate birth = parseDate(birthDate, "birth");
 		LocalDate issue = parseDate(passportIssueDate, "issue");
 		LocalDate expiry = parseDate(passportExpiryDate, "expiry");
@@ -123,7 +119,6 @@ public class ClientController {
 		if (issue == null) return "redirect:/clients?error=invalid_issue_date";
 		if (expiry == null) return "redirect:/clients?error=invalid_expiry_date";
 
-		// --- Логическая проверка дат ---
 		LocalDate today = LocalDate.now();
 
 		if (birth.isAfter(today)) return "redirect:/clients?error=birth_future";
@@ -135,10 +130,8 @@ public class ClientController {
 		if (expiry.isBefore(issue)) return "redirect:/clients?error=expiry_before_issue";
 		if (expiry.isAfter(today.plusYears(15))) return "redirect:/clients?error=expiry_too_far";
 
-		// --- Объединяем серию и номер паспорта ---
 		String fullPassport = (passportSeries.trim() + " " + passportNum.trim()).toUpperCase();
 
-		// --- Уникальность ---
 		if (clientRepository.existsByPhoneNumber(phoneNumber.trim())) {
 			return "redirect:/clients?error=phone_exists";
 		}
@@ -254,7 +247,6 @@ public class ClientController {
 		return "redirect:/clients?success=client_updated";
 	}
 
-	// ===== СТРАНИЦА ДЕТАЛЕЙ КЛИЕНТА =====
 	@GetMapping("/{id}")
 	public String clientDetail(@PathVariable Long id, Model model) {
 		User user = getCurrentUser();
@@ -269,7 +261,6 @@ public class ClientController {
 		return "html/client_detail";
 	}
 
-	// ===== ЗАГРУЗКА ФОТО ПАСПОРТА =====
 	@PostMapping("/{id}/upload-photo")
 	public String uploadPhoto(@PathVariable Long id,
 	                          @RequestParam("photo") MultipartFile photo) {
@@ -281,18 +272,15 @@ public class ClientController {
 
 		if (photo.isEmpty()) return "redirect:/clients/" + id + "?error=no_file";
 
-		// Проверяем тип файла
 		String contentType = photo.getContentType();
 		if (contentType == null || !contentType.startsWith("image/")) {
 			return "redirect:/clients/" + id + "?error=not_image";
 		}
 
 		try {
-			// Удаляем старое фото если есть
 			if (client.getPassportPhotoUrl() != null) {
 				storageService.deleteByUrl(client.getPassportPhotoUrl());
 			}
-			// Загружаем новое
 			String url = storageService.uploadPassportPhoto(photo, id);
 			client.setPassportPhotoUrl(url);
 			clientRepository.save(client);
@@ -304,7 +292,6 @@ public class ClientController {
 		return "redirect:/clients/" + id + "?success=photo_uploaded";
 	}
 
-	// ===== УДАЛИТЬ ФОТО ПАСПОРТА =====
 	@PostMapping("/{id}/delete-photo")
 	public String deletePhoto(@PathVariable Long id) {
 		User user = getCurrentUser();

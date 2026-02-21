@@ -15,7 +15,6 @@ public interface RentalRepository extends JpaRepository<Rental, Long> {
 
 	List<Rental> findAllByOrderByDateFromDesc();
 
-	/** Загрузка проката с блокировкой строки (для завершения). Второй запрос ждёт и получит уже обновлённый статус. */
 	@Lock(LockModeType.PESSIMISTIC_WRITE)
 	@Query("SELECT r FROM Rental r WHERE r.id = :id")
 	Optional<Rental> findByIdForUpdate(@Param("id") Long id);
@@ -24,12 +23,17 @@ public interface RentalRepository extends JpaRepository<Rental, Long> {
 
 	List<Rental> findByClientIdOrderByDateFromDesc(Long clientId);
 
-	List<Rental> findByEquipment_IdOrderByDateFromDesc(Long equipmentId);
+	@Query("SELECT r FROM Rental r LEFT JOIN FETCH r.equipmentList WHERE r.id = :id")
+	Optional<Rental> findByIdWithEquipment(@Param("id") Long id);
 
-	/** Прокаты со статусами из списка (для фоновой перераспределения) */
+	@Query("SELECT r FROM Rental r JOIN r.equipmentList e WHERE e.id = :equipmentId ORDER BY r.dateFrom DESC")
+	List<Rental> findByEquipmentIdOrderByDateFromDesc(@Param("equipmentId") Long equipmentId);
+
 	List<Rental> findByStatusInOrderByDateFromDesc(java.util.Collection<RentalStatus> statuses);
 
-	Optional<Rental> findFirstByEquipment_IdAndStatusOrderByDateToDesc(Long equipmentId, RentalStatus status);
+	@Query("SELECT r FROM Rental r JOIN r.equipmentList e WHERE e.id = :equipmentId AND r.status = :status ORDER BY r.dateTo DESC")
+	Optional<Rental> findFirstByEquipmentIdAndStatusOrderByDateToDesc(@Param("equipmentId") Long equipmentId, @Param("status") RentalStatus status);
 
-	Optional<Rental> findFirstByEquipment_IdAndStatusInOrderByDateToDesc(Long equipmentId, List<RentalStatus> statuses);
+	@Query("SELECT r FROM Rental r JOIN r.equipmentList e WHERE e.id = :equipmentId AND r.status IN :statuses ORDER BY r.dateTo DESC")
+	Optional<Rental> findFirstByEquipmentIdAndStatusInOrderByDateToDesc(@Param("equipmentId") Long equipmentId, @Param("statuses") List<RentalStatus> statuses);
 }

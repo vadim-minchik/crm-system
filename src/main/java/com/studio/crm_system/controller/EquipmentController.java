@@ -34,9 +34,6 @@ public class EquipmentController {
 	@Autowired private PreCategoryRepository preCategoryRepository;
 	@Autowired private UserRepository userRepository;
 
-	// -------------------------------------------------------
-	// УТИЛИТА
-	// -------------------------------------------------------
 	private User getCurrentUser() {
 		Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
 		String username = (principal instanceof UserDetails)
@@ -51,7 +48,6 @@ public class EquipmentController {
 		model.addAttribute("currentUserRole", user.getRole());
 	}
 
-	/** Считает все единицы в пред-категории */
 	private long countUnitsInPreCategory(PreCategory pc) {
 		long total = 0;
 		for (Category c : categoryRepository.findByPreCategoryAndIsDeletedFalse(pc)) {
@@ -104,10 +100,6 @@ public class EquipmentController {
 		return false;
 	}
 
-	// ============================================================
-	// УРОВЕНЬ 0: /inventory — список ПРЕ-КАТЕГОРИЙ
-	// ============================================================
-
 	@GetMapping
 	public String showInventory(Model model) {
 		User currentUser = getCurrentUser();
@@ -133,7 +125,6 @@ public class EquipmentController {
 		return "html/inventory";
 	}
 
-	/** Добавить пред-категорию */
 	@PostMapping("/precategory/add")
 	public String addPreCategory(@RequestParam String name,
 	                              @RequestParam(required = false) String description) {
@@ -149,7 +140,6 @@ public class EquipmentController {
 		return "redirect:/inventory?success=precategory_added";
 	}
 
-	/** Редактировать пред-категорию */
 	@PostMapping("/precategory/edit")
 	public String editPreCategory(@RequestParam Long id,
 	                               @RequestParam String name,
@@ -164,7 +154,6 @@ public class EquipmentController {
 		return "redirect:/inventory?success=precategory_updated";
 	}
 
-	/** Удалить пред-категорию (мягкое, каскадное) */
 	@PostMapping("/precategory/delete")
 	public String deletePreCategory(@RequestParam Long id) {
 		PreCategory pc = preCategoryRepository.findById(id).orElse(null);
@@ -187,10 +176,6 @@ public class EquipmentController {
 		preCategoryRepository.save(pc);
 		return "redirect:/inventory?success=precategory_deleted";
 	}
-
-	// ============================================================
-	// УРОВЕНЬ 1: /inventory/precategory/{id} — список КАТЕГОРИЙ
-	// ============================================================
 
 	@GetMapping("/precategory/{preCategoryId}")
 	public String showCategories(@PathVariable Long preCategoryId, Model model) {
@@ -222,7 +207,6 @@ public class EquipmentController {
 		return "html/inventory_precategory";
 	}
 
-	/** Добавить категорию в пред-категорию */
 	@PostMapping("/precategory/{preCategoryId}/category/add")
 	public String addCategory(@PathVariable Long preCategoryId,
 	                          @RequestParam String name,
@@ -243,7 +227,6 @@ public class EquipmentController {
 		return "redirect:/inventory/precategory/" + preCategoryId + "?success=category_added";
 	}
 
-	/** Редактировать категорию */
 	@PostMapping("/category/edit")
 	public String editCategory(@RequestParam Long id,
 	                           @RequestParam String name,
@@ -259,7 +242,6 @@ public class EquipmentController {
 		return "redirect:/inventory/precategory/" + cat.getPreCategory().getId() + "?success=category_updated";
 	}
 
-	/** Удалить категорию (мягкое, каскадное) */
 	@PostMapping("/category/delete")
 	public String deleteCategory(@RequestParam Long id) {
 		Category cat = categoryRepository.findById(id).orElse(null);
@@ -279,10 +261,6 @@ public class EquipmentController {
 		categoryRepository.save(cat);
 		return "redirect:/inventory/precategory/" + pcId + "?success=category_deleted";
 	}
-
-	// ============================================================
-	// УРОВЕНЬ 2: /inventory/category/{id} — список МОДЕЛЕЙ
-	// ============================================================
 
 	@GetMapping("/category/{categoryId}")
 	public String showModels(@PathVariable Long categoryId, Model model) {
@@ -311,7 +289,6 @@ public class EquipmentController {
 		return "html/inventory_models";
 	}
 
-	/** Добавить модель в категорию */
 	@PostMapping("/category/{categoryId}/model/add")
 	public String addModel(@PathVariable Long categoryId,
 	                       @RequestParam String name,
@@ -332,7 +309,6 @@ public class EquipmentController {
 		return "redirect:/inventory/category/" + categoryId + "?success=model_added";
 	}
 
-	/** Редактировать модель */
 	@PostMapping("/model/edit")
 	public String editModel(@RequestParam Long id,
 	                        @RequestParam String name,
@@ -350,7 +326,6 @@ public class EquipmentController {
 		return "redirect:/inventory/category/" + categoryId + "?success=model_updated";
 	}
 
-	/** Удалить модель (мягкое, каскадное) */
 	@PostMapping("/model/delete")
 	public String deleteModel(@RequestParam Long id) {
 		ToolName toolName = toolNameRepository.findById(id).orElse(null);
@@ -368,10 +343,6 @@ public class EquipmentController {
 		toolNameRepository.save(toolName);
 		return "redirect:/inventory/category/" + categoryId + "?success=model_deleted";
 	}
-
-	// ============================================================
-	// УРОВЕНЬ 3: /inventory/{toolNameId} — единицы МОДЕЛИ
-	// ============================================================
 
 	@GetMapping("/{toolNameId}")
 	public String showUnits(@PathVariable Long toolNameId, Model model) {
@@ -393,7 +364,6 @@ public class EquipmentController {
 		return "html/inventory_detail";
 	}
 
-	/** Добавить единицу оборудования */
 	@PostMapping("/{toolNameId}/add")
 	public String addUnit(@PathVariable Long toolNameId,
 	                      @RequestParam String serialNumber,
@@ -430,7 +400,6 @@ public class EquipmentController {
 		return "redirect:/inventory/" + toolNameId + "?success=unit_added";
 	}
 
-	/** Редактировать единицу */
 	@PostMapping("/edit")
 	public String editUnit(@RequestParam Long id,
 	                       @RequestParam String serialNumber,
@@ -458,7 +427,6 @@ public class EquipmentController {
 		return "redirect:/inventory/" + toolNameId + "?success=unit_updated";
 	}
 
-	/** Удалить единицу (мягкое) */
 	@PostMapping("/delete")
 	public String deleteUnit(@RequestParam Long id) {
 		Equipment eq = equipmentRepository.findById(id).orElse(null);

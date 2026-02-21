@@ -2,9 +2,6 @@ package com.studio.crm_system.dto;
 
 import java.math.BigDecimal;
 
-/**
- * Элемент списка выбора оборудования: название, серийник, статус (свободен / в прокате до … / забронирован).
- */
 public class EquipmentSelectOption {
 
 	private Long id;

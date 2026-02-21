@@ -15,6 +15,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
+import java.util.Collections;
 import java.util.List;
 
 @Controller
@@ -38,15 +39,15 @@ public class RentalController {
 		User user = getCurrentUser();
 		if (user == null) return "redirect:/login";
 
-		model.addAttribute("activeRentals", rentalService.findActive());
-		model.addAttribute("completedRentals", rentalService.findCompleted());
-		model.addAttribute("debtorRentals", rentalService.findDebtors());
-		model.addAttribute("soonDebtorRentals", rentalService.findSoonDebtors());
-		model.addAttribute("cancelledRentals", rentalService.findCancelled());
-		model.addAttribute("bookings", bookingService.findAll());
-		model.addAttribute("freeEquipmentForBooking", bookingService.findFreeEquipment());
-		model.addAttribute("clients", rentalService.findAllClients());
-		model.addAttribute("equipmentOptions", rentalService.getEquipmentOptionsForSelect());
+		model.addAttribute("activeRentals", nullToEmpty(rentalService.findActive()));
+		model.addAttribute("completedRentals", nullToEmpty(rentalService.findCompleted()));
+		model.addAttribute("debtorRentals", nullToEmpty(rentalService.findDebtors()));
+		model.addAttribute("soonDebtorRentals", nullToEmpty(rentalService.findSoonDebtors()));
+		model.addAttribute("cancelledRentals", nullToEmpty(rentalService.findCancelled()));
+		model.addAttribute("bookings", nullToEmpty(bookingService.findAll()));
+		model.addAttribute("freeEquipmentForBooking", nullToEmpty(bookingService.findFreeEquipment()));
+		model.addAttribute("clients", nullToEmpty(rentalService.findAllClients()));
+		model.addAttribute("equipmentOptions", nullToEmpty(rentalService.getEquipmentOptionsForSelect()));
 		model.addAttribute("currentUser", user);
 		model.addAttribute("username", user.getLogin());
 		model.addAttribute("currentUserRole", user.getRole());
@@ -74,13 +75,15 @@ public class RentalController {
 	public String add(@RequestParam Long clientId,
 	                  @RequestParam List<Long> equipmentId,
 	                  @RequestParam String dateFrom,
-	                  @RequestParam String dateTo) {
+	                  @RequestParam String dateTo,
+	                  @RequestParam(required = false) String totalAmount) {
 		LocalDateTime from = parseDateTime(dateFrom);
 		LocalDateTime to = parseDateTime(dateTo);
 		if (equipmentId == null || equipmentId.isEmpty()) {
 			return "redirect:/rentals?error=equipment_required";
 		}
-		String error = rentalService.createRentals(clientId, equipmentId, from, to);
+		BigDecimal manualTotal = parseDecimal(totalAmount);
+		String error = rentalService.createRentals(clientId, equipmentId, from, to, manualTotal);
 		if (error != null) return "redirect:/rentals?error=" + error;
 		return "redirect:/rentals?success=rental_added";
 	}
@@ -143,6 +146,21 @@ public class RentalController {
 		try {
 			return LocalDateTime.parse(raw.trim(), DATETIME_FMT);
 		} catch (DateTimeParseException e) {
+			return null;
+		}
+	}
+
+	private static <T> List<T> nullToEmpty(List<T> list) {
+		return list != null ? list : Collections.emptyList();
+	}
+
+	private BigDecimal parseDecimal(String raw) {
+		if (raw == null || raw.isBlank()) return null;
+		String normalized = raw.trim().replace(',', '.');
+		try {
+			BigDecimal value = new BigDecimal(normalized);
+			return value.compareTo(BigDecimal.ZERO) > 0 ? value : null;
+		} catch (NumberFormatException e) {
 			return null;
 		}
 	}

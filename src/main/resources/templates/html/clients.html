@@ -23,7 +23,6 @@
     </button>
   </div>
 
-  <!-- Уведомления -->
   <div th:if="${param.error}" class="alert alert-danger alert-dismissible fade show" role="alert">
     <i class="bi bi-exclamation-triangle-fill me-2"></i><strong>Ошибка!</strong>
     <span th:if="${param.error[0] == 'phone_exists'}">Клиент с таким телефоном уже существует.</span>
@@ -33,7 +32,6 @@
     <span th:if="${param.error[0] == 'client_not_found'}">Клиент не найден.</span>
     <span th:if="${param.error[0] == 'access_denied'}">Нет прав для этого действия.</span>
     <span th:if="${param.error[0] == 'delete_failed'}">Не удалось удалить клиента.</span>
-    <!-- Ошибки дат -->
     <span th:if="${param.error[0] == 'invalid_birth_date'}">Неверный формат даты рождения. Используйте ДД.ММ.ГГГГ</span>
     <span th:if="${param.error[0] == 'invalid_issue_date'}">Неверный формат даты выдачи паспорта.</span>
     <span th:if="${param.error[0] == 'invalid_expiry_date'}">Неверный формат срока действия паспорта.</span>
@@ -57,7 +55,6 @@
     <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
   </div>
 
-  <!-- Таблица клиентов -->
   <div class="card-table">
     <table class="table table-hover mb-0">
       <thead>
@@ -107,7 +104,6 @@
             <small class="text-muted" th:if="${c.addedBy == null}">system</small>
           </td>
           <td class="text-end pe-4">
-            <!-- Просмотр карточки (доступен всем) -->
             <a th:href="@{/clients/{id}(id=${c.id})}" class="btn btn-sm btn-outline-primary me-1"
                title="Открыть карточку клиента">
               <i class="bi bi-eye"></i>
@@ -147,7 +143,6 @@
   </div>
 </div>
 
-<!-- ===== МОДАЛЬНОЕ ОКНО: ДОБАВИТЬ КЛИЕНТА ===== -->
 <div class="modal fade" id="addClientModal" tabindex="-1">
   <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
     <form th:action="@{/clients/add}" method="post" class="modal-content">
@@ -157,7 +152,6 @@
       </div>
       <div class="modal-body">
 
-        <!-- ФИО -->
         <div class="mb-3">
           <div class="fw-semibold text-uppercase text-muted small mb-2">
             <i class="bi bi-person me-1"></i>ФИО
@@ -178,7 +172,6 @@
           </div>
         </div>
 
-        <!-- Пол + Дата рождения -->
         <div class="mb-3">
           <div class="fw-semibold text-uppercase text-muted small mb-2">
             <i class="bi bi-calendar-person me-1"></i>Личные данные
@@ -200,7 +193,6 @@
           </div>
         </div>
 
-        <!-- Паспорт -->
         <div class="mb-3">
           <div class="fw-semibold text-uppercase text-muted small mb-2">
             <i class="bi bi-passport me-1"></i>Паспортные данные
@@ -220,7 +212,7 @@
             <div class="col-md-4">
               <label class="form-label">Идентификационный номер *</label>
               <input type="text" name="identificationNumber" class="form-control text-uppercase"
-                     placeholder="5300905A014PB7" maxlength="14" required>
+                     placeholder="0000900A014PB0" maxlength="14" required>
             </div>
           </div>
           <div class="row g-2 mt-1">
@@ -237,7 +229,6 @@
           </div>
         </div>
 
-        <!-- Адрес (прописка) -->
         <div class="mb-3">
           <div class="fw-semibold text-uppercase text-muted small mb-2">
             <i class="bi bi-geo-alt me-1"></i>Прописка
@@ -272,7 +263,6 @@
           <div class="form-text text-muted"><i class="bi bi-info-circle me-1"></i>Если поле не применимо — оставьте "-"</div>
         </div>
 
-        <!-- Телефон -->
         <div class="mb-3">
           <div class="fw-semibold text-uppercase text-muted small mb-2">
             <i class="bi bi-telephone me-1"></i>Контакт
@@ -303,7 +293,6 @@
   </div>
 </div>
 
-<!-- ===== МОДАЛЬНОЕ ОКНО: РЕДАКТИРОВАТЬ КЛИЕНТА ===== -->
 <div class="modal fade" id="editClientModal" tabindex="-1">
   <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
     <form th:action="@{/clients/edit}" method="post" class="modal-content">
@@ -422,8 +411,6 @@
             </div>
           </div>
         </div>
-
-        <!-- Фото паспорта редактируется отдельно на странице клиента -->
 
       </div>
       <div class="modal-footer">

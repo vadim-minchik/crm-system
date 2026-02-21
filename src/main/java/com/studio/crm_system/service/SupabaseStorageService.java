@@ -21,11 +21,8 @@ import java.util.UUID;
 @Service
 public class SupabaseStorageService {
 
-    /** Максимальная сторона (пикселей) после масштабирования */
     private static final int MAX_DIMENSION = 1600;
-    /** Качество JPEG (0.0–1.0) */
     private static final float JPEG_QUALITY = 0.82f;
-    /** Максимальный размер уже обработанного файла (байты) — 3 МБ */
     private static final long MAX_OUTPUT_BYTES = 3 * 1024 * 1024;
 
     @Autowired
@@ -33,10 +30,6 @@ public class SupabaseStorageService {
 
     private final RestTemplate restTemplate = new RestTemplate();
 
-    /**
-     * Сжимает изображение и загружает в Supabase Storage.
-     * Возвращает публичный URL файла.
-     */
     public String uploadPassportPhoto(MultipartFile file, Long clientId) throws IOException {
         byte[] imageBytes = compressImage(file);
 
@@ -61,9 +54,6 @@ public class SupabaseStorageService {
         throw new RuntimeException("Ошибка загрузки в Supabase Storage: " + response.getStatusCode());
     }
 
-    /**
-     * Удаляет файл из Supabase Storage по публичному URL.
-     */
     public void deleteByUrl(String publicUrl) {
         if (publicUrl == null || publicUrl.isBlank()) return;
 
@@ -84,8 +74,6 @@ public class SupabaseStorageService {
         }
     }
 
-    // ─── Сжатие ──────────────────────────────────────────────────────────────
-
     private byte[] compressImage(MultipartFile file) throws IOException {
         BufferedImage original = ImageIO.read(file.getInputStream());
         if (original == null) {
@@ -94,15 +82,12 @@ public class SupabaseStorageService {
 
         BufferedImage scaled = scaleDown(original);
 
-        // Первая попытка — выбранное качество
         byte[] result = encodeJpeg(scaled, JPEG_QUALITY);
 
-        // Если всё ещё слишком большой — снижаем качество до 0.65
         if (result.length > MAX_OUTPUT_BYTES) {
             result = encodeJpeg(scaled, 0.65f);
         }
 
-        // Крайний случай — дополнительно уменьшаем размер и сжимаем
         if (result.length > MAX_OUTPUT_BYTES) {
             scaled = halfSize(scaled);
             result = encodeJpeg(scaled, 0.65f);
@@ -114,7 +99,6 @@ public class SupabaseStorageService {
         return result;
     }
 
-    /** Масштабирует изображение чтобы обе стороны не превышали MAX_DIMENSION */
     private BufferedImage scaleDown(BufferedImage img) {
         int w = img.getWidth();
         int h = img.getHeight();
@@ -128,7 +112,6 @@ public class SupabaseStorageService {
         return resize(img, newW, newH);
     }
 
-    /** Уменьшает изображение вдвое */
     private BufferedImage halfSize(BufferedImage img) {
         return resize(img, img.getWidth() / 2, img.getHeight() / 2);
     }

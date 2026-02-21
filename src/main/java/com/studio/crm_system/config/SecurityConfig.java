@@ -48,9 +48,6 @@ public class SecurityConfig {
         return http.build();
     }
 
-    /**
-     * Успешный вход — сбрасываем счётчик попыток
-     */
     @Bean
     public AuthenticationSuccessHandler authenticationSuccessHandler() {
         return (HttpServletRequest request, HttpServletResponse response, Authentication authentication) -> {
@@ -59,9 +56,6 @@ public class SecurityConfig {
         };
     }
 
-    /**
-     * Неудачный вход — фиксируем попытку, передаём ошибку в URL
-     */
     @Bean
     public AuthenticationFailureHandler authenticationFailureHandler() {
         return (HttpServletRequest request, HttpServletResponse response, AuthenticationException exception) -> {
@@ -69,7 +63,6 @@ public class SecurityConfig {
             if (login != null && !login.isBlank()) {
                 loginAttemptService.loginFailed(login);
 
-                // Если аккаунт теперь заблокирован — передаём сколько минут ждать
                 if (loginAttemptService.isLocked(login)) {
                     long minutes = loginAttemptService.minutesUntilUnlock(login);
                     response.sendRedirect("/login?error=locked&minutes=" + minutes);

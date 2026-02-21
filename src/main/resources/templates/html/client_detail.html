@@ -42,7 +42,6 @@
 
 <div class="main-content">
 
-  <!-- Хлебные крошки -->
   <nav aria-label="breadcrumb" class="mb-3">
     <ol class="breadcrumb" style="font-size:0.85rem;">
       <li class="breadcrumb-item"><a th:href="@{/clients}" class="text-decoration-none">База клиентов</a></li>
@@ -50,7 +49,6 @@
     </ol>
   </nav>
 
-  <!-- Уведомления -->
   <div th:if="${param.error}" class="alert alert-danger alert-dismissible fade show">
     <i class="bi bi-exclamation-triangle-fill me-2"></i>
     <span th:if="${param.error[0] == 'no_file'}">Выберите файл для загрузки.</span>
@@ -67,10 +65,8 @@
 
   <div class="row g-4">
 
-    <!-- ===== ЛЕВАЯ КОЛОНКА (8/12) ===== -->
     <div class="col-lg-8">
 
-      <!-- Заголовок -->
       <div class="d-flex align-items-center gap-3 mb-4">
         <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center"
              style="width:56px;height:56px;font-size:1.4rem;flex-shrink:0;">
@@ -88,7 +84,6 @@
         </div>
       </div>
 
-      <!-- Личные данные -->
       <div class="info-block">
         <div class="section-title"><i class="bi bi-person me-1"></i>Личные данные</div>
         <div class="info-row">
@@ -110,7 +105,6 @@
         </div>
       </div>
 
-      <!-- Паспортные данные -->
       <div class="info-block">
         <div class="section-title"><i class="bi bi-passport me-1"></i>Паспортные данные</div>
         <div class="info-row">
@@ -141,7 +135,6 @@
         </div>
       </div>
 
-      <!-- Прописка -->
       <div class="info-block">
         <div class="section-title"><i class="bi bi-geo-alt me-1"></i>Прописка</div>
         <div class="info-row">
@@ -161,14 +154,11 @@
 
     </div>
 
-    <!-- ===== ПРАВАЯ КОЛОНКА (4/12) ===== -->
     <div class="col-lg-4">
 
-      <!-- Фото паспорта -->
       <div class="info-block">
         <div class="section-title"><i class="bi bi-card-image me-1"></i>Фото паспорта</div>
 
-        <!-- Есть фото -->
         <div th:if="${client.passportPhotoUrl != null and !#strings.isEmpty(client.passportPhotoUrl)}">
           <a th:href="${client.passportPhotoUrl}" target="_blank">
             <img th:src="${client.passportPhotoUrl}" class="passport-photo mb-3" alt="Фото паспорта">
@@ -185,7 +175,6 @@
               </button>
             </form>
           </div>
-          <!-- Форма замены (скрытая) -->
           <div class="collapse mt-3" id="uploadForm">
             <form th:action="@{/clients/{id}/upload-photo(id=${client.id})}"
                   method="post" enctype="multipart/form-data">
@@ -198,7 +187,6 @@
           </div>
         </div>
 
-        <!-- Нет фото -->
         <div th:if="${client.passportPhotoUrl == null or #strings.isEmpty(client.passportPhotoUrl)}">
           <div class="photo-placeholder mb-3">
             <i class="bi bi-image fs-2 mb-2"></i>
@@ -219,7 +207,6 @@
         </div>
       </div>
 
-      <!-- Кнопка назад -->
       <a th:href="@{/clients}" class="btn btn-outline-secondary w-100">
         <i class="bi bi-arrow-left me-1"></i>Назад к базе клиентов
       </a>

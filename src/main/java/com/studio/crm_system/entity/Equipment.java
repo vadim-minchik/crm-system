@@ -12,7 +12,6 @@ public class Equipment {
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long id;
 
-	// Тип/раздел инструмента (например, "Sony A7III")
 	@ManyToOne(fetch = FetchType.EAGER)
 	@JoinColumn(name = "tool_name_id", nullable = false)
 	private ToolName toolName;
@@ -38,7 +37,6 @@ public class Equipment {
 	@Column(nullable = false, precision = 10, scale = 2)
 	private BigDecimal pricePerMonth;
 
-	// СТАТУС: FREE / BUSY / RESERVED
 	@Column(nullable = false)
 	@Enumerated(EnumType.STRING)
 	private EquipmentStatus status = EquipmentStatus.FREE;
@@ -46,17 +44,13 @@ public class Equipment {
 	@Column(nullable = false)
 	private Boolean isDeleted = false;
 
-	// --- Удобный метод: название из раздела (для шаблонов) ---
 	public String getTitle() {
 		return toolName != null ? toolName.getName() : "Неизвестно";
 	}
 
-	// --- Удобный метод для проверки доступности ---
 	public Boolean getIsAvailable() {
 		return status == EquipmentStatus.FREE;
 	}
-
-	// --- Геттеры и сеттеры ---
 
 	public Long getId() { return id; }
 	public void setId(Long id) { this.id = id; }

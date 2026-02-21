@@ -27,7 +27,6 @@
     </div>
   </div>
 
-  <!-- Уведомления -->
   <div th:if="${param.error}" class="alert alert-danger alert-dismissible fade show" role="alert">
     <i class="bi bi-exclamation-triangle-fill me-2"></i><strong>Ошибка: </strong>
     <span th:if="${param.error[0] == 'client_required'}">Выберите клиента.</span>
@@ -58,7 +57,6 @@
     <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
   </div>
 
-  <!-- Вкладки: Активные, Забронировать, История, Должники, Приёмка, Отменённые -->
   <ul class="nav nav-tabs mb-3" role="tablist">
     <li class="nav-item">
       <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-active" type="button">
@@ -99,18 +97,17 @@
   </ul>
 
   <div class="tab-content">
-    <!-- Активные -->
     <div class="tab-pane fade show active" id="tab-active">
     <div class="card-table">
       <table class="table table-hover mb-0">
           <thead><tr><th class="ps-4">Кто берёт</th><th>С</th><th>По</th><th>Инструмент</th><th>Итог (BYN)</th><th class="text-center">Действия</th></tr></thead>
           <tbody id="tbody-active">
             <tr th:each="r : ${activeRentals}">
-              <td class="ps-4" th:text="${r.client.surname + ' ' + r.client.name + ' ' + (r.client.patronymic != null ? r.client.patronymic : '')}">—</td>
+              <td class="ps-4" th:text="${r.client != null ? (r.client.surname + ' ' + r.client.name + (r.client.patronymic != null ? ' ' + r.client.patronymic : '')) : '—'}">—</td>
               <td th:text="${#temporals.format(r.dateFrom, 'dd.MM.yyyy HH:mm')}">—</td>
               <td th:text="${#temporals.format(r.dateTo, 'dd.MM.yyyy HH:mm')}">—</td>
-              <td><span th:if="${r.equipment != null}" th:text="${r.equipment.getTitle() + ' — S/N ' + r.equipment.serialNumber}">—</span><span th:if="${r.equipment == null}" class="text-muted">—</span></td>
-              <td><strong th:text="|${#numbers.formatDecimal(r.totalAmount, 0, 'NONE', 2, 'POINT')} BYN|">—</strong></td>
+              <td th:text="${r.equipmentDisplayString}">—</td>
+              <td><strong th:text="${r.totalAmount != null ? (#numbers.formatDecimal(r.totalAmount, 0, 'NONE', 2, 'POINT') + ' BYN') : '—'}">—</strong></td>
               <td class="text-center">
                 <a th:href="@{/rentals/{id}(id=${r.id})}" class="btn btn-sm btn-outline-primary me-1"><i class="bi bi-eye"></i></a>
                 <form th:action="@{/rentals/cancel}" method="post" class="d-inline" onsubmit="return confirm('Отменить прокат? Оборудование станет свободным.');"><input type="hidden" name="id" th:value="${r.id}"><button type="submit" class="btn btn-sm btn-outline-secondary">Отменить</button></form>
@@ -121,7 +118,6 @@
         </table>
       </div>
     </div>
-    <!-- Забронировать -->
     <div class="tab-pane fade" id="tab-bookings">
       <div class="card-table">
         <table class="table table-hover mb-0">
@@ -129,7 +125,7 @@
           <tbody id="tbody-bookings">
             <tr th:each="b : ${bookings}">
               <td class="ps-4" th:text="${b.phoneNumber}">—</td>
-              <td><span th:if="${b.equipment != null}" th:text="${b.equipment.getTitle() + ' — S/N ' + b.equipment.serialNumber}">—</span><span th:if="${b.equipment == null}" class="text-muted">—</span></td>
+              <td th:text="${b.equipmentDisplayString}">—</td>
               <td th:text="${b.dateTo != null ? #temporals.format(b.dateTo, 'dd.MM.yyyy HH:mm') : '—'}">—</td>
               <td th:text="${#temporals.format(b.createdAt, 'dd.MM.yyyy HH:mm')}">—</td>
               <td><small class="text-muted" th:text="${b.comment != null && !#strings.isEmpty(b.comment) ? b.comment : '—'}">—</small></td>
@@ -145,18 +141,17 @@
       </table>
     </div>
   </div>
-    <!-- История -->
     <div class="tab-pane fade" id="tab-history">
     <div class="card-table">
       <table class="table table-hover mb-0">
           <thead><tr><th class="ps-4">Кто берёт</th><th>С</th><th>По</th><th>Инструмент</th><th>Итог (BYN)</th><th class="text-center">Действия</th></tr></thead>
           <tbody id="tbody-history">
             <tr th:each="r : ${completedRentals}">
-              <td class="ps-4" th:text="${r.client.surname + ' ' + r.client.name + ' ' + (r.client.patronymic != null ? r.client.patronymic : '')}">—</td>
+              <td class="ps-4" th:text="${r.client != null ? (r.client.surname + ' ' + r.client.name + (r.client.patronymic != null ? ' ' + r.client.patronymic : '')) : '—'}">—</td>
               <td th:text="${#temporals.format(r.dateFrom, 'dd.MM.yyyy HH:mm')}">—</td>
               <td th:text="${#temporals.format(r.dateTo, 'dd.MM.yyyy HH:mm')}">—</td>
-              <td><span th:if="${r.equipment != null}" th:text="${r.equipment.getTitle() + ' — S/N ' + r.equipment.serialNumber}">—</span><span th:if="${r.equipment == null}" class="text-muted">—</span></td>
-              <td><strong th:text="|${#numbers.formatDecimal(r.totalAmount, 0, 'NONE', 2, 'POINT')} BYN|">—</strong></td>
+              <td th:text="${r.equipmentDisplayString}">—</td>
+              <td><strong th:text="${r.totalAmount != null ? (#numbers.formatDecimal(r.totalAmount, 0, 'NONE', 2, 'POINT') + ' BYN') : '—'}">—</strong></td>
               <td class="text-center"><a th:href="@{/rentals/{id}(id=${r.id})}" class="btn btn-sm btn-outline-primary"><i class="bi bi-eye"></i></a></td>
           </tr>
             <tr th:if="${#lists.isEmpty(completedRentals)}"><td colspan="6" class="text-center py-5 text-muted">История пуста</td></tr>
@@ -164,18 +159,17 @@
         </table>
       </div>
     </div>
-    <!-- Должники -->
     <div class="tab-pane fade" id="tab-debtors">
       <div class="card-table">
         <table class="table table-hover mb-0">
           <thead><tr><th class="ps-4">Кто берёт</th><th>С</th><th>По</th><th>Инструмент</th><th>Итог (BYN)</th><th class="text-center">Действия</th></tr></thead>
           <tbody id="tbody-debtors">
             <tr th:each="r : ${debtorRentals}">
-              <td class="ps-4" th:text="${r.client.surname + ' ' + r.client.name + ' ' + (r.client.patronymic != null ? r.client.patronymic : '')}">—</td>
+              <td class="ps-4" th:text="${r.client != null ? (r.client.surname + ' ' + r.client.name + (r.client.patronymic != null ? ' ' + r.client.patronymic : '')) : '—'}">—</td>
               <td th:text="${#temporals.format(r.dateFrom, 'dd.MM.yyyy HH:mm')}">—</td>
               <td th:text="${#temporals.format(r.dateTo, 'dd.MM.yyyy HH:mm')}">—</td>
-              <td><span th:if="${r.equipment != null}" th:text="${r.equipment.getTitle() + ' — S/N ' + r.equipment.serialNumber}">—</span><span th:if="${r.equipment == null}" class="text-muted">—</span></td>
-              <td><strong th:text="|${#numbers.formatDecimal(r.totalAmount, 0, 'NONE', 2, 'POINT')} BYN|">—</strong></td>
+              <td th:text="${r.equipmentDisplayString}">—</td>
+              <td><strong th:text="${r.totalAmount != null ? (#numbers.formatDecimal(r.totalAmount, 0, 'NONE', 2, 'POINT') + ' BYN') : '—'}">—</strong></td>
               <td class="text-center">
                 <a th:href="@{/rentals/{id}(id=${r.id})}" class="btn btn-sm btn-outline-primary me-1"><i class="bi bi-eye"></i></a>
                 <form th:action="@{/rentals/complete}" method="post" class="d-inline"><input type="hidden" name="id" th:value="${r.id}"><button type="submit" class="btn btn-sm btn-outline-success">Завершить</button></form>
@@ -186,18 +180,17 @@
       </table>
     </div>
   </div>
-    <!-- Приёмка -->
     <div class="tab-pane fade" id="tab-soon">
     <div class="card-table">
         <table class="table table-hover mb-0">
           <thead><tr><th class="ps-4">Кто берёт</th><th>С</th><th>По</th><th>Инструмент</th><th>Итог (BYN)</th><th class="text-center">Действия</th></tr></thead>
           <tbody id="tbody-soon">
             <tr th:each="r : ${soonDebtorRentals}">
-              <td class="ps-4" th:text="${r.client.surname + ' ' + r.client.name + ' ' + (r.client.patronymic != null ? r.client.patronymic : '')}">—</td>
+              <td class="ps-4" th:text="${r.client != null ? (r.client.surname + ' ' + r.client.name + (r.client.patronymic != null ? ' ' + r.client.patronymic : '')) : '—'}">—</td>
               <td th:text="${#temporals.format(r.dateFrom, 'dd.MM.yyyy HH:mm')}">—</td>
               <td th:text="${#temporals.format(r.dateTo, 'dd.MM.yyyy HH:mm')}">—</td>
-              <td><span th:if="${r.equipment != null}" th:text="${r.equipment.getTitle() + ' — S/N ' + r.equipment.serialNumber}">—</span><span th:if="${r.equipment == null}" class="text-muted">—</span></td>
-              <td><strong th:text="|${#numbers.formatDecimal(r.totalAmount, 0, 'NONE', 2, 'POINT')} BYN|">—</strong></td>
+              <td th:text="${r.equipmentDisplayString}">—</td>
+              <td><strong th:text="${r.totalAmount != null ? (#numbers.formatDecimal(r.totalAmount, 0, 'NONE', 2, 'POINT') + ' BYN') : '—'}">—</strong></td>
             <td class="text-center">
                 <a th:href="@{/rentals/{id}(id=${r.id})}" class="btn btn-sm btn-outline-primary me-1"><i class="bi bi-eye"></i></a>
                 <form th:action="@{/rentals/complete}" method="post" class="d-inline"><input type="hidden" name="id" th:value="${r.id}"><button type="submit" class="btn btn-sm btn-outline-success">Завершить</button></form>
@@ -208,18 +201,17 @@
         </table>
       </div>
     </div>
-    <!-- Отменённые -->
     <div class="tab-pane fade" id="tab-cancelled">
       <div class="card-table">
         <table class="table table-hover mb-0">
           <thead><tr><th class="ps-4">Кто берёт</th><th>С</th><th>По</th><th>Инструмент</th><th>Итог (BYN)</th><th class="text-center">Действия</th></tr></thead>
           <tbody id="tbody-cancelled">
             <tr th:each="r : ${cancelledRentals}">
-              <td class="ps-4" th:text="${r.client.surname + ' ' + r.client.name + ' ' + (r.client.patronymic != null ? r.client.patronymic : '')}">—</td>
+              <td class="ps-4" th:text="${r.client != null ? (r.client.surname + ' ' + r.client.name + (r.client.patronymic != null ? ' ' + r.client.patronymic : '')) : '—'}">—</td>
               <td th:text="${#temporals.format(r.dateFrom, 'dd.MM.yyyy HH:mm')}">—</td>
               <td th:text="${#temporals.format(r.dateTo, 'dd.MM.yyyy HH:mm')}">—</td>
-              <td><span th:if="${r.equipment != null}" th:text="${r.equipment.getTitle() + ' — S/N ' + r.equipment.serialNumber}">—</span><span th:if="${r.equipment == null}" class="text-muted">—</span></td>
-              <td><strong th:text="|${#numbers.formatDecimal(r.totalAmount, 0, 'NONE', 2, 'POINT')} BYN|">—</strong></td>
+              <td th:text="${r.equipmentDisplayString}">—</td>
+              <td><strong th:text="${r.totalAmount != null ? (#numbers.formatDecimal(r.totalAmount, 0, 'NONE', 2, 'POINT') + ' BYN') : '—'}">—</strong></td>
               <td class="text-center"><a th:href="@{/rentals/{id}(id=${r.id})}" class="btn btn-sm btn-outline-primary"><i class="bi bi-eye"></i></a></td>
           </tr>
             <tr th:if="${#lists.isEmpty(cancelledRentals)}"><td colspan="6" class="text-center py-5 text-muted">Нет отменённых прокатов</td></tr>
@@ -230,7 +222,6 @@
   </div>
 </div>
 
-<!-- Модальное окно: забронировать -->
 <div class="modal fade" id="modalAddBooking" tabindex="-1">
   <div class="modal-dialog modal-dialog-centered modal-lg">
     <form th:action="@{/rentals/booking/add}" method="post" class="modal-content">
@@ -284,7 +275,6 @@
   </div>
 </div>
 
-<!-- Модальное окно: оформить прокат -->
 <div class="modal fade" id="modalAddRental" tabindex="-1">
   <div class="modal-dialog modal-dialog-centered modal-lg">
     <form th:action="@{/rentals/add}" method="post" class="modal-content">
@@ -304,7 +294,6 @@
             </div>
             <div id="client-search-placeholder" class="form-text text-muted">Введите фамилию, телефон или идентификационный номер и выберите клиента из списка.</div>
             <div id="client-selected-label" class="form-text text-success fw-semibold" style="display: none;"></div>
-            <!-- Источник вариантов для поиска (скрыт) -->
             <div id="client-list-source" style="display: none;" aria-hidden="true">
               <div th:each="c : ${clients}" class="client-option list-group-item list-group-item-action list-group-item-light py-2"
                    th:data-id="${c.id}"
@@ -334,7 +323,7 @@
             </div>
             <div id="rental-equipment-ids" class="mb-2 d-flex flex-wrap gap-2 align-items-center"></div>
             <div id="rental-equipment-hidden"></div>
-            <div id="equipment-search-placeholder" class="form-text text-muted">Добавляйте инструменты из списка (свободные — кликабельны). Итог по каждому рассчитается при сохранении.</div>
+            <div id="equipment-search-placeholder" class="form-text text-muted">Добавляйте инструменты из списка (свободные — кликабельны). Итог можно задать вручную ниже или оставить пустым для авторасчёта.</div>
             <div id="equipment-list-source" style="display: none;" aria-hidden="true">
               <div th:each="e : ${equipmentOptions}" class="equipment-option list-group-item list-group-item-action py-2"
                    th:data-id="${e.id}"
@@ -349,6 +338,14 @@
                    role="button"
                    th:text="${e.title + ' — S/N ' + e.serialNumber + ' · ' + e.statusLabel}">—</div>
             </div>
+          </div>
+          <div class="col-12">
+            <label class="form-label fw-semibold">Итог (BYN)</label>
+            <div class="input-group input-group-lg">
+              <input type="text" name="totalAmount" id="rental-total-amount" class="form-control" placeholder="Необязательно — рассчитается по тарифам" pattern="[0-9]+([.,][0-9]{1,2})?" inputmode="decimal" autocomplete="off">
+              <span class="input-group-text">BYN</span>
+            </div>
+            <div class="form-text text-muted">Оставьте пустым, чтобы сумма посчиталась по дням/часам автоматически. Либо введите свою сумму вручную (например: 50 или 12.50).</div>
           </div>
         </div>
       </div>
@@ -541,6 +538,41 @@
       badge.appendChild(btn);
       container.appendChild(badge);
     });
+    updateRentalTotalDisplay();
+  }
+
+  function updateRentalTotalDisplay() {
+    var totalInput = document.getElementById('rental-total-amount');
+    var dateFromInput = document.getElementById('rental-date-from');
+    var dateToInput = document.getElementById('rental-date-to');
+    if (!totalInput || selected.length === 0) {
+      if (totalInput) totalInput.value = '';
+      return;
+    }
+    if (!dateFromInput || !dateToInput || !dateFromInput.value || !dateToInput.value) {
+      totalInput.value = '';
+      return;
+    }
+    var from = new Date(dateFromInput.value);
+    var to = new Date(dateToInput.value);
+    if (to <= from) {
+      totalInput.value = '';
+      return;
+    }
+    var hours = (to - from) / (1000 * 60 * 60);
+    var sum = 0;
+    selected.forEach(function(item) {
+      var priceDay = item.pricePerDay || 0;
+      var priceHour = item.pricePerHour || 0;
+      if (hours < 24) {
+        sum += priceHour * hours;
+      } else {
+        var fullDays = Math.floor(hours / 24);
+        var remainderHours = hours - fullDays * 24;
+        sum += fullDays * priceDay + remainderHours * priceHour;
+      }
+    });
+    totalInput.value = Math.round(sum * 100) / 100;
   }
 
   function norm(s) { return (s || '').toLowerCase().trim(); }
@@ -561,7 +593,9 @@
         var already = selected.some(function(x) { return String(x.id) === String(id); });
         if (free && !already && selected.length < MAX) {
           clone.addEventListener('click', function() {
-            selected.push({ id: id, title: el.textContent.trim() });
+            var priceDay = parseFloat(el.getAttribute('data-price-day')) || 0;
+            var priceHour = parseFloat(el.getAttribute('data-price-hour')) || 0;
+            selected.push({ id: id, title: el.textContent.trim(), pricePerDay: priceDay, pricePerHour: priceHour });
             render();
             dropdown.style.display = 'none';
           });
@@ -590,6 +624,11 @@
   searchInput.addEventListener('input', showDropdown);
   searchInput.addEventListener('blur', function() { setTimeout(function() { dropdown.style.display = 'none'; }, 150); });
   dropdown.addEventListener('mousedown', function(e) { e.preventDefault(); });
+
+  var dateFromInput = document.getElementById('rental-date-from');
+  var dateToInput = document.getElementById('rental-date-to');
+  if (dateFromInput) { dateFromInput.addEventListener('change', updateRentalTotalDisplay); dateFromInput.addEventListener('input', updateRentalTotalDisplay); }
+  if (dateToInput) { dateToInput.addEventListener('change', updateRentalTotalDisplay); dateToInput.addEventListener('input', updateRentalTotalDisplay); }
 
   if (modal) {
     modal.addEventListener('show.bs.modal', function() {

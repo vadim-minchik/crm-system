@@ -2,9 +2,6 @@ package com.studio.crm_system.entity;
 
 import jakarta.persistence.*;
 
-/**
- * Точка выдачи (филиал). У каждой точки — свой журнал прокатов; сотрудников можно привязать к точке.
- */
 @Entity
 @Table(name = "points")
 public class Point {
@@ -16,14 +13,11 @@ public class Point {
 	@Column(nullable = false, length = 200)
 	private String name;
 
-	/** Адрес или комментарий (необязательно) */
 	@Column(length = 500)
 	private String address;
 
 	@Column(nullable = false)
 	private Boolean isDeleted = false;
-
-	// --- Геттеры и сеттеры ---
 
 	public Long getId() { return id; }
 	public void setId(Long id) { this.id = id; }

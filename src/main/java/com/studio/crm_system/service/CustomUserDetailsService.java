@@ -25,7 +25,6 @@ public class CustomUserDetailsService implements UserDetailsService {
         User user = userRepository.findByLogin(login)
                 .orElseThrow(() -> new UsernameNotFoundException("Пользователь не найден: " + login));
 
-        // Проверяем: не заблокирован ли аккаунт?
         if (user.isLocked()) {
             long minutes = Duration.between(LocalDateTime.now(), user.getLockUntil()).toMinutes() + 1;
             throw new LockedException("Аккаунт заблокирован. Повторите через " + minutes + " мин.");

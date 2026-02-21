@@ -6,14 +6,12 @@
 <body>
 
 	<div th:fragment="sidebar(activeTab)" class="sidebar">
-		
-		<!-- LOGO -->
+
 		<div class="logo">
 			<h3><i class="bi bi-camera-reels-fill"></i> STUDIO.CRM</h3>
 			<p>SYSTEM v3.0</p>
 		</div>
 
-		<!-- НАВИГАЦИЯ -->
 		<nav class="sidebar-nav">
 			<a href="/staff" class="nav-link" th:classappend="${activeTab == 'staff' ? 'active' : ''}">
 				<i class="bi bi-person-badge"></i>
@@ -41,7 +39,6 @@
 			</a>
 		</nav>
 
-		<!-- ПРОФИЛЬ ПОЛЬЗОВАТЕЛЯ -->
 		<div class="sidebar-footer">
 			<div class="user-info">
 				<div class="user-avatar">

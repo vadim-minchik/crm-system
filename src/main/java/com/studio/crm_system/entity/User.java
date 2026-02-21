@@ -63,20 +63,16 @@ public class User {
     @JoinColumn(name = "created_by_id")
     private User createdBy;
 
-	/** Точка выдачи, к которой привязан сотрудник (null = без привязки / доступ ко всем для админа). */
 	@ManyToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name = "point_id")
 	private Point point;
 
-	// МЯГКОЕ УДАЛЕНИЕ
 	@Column(nullable = false)
 	private Boolean isDeleted = false;
 
-	// ЗАЩИТА ОТ БРУТФОРСА
 	@Column(nullable = false)
 	private Integer failedLoginAttempts = 0;
 
-	// Аккаунт заблокирован до этого времени (null = не заблокирован)
 	@Column
 	private LocalDateTime lockUntil;
 	
@@ -90,7 +86,6 @@ public class User {
 	public LocalDateTime getLockUntil() {return lockUntil;}
 	public void setLockUntil(LocalDateTime lockUntil) {this.lockUntil = lockUntil;}
 
-	// Удобный метод: заблокирован ли сейчас
 	public boolean isLocked() {
 		return lockUntil != null && lockUntil.isAfter(LocalDateTime.now());
 	}

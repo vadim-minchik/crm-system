@@ -2,10 +2,10 @@ package com.studio.crm_system.entity;
 
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
-/**
- * Бронь: номер телефона + свободное оборудование. При удалении брони запись удаляется, оборудование снова FREE.
- */
 @Entity
 @Table(name = "bookings")
 public class Booking {
@@ -17,15 +17,15 @@ public class Booking {
 	@Column(nullable = false, length = 50)
 	private String phoneNumber;
 
-	@ManyToOne(fetch = FetchType.EAGER)
-	@JoinColumn(name = "equipment_id", nullable = false)
-	private Equipment equipment;
+	@ManyToMany(fetch = FetchType.EAGER)
+	@JoinTable(name = "booking_equipment",
+			joinColumns = @JoinColumn(name = "booking_id"),
+			inverseJoinColumns = @JoinColumn(name = "equipment_id"))
+	private List<Equipment> equipmentList = new ArrayList<>();
 
-	/** По какое число и время действует бронь; после этого момента бронь автоматически удаляется, оборудование снова свободно. */
 	@Column(nullable = false)
 	private LocalDateTime dateTo;
 
-	/** Комментарий к брони (необязательно). */
 	@Column(length = 1000)
 	private String comment;
 
@@ -38,8 +38,24 @@ public class Booking {
 	public String getPhoneNumber() { return phoneNumber; }
 	public void setPhoneNumber(String phoneNumber) { this.phoneNumber = phoneNumber; }
 
-	public Equipment getEquipment() { return equipment; }
-	public void setEquipment(Equipment equipment) { this.equipment = equipment; }
+	public List<Equipment> getEquipmentList() {
+		return equipmentList != null ? equipmentList : Collections.emptyList();
+	}
+	public void setEquipmentList(List<Equipment> equipmentList) {
+		this.equipmentList = equipmentList != null ? equipmentList : new ArrayList<>();
+	}
+
+	public String getEquipmentDisplayString() {
+		List<Equipment> list = getEquipmentList();
+		if (list == null || list.isEmpty()) return "—";
+		StringBuilder sb = new StringBuilder();
+		for (int i = 0; i < list.size(); i++) {
+			Equipment eq = list.get(i);
+			if (i > 0) sb.append(", ");
+			sb.append(eq != null ? (eq.getTitle() + " — S/N " + eq.getSerialNumber()) : "—");
+		}
+		return sb.toString();
+	}
 
 	public LocalDateTime getDateTo() { return dateTo; }
 	public void setDateTo(LocalDateTime dateTo) { this.dateTo = dateTo; }

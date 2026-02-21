@@ -10,15 +10,6 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
-/**
- * Инициализатор данных — запускается при старте приложения.
- * Если в БД нет ни одного SUPER_ADMIN, создаёт его автоматически.
- *
- * Логин:  superadmin
- * Пароль: admin123
- *
- * После первого входа смени пароль в интерфейсе.
- */
 @Component
 public class DataInitializer implements CommandLineRunner {
 
@@ -33,7 +24,6 @@ public class DataInitializer implements CommandLineRunner {
 
     @Override
     public void run(String... args) {
-        // Одна точка по умолчанию, если точек ещё нет (для расширения на несколько точек)
         if (pointRepository.count() == 0) {
             Point main = new Point();
             main.setName("Основная");
@@ -43,7 +33,6 @@ public class DataInitializer implements CommandLineRunner {
             System.out.println("[DataInitializer] Создана точка по умолчанию: Основная");
         }
 
-        // Проверяем: есть ли уже хоть один SUPER_ADMIN?
         boolean superAdminExists = userRepository.findAll()
                 .stream()
                 .anyMatch(u -> u.getRole() == Role.SUPER_ADMIN && !u.getIsDeleted());
@@ -59,7 +48,6 @@ public class DataInitializer implements CommandLineRunner {
             superAdmin.setRole(Role.SUPER_ADMIN);
             superAdmin.setIsDeleted(false);
 
-            // Пароль хешируется автоматически через BCrypt
             superAdmin.setPassword(passwordEncoder.encode("admin123"));
 
             userRepository.save(superAdmin);
