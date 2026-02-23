@@ -55,8 +55,8 @@
     <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
   </div>
 
-  <div class="card-table">
-    <table class="table table-hover mb-0">
+  <div class="card-table table-responsive-clients">
+    <table class="table table-hover mb-0 table-clients">
       <thead>
         <tr>
           <th class="ps-4">ФИО / Пол / Дата рожд.</th>
@@ -65,19 +65,19 @@
           <th>Телефон</th>
           <th>Рейтинг</th>
           <th>Добавил</th>
-          <th class="text-end pe-4">Действия</th>
+          <th class="text-end pe-4 th-actions">Действия</th>
         </tr>
       </thead>
       <tbody id="tbody-clients">
         <tr th:each="c : ${clients}">
-          <td class="ps-4">
+          <td class="ps-4 td-ellipsis">
             <div class="fw-bold" th:text="${c.surname + ' ' + c.name + ' ' + c.patronymic}">ФИО</div>
             <small class="text-muted">
               <span th:text="${c.gender}">М</span> &bull;
               <span th:text="${#temporals.format(c.birthDate, 'dd.MM.yyyy')}">01.01.2000</span>
             </small>
           </td>
-          <td>
+          <td class="td-ellipsis">
             <div><i class="bi bi-passport me-1 text-muted"></i>
               <span th:text="${c.passportNumber}">MP 0000000</span>
             </div>
@@ -88,7 +88,7 @@
               &nbsp;до <span th:text="${#temporals.format(c.passportExpiryDate,'dd.MM.yyyy')}">01.01.2029</span>
             </small>
           </td>
-          <td>
+          <td class="td-ellipsis">
             <small th:text="${c.addressStreet}">ул. Ленина</small><br/>
             <small class="text-muted">
               д.<span th:text="${c.addressHouse}">1</span>
@@ -97,13 +97,13 @@
               кв.<span th:text="${c.addressApartment}">1</span>
             </small>
           </td>
-          <td th:text="${c.phoneNumber}">+375...</td>
+          <td class="td-ellipsis" th:text="${c.phoneNumber}">+375...</td>
           <td><span class="badge-rating" th:text="${c.rating + ' / 10'}">10 / 10</span></td>
-          <td>
-            <div th:if="${c.addedBy != null}" th:text="${c.addedBy.surname + ' ' + c.addedBy.name}">Иванов И.</div>
+          <td class="td-ellipsis">
+            <div th:if="${c.addedBy != null}" th:text="${c.addedBy.surname}">Иванов</div>
             <small class="text-muted" th:if="${c.addedBy == null}">system</small>
           </td>
-          <td class="text-end pe-4">
+          <td class="text-end pe-4 td-actions">
             <a th:href="@{/clients/{id}(id=${c.id})}" class="btn btn-sm btn-outline-primary me-1"
                title="Открыть карточку клиента">
               <i class="bi bi-eye"></i>
@@ -279,7 +279,7 @@
         <div class="mb-1">
           <div class="form-text text-muted">
             <i class="bi bi-camera me-1"></i>
-            Фото паспорта можно добавить после регистрации — откройте карточку клиента.
+            Фото паспорта или фото клиента можно добавить после регистрации — откройте карточку клиента. «Не обязательно».
           </div>
         </div>
 

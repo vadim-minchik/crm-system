@@ -11,6 +11,8 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -60,6 +62,37 @@ public class StaffController {
 		return password.length() >= 6;
 	}
 
+	private static final int MAX_FIO_LENGTH = 50;
+	private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("dd.MM.yyyy");
+
+	private boolean isFioLengthValid(String value) {
+		return value != null && value.length() <= MAX_FIO_LENGTH;
+	}
+
+	private LocalDate parseOptionalDate(String raw) {
+		if (raw == null || raw.trim().isEmpty()) return null;
+		try {
+			return LocalDate.parse(raw.trim(), DATE_FMT);
+		} catch (Exception e) {
+			return null;
+		}
+	}
+
+	private void setOptionalStaffFields(User from, User to) {
+		to.setTrustedPersonPhone(cleanStrict(from.getTrustedPersonPhone()));
+		to.setPassportSeries(from.getPassportSeries() != null ? from.getPassportSeries().trim().toUpperCase() : null);
+		to.setPassportNumber(from.getPassportNumber() != null ? from.getPassportNumber().trim() : null);
+		to.setIdentificationNumber(from.getIdentificationNumber() != null ? from.getIdentificationNumber().trim().toUpperCase() : null);
+		to.setPassportIssueDate(from.getPassportIssueDate());
+		to.setPassportExpiryDate(from.getPassportExpiryDate());
+		to.setAddressStreet(from.getAddressStreet() != null ? from.getAddressStreet().trim() : null);
+		to.setAddressHouse(from.getAddressHouse() != null ? from.getAddressHouse().trim() : null);
+		to.setAddressEntrance(from.getAddressEntrance() != null ? from.getAddressEntrance().trim() : null);
+		to.setAddressBuilding(from.getAddressBuilding() != null ? from.getAddressBuilding().trim() : null);
+		to.setAddressApartment(from.getAddressApartment() != null ? from.getAddressApartment().trim() : null);
+		to.setSocialNetwork(cleanStrict(from.getSocialNetwork()));
+	}
+
 	@GetMapping
 	public String showStaff(Model model) {
 		User actor = getCurrentUser();
@@ -84,7 +117,9 @@ public class StaffController {
 	}
 
 	@PostMapping("/add")
-	public String addStaff(@ModelAttribute User newUser) {
+	public String addStaff(@ModelAttribute User newUser,
+			@RequestParam(value = "passportIssueDate", required = false) String passportIssueDate,
+			@RequestParam(value = "passportExpiryDate", required = false) String passportExpiryDate) {
 		User actor = getCurrentUser();
 		if (actor == null || actor.getRole() == Role.WORKER)
 			return "redirect:/staff";
@@ -93,10 +128,15 @@ public class StaffController {
 		String surname = cleanCyrillic(newUser.getSurname());
 		if (name == null || surname == null)
 			return "redirect:/staff?error=bad_chars";
+		if (!isFioLengthValid(name) || !isFioLengthValid(surname))
+			return "redirect:/staff?error=name_too_long";
+		String patronymic = cleanCyrillic(newUser.getPatronymic());
+		if (patronymic != null && !isFioLengthValid(patronymic))
+			return "redirect:/staff?error=name_too_long";
 
 		newUser.setName(name);
 		newUser.setSurname(surname);
-		newUser.setPatronymic(cleanCyrillic(newUser.getPatronymic()));
+		newUser.setPatronymic(patronymic);
 		
 		String login = cleanStrict(newUser.getLogin());
 		String email = cleanStrict(newUser.getEmail());
@@ -123,18 +163,24 @@ public class StaffController {
 		}
 		newUser.setPassword(passwordEncoder.encode(password));
 
+		newUser.setPassportIssueDate(parseOptionalDate(passportIssueDate));
+		newUser.setPassportExpiryDate(parseOptionalDate(passportExpiryDate));
+		setOptionalStaffFields(newUser, newUser);
+
 		try {
 			userRepository.save(newUser);
 		} catch (Exception e) {
 			return "redirect:/staff?error=save_failed";
 		}
-		
+
 		return "redirect:/staff?success=user_added";
 	}
 
 	@PostMapping("/edit")
 	public String editStaff(@ModelAttribute User details,
-			@RequestParam(value = "newPassword", required = false) String newPassword) {
+			@RequestParam(value = "newPassword", required = false) String newPassword,
+			@RequestParam(value = "passportIssueDate", required = false) String passportIssueDate,
+			@RequestParam(value = "passportExpiryDate", required = false) String passportExpiryDate) {
 		User actor = getCurrentUser();
 		User dbUser = userRepository.findById(details.getId()).orElse(null);
 
@@ -147,6 +193,12 @@ public class StaffController {
 			String cName = cleanCyrillic(details.getName());
 			String cSurname = cleanCyrillic(details.getSurname());
 			String cPatr = cleanCyrillic(details.getPatronymic());
+			if (cName != null && !isFioLengthValid(cName))
+				return "redirect:/staff?error=name_too_long";
+			if (cSurname != null && !isFioLengthValid(cSurname))
+				return "redirect:/staff?error=name_too_long";
+			if (cPatr != null && !isFioLengthValid(cPatr))
+				return "redirect:/staff?error=name_too_long";
 
 			if (cName != null && !cName.equals(dbUser.getName())) {
 				dbUser.setName(cName);
@@ -202,8 +254,9 @@ public class StaffController {
 				changed = true;
 			}
 
-			dbUser.setTelegram(cleanStrict(details.getTelegram()));
-			dbUser.setWhatsApp(cleanStrict(details.getWhatsApp()));
+			details.setPassportIssueDate(parseOptionalDate(passportIssueDate));
+			details.setPassportExpiryDate(parseOptionalDate(passportExpiryDate));
+			setOptionalStaffFields(details, dbUser);
 
 		if (changed) {
 			try {

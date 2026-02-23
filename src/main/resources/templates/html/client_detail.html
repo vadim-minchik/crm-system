@@ -100,7 +100,7 @@
         <div class="info-row">
           <span class="info-label">Добавил сотрудник</span>
           <span class="info-value" th:if="${client.addedBy != null}"
-                th:text="${client.addedBy.surname + ' ' + client.addedBy.name}">—</span>
+                th:text="${client.addedBy.surname}">—</span>
           <span class="info-value text-muted" th:if="${client.addedBy == null}">system</span>
         </div>
       </div>
@@ -157,7 +157,7 @@
     <div class="col-lg-4">
 
       <div class="info-block">
-        <div class="section-title"><i class="bi bi-card-image me-1"></i>Фото паспорта</div>
+        <div class="section-title"><i class="bi bi-card-image me-1"></i>Фото паспорта или фото клиента <span class="text-muted fw-normal">(Не обязательно)</span></div>
 
         <div th:if="${client.passportPhotoUrl != null and !#strings.isEmpty(client.passportPhotoUrl)}">
           <a th:href="${client.passportPhotoUrl}" target="_blank">

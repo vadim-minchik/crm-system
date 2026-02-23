@@ -31,6 +31,7 @@
 			<i class="bi bi-exclamation-triangle-fill me-2"></i>
 			<strong>Ошибка!</strong>
 			<span th:if="${param.error[0] == 'bad_chars'}">Имя и фамилия должны содержать только русские буквы.</span>
+			<span th:if="${param.error[0] == 'name_too_long'}">Фамилия, имя и отчество не должны превышать 50 символов.</span>
 			<span th:if="${param.error[0] == 'invalid_login'}">Логин может содержать только английские буквы и цифры (a-z, A-Z, 0-9).</span>
 			<span th:if="${param.error[0] == 'login_exists'}">Пользователь с таким логином уже существует.</span>
 			<span th:if="${param.error[0] == 'email_exists'}">Пользователь с таким email уже существует.</span>
@@ -73,7 +74,7 @@
 								th:text="${u.role}">ROLE</span></td>
 							<td>
 								<div th:text="${u.phoneNumber}">+7...</div>
-								<small class="text-muted" th:if="${u.telegram != null and !#strings.isEmpty(u.telegram)}" th:text="${u.telegram}">telegram</small>
+								<small class="text-muted" th:if="${u.socialNetwork != null and !#strings.isEmpty(u.socialNetwork)}" th:text="${u.socialNetwork}">соц сеть</small>
 							</td>
 							<td class="text-end pe-4"
 								th:if="${currentUserRole.name() != 'WORKER'}">
@@ -84,9 +85,16 @@
 										th:data-name="${u.name}" th:data-surname="${u.surname}"
 										th:data-patronymic="${u.patronymic}"
 										th:data-email="${u.email}" th:data-phone="${u.phoneNumber}"
-										th:data-role="${u.role}" th:data-tg="${u.telegram}"
-										th:data-wa="${u.whatsApp}" th:data-vk="${u.vk}"
-										th:data-inst="${u.instagram}" th:data-fb="${u.facebook}"
+										th:data-trusted-phone="${u.trustedPersonPhone}"
+										th:data-role="${u.role}"
+										th:data-pass-series="${u.passportSeries}" th:data-pass-num="${u.passportNumber}"
+										th:data-ident="${u.identificationNumber}"
+										th:data-pass-issue="${u.passportIssueDate != null ? #temporals.format(u.passportIssueDate, 'dd.MM.yyyy') : ''}"
+										th:data-pass-expiry="${u.passportExpiryDate != null ? #temporals.format(u.passportExpiryDate, 'dd.MM.yyyy') : ''}"
+										th:data-street="${u.addressStreet}" th:data-house="${u.addressHouse}"
+										th:data-entrance="${u.addressEntrance}" th:data-building="${u.addressBuilding}"
+										th:data-apt="${u.addressApartment}"
+										th:data-social="${u.socialNetwork}"
 										onclick="fillEdit(this)" data-bs-toggle="modal"
 										data-bs-target="#editModal">
 										<i class="bi bi-pencil"></i>
@@ -137,15 +145,15 @@
 						</div>
 						<div class="col-md-4">
 							<label class="form-label">Фамилия</label>
-							<input type="text" name="surname" class="form-control" required>
+							<input type="text" name="surname" class="form-control" required maxlength="50" placeholder="До 50 символов">
 						</div>
 						<div class="col-md-4">
 							<label class="form-label">Имя</label>
-							<input type="text" name="name" class="form-control" required>
+							<input type="text" name="name" class="form-control" required maxlength="50" placeholder="До 50 символов">
 						</div>
 						<div class="col-md-4">
 							<label class="form-label">Отчество</label>
-							<input type="text" name="patronymic" class="form-control">
+							<input type="text" name="patronymic" class="form-control" maxlength="50" placeholder="До 50 символов">
 						</div>
 						<div class="col-md-6">
 							<label class="form-label">Email</label>
@@ -153,7 +161,11 @@
 						</div>
 						<div class="col-md-6">
 							<label class="form-label">Телефон</label>
-							<input type="text" name="phoneNumber" class="form-control">
+							<input type="text" name="phoneNumber" class="form-control" required>
+						</div>
+						<div class="col-md-6">
+							<label class="form-label">Второй номер телефона доверенного лица</label>
+							<input type="text" name="trustedPersonPhone" class="form-control" placeholder="Не обязательно" maxlength="20">
 						</div>
 						<div class="col-md-4">
 							<label class="form-label">Роль</label>
@@ -163,25 +175,63 @@
 									value="ADMIN">ADMIN</option>
 							</select>
 						</div>
-						<div class="col-md-4">
-							<label class="form-label">Telegram</label>
-							<input type="text" name="telegram" class="form-control">
+						<div class="col-12 mt-2">
+							<div class="fw-semibold text-uppercase text-muted small mb-2">
+								<i class="bi bi-passport me-1"></i>Паспортные данные <span class="fw-normal">(не обязательно)</span>
+							</div>
+							<div class="row g-2">
+								<div class="col-md-2">
+									<label class="form-label">Серия</label>
+									<input type="text" name="passportSeries" class="form-control text-uppercase" placeholder="MP" maxlength="2">
+								</div>
+								<div class="col-md-3">
+									<label class="form-label">Номер</label>
+									<input type="text" name="passportNumber" class="form-control" placeholder="4362782" maxlength="7">
+								</div>
+								<div class="col-md-4">
+									<label class="form-label">Идентификационный номер</label>
+									<input type="text" name="identificationNumber" class="form-control text-uppercase" placeholder="0000900A014PB0" maxlength="14">
+								</div>
+								<div class="col-md-3">
+									<label class="form-label">Дата выдачи</label>
+									<input type="text" name="passportIssueDate" class="form-control" placeholder="ДД.ММ.ГГГГ">
+								</div>
+								<div class="col-md-3">
+									<label class="form-label">Срок действия</label>
+									<input type="text" name="passportExpiryDate" class="form-control" placeholder="ДД.ММ.ГГГГ">
+								</div>
+							</div>
 						</div>
-						<div class="col-md-4">
-							<label class="form-label">WhatsApp</label>
-							<input type="text" name="whatsApp" class="form-control">
+						<div class="col-12 mt-2">
+							<div class="fw-semibold text-uppercase text-muted small mb-2">
+								<i class="bi bi-geo-alt me-1"></i>Прописка <span class="fw-normal">(не обязательно)</span>
+							</div>
+							<div class="row g-2">
+								<div class="col-md-6">
+									<label class="form-label">Улица / переулок</label>
+									<input type="text" name="addressStreet" class="form-control" placeholder="-" maxlength="100">
+								</div>
+								<div class="col-md-2">
+									<label class="form-label">Дом</label>
+									<input type="text" name="addressHouse" class="form-control" placeholder="-" maxlength="20">
+								</div>
+								<div class="col-md-2">
+									<label class="form-label">Подъезд</label>
+									<input type="text" name="addressEntrance" class="form-control" placeholder="-" maxlength="10">
+								</div>
+								<div class="col-md-2">
+									<label class="form-label">Корпус</label>
+									<input type="text" name="addressBuilding" class="form-control" placeholder="-" maxlength="20">
+								</div>
+								<div class="col-md-2">
+									<label class="form-label">Квартира</label>
+									<input type="text" name="addressApartment" class="form-control" placeholder="-" maxlength="10">
+								</div>
+							</div>
 						</div>
-						<div class="col-md-4">
-							<label class="form-label">VK</label>
-							<input type="text" name="vk" class="form-control">
-						</div>
-						<div class="col-md-4">
-							<label class="form-label">Instagram</label>
-							<input type="text" name="instagram" class="form-control">
-						</div>
-						<div class="col-md-4">
-							<label class="form-label">Facebook</label>
-							<input type="text" name="facebook" class="form-control">
+						<div class="col-12">
+							<label class="form-label">Соц сеть</label>
+							<input type="text" name="socialNetwork" class="form-control" placeholder="Ссылка на профиль (не обязательно)" maxlength="200">
 						</div>
 					</div>
 				</div>
@@ -225,15 +275,15 @@
 
 						<div class="col-md-4">
 							<label class="form-label">Фамилия</label>
-							<input type="text" name="surname" id="e-surname" class="form-control">
+							<input type="text" name="surname" id="e-surname" class="form-control" maxlength="50">
 						</div>
 						<div class="col-md-4">
 							<label class="form-label">Имя</label>
-							<input type="text" name="name" id="e-name" class="form-control">
+							<input type="text" name="name" id="e-name" class="form-control" maxlength="50">
 						</div>
 						<div class="col-md-4">
 							<label class="form-label">Отчество</label>
-							<input type="text" name="patronymic" id="e-patronymic" class="form-control">
+							<input type="text" name="patronymic" id="e-patronymic" class="form-control" maxlength="50">
 						</div>
 						<div class="col-md-6">
 							<label class="form-label">Email</label>
@@ -242,6 +292,10 @@
 						<div class="col-md-6">
 							<label class="form-label">Телефон</label>
 							<input type="text" name="phoneNumber" id="e-phone" class="form-control">
+						</div>
+						<div class="col-md-6">
+							<label class="form-label">Второй номер телефона доверенного лица</label>
+							<input type="text" name="trustedPersonPhone" id="e-trusted-phone" class="form-control" maxlength="20">
 						</div>
 						<div class="col-md-4">
 							<label class="form-label">Роль</label>
@@ -252,25 +306,63 @@
 								<option value="SUPER_ADMIN">SUPER_ADMIN</option>
 							</select>
 						</div>
-						<div class="col-md-4">
-							<label class="form-label">Telegram</label>
-							<input type="text" name="telegram" id="e-tg" class="form-control">
+						<div class="col-12 mt-2">
+							<div class="fw-semibold text-uppercase text-muted small mb-2">
+								<i class="bi bi-passport me-1"></i>Паспортные данные <span class="fw-normal">(не обязательно)</span>
+							</div>
+							<div class="row g-2">
+								<div class="col-md-2">
+									<label class="form-label">Серия</label>
+									<input type="text" name="passportSeries" id="e-pass-series" class="form-control text-uppercase" maxlength="2">
+								</div>
+								<div class="col-md-3">
+									<label class="form-label">Номер</label>
+									<input type="text" name="passportNumber" id="e-pass-num" class="form-control" maxlength="7">
+								</div>
+								<div class="col-md-4">
+									<label class="form-label">Идентификационный номер</label>
+									<input type="text" name="identificationNumber" id="e-ident" class="form-control text-uppercase" maxlength="14">
+								</div>
+								<div class="col-md-3">
+									<label class="form-label">Дата выдачи</label>
+									<input type="text" name="passportIssueDate" id="e-pass-issue" class="form-control" placeholder="ДД.ММ.ГГГГ">
+								</div>
+								<div class="col-md-3">
+									<label class="form-label">Срок действия</label>
+									<input type="text" name="passportExpiryDate" id="e-pass-expiry" class="form-control" placeholder="ДД.ММ.ГГГГ">
+								</div>
+							</div>
 						</div>
-						<div class="col-md-4">
-							<label class="form-label">WhatsApp</label>
-							<input type="text" name="whatsApp" id="e-wa" class="form-control">
+						<div class="col-12 mt-2">
+							<div class="fw-semibold text-uppercase text-muted small mb-2">
+								<i class="bi bi-geo-alt me-1"></i>Прописка <span class="fw-normal">(не обязательно)</span>
+							</div>
+							<div class="row g-2">
+								<div class="col-md-6">
+									<label class="form-label">Улица / переулок</label>
+									<input type="text" name="addressStreet" id="e-street" class="form-control" maxlength="100">
+								</div>
+								<div class="col-md-2">
+									<label class="form-label">Дом</label>
+									<input type="text" name="addressHouse" id="e-house" class="form-control" maxlength="20">
+								</div>
+								<div class="col-md-2">
+									<label class="form-label">Подъезд</label>
+									<input type="text" name="addressEntrance" id="e-entrance" class="form-control" maxlength="10">
+								</div>
+								<div class="col-md-2">
+									<label class="form-label">Корпус</label>
+									<input type="text" name="addressBuilding" id="e-building" class="form-control" maxlength="20">
+								</div>
+								<div class="col-md-2">
+									<label class="form-label">Квартира</label>
+									<input type="text" name="addressApartment" id="e-apt" class="form-control" maxlength="10">
+								</div>
+							</div>
 						</div>
-						<div class="col-md-4">
-							<label class="form-label">VK</label>
-							<input type="text" name="vk" id="e-vk" class="form-control">
-						</div>
-						<div class="col-md-4">
-							<label class="form-label">Instagram</label>
-							<input type="text" name="instagram" id="e-inst" class="form-control">
-						</div>
-						<div class="col-md-4">
-							<label class="form-label">Facebook</label>
-							<input type="text" name="facebook" id="e-fb" class="form-control">
+						<div class="col-12">
+							<label class="form-label">Соц сеть</label>
+							<input type="text" name="socialNetwork" id="e-social" class="form-control" maxlength="200">
 						</div>
 					</div>
 				</div>
@@ -287,19 +379,26 @@
 		src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 	<script>
     function fillEdit(btn) {
-        document.getElementById('e-id').value = btn.getAttribute('data-id');
-        document.getElementById('e-login').value = btn.getAttribute('data-login');
-        document.getElementById('e-name').value = btn.getAttribute('data-name');
-        document.getElementById('e-surname').value = btn.getAttribute('data-surname');
-        document.getElementById('e-patronymic').value = btn.getAttribute('data-patronymic');
-        document.getElementById('e-email').value = btn.getAttribute('data-email');
-        document.getElementById('e-phone').value = btn.getAttribute('data-phone');
-        document.getElementById('e-role').value = btn.getAttribute('data-role');
-        document.getElementById('e-tg').value = btn.getAttribute('data-tg');
-        document.getElementById('e-wa').value = btn.getAttribute('data-wa');
-        document.getElementById('e-vk').value = btn.getAttribute('data-vk');
-        document.getElementById('e-inst').value = btn.getAttribute('data-inst');
-        document.getElementById('e-fb').value = btn.getAttribute('data-fb');
+        document.getElementById('e-id').value = btn.getAttribute('data-id') || '';
+        document.getElementById('e-login').value = btn.getAttribute('data-login') || '';
+        document.getElementById('e-name').value = btn.getAttribute('data-name') || '';
+        document.getElementById('e-surname').value = btn.getAttribute('data-surname') || '';
+        document.getElementById('e-patronymic').value = btn.getAttribute('data-patronymic') || '';
+        document.getElementById('e-email').value = btn.getAttribute('data-email') || '';
+        document.getElementById('e-phone').value = btn.getAttribute('data-phone') || '';
+        document.getElementById('e-trusted-phone').value = btn.getAttribute('data-trusted-phone') || '';
+        document.getElementById('e-role').value = btn.getAttribute('data-role') || '';
+        document.getElementById('e-pass-series').value = btn.getAttribute('data-pass-series') || '';
+        document.getElementById('e-pass-num').value = btn.getAttribute('data-pass-num') || '';
+        document.getElementById('e-ident').value = btn.getAttribute('data-ident') || '';
+        document.getElementById('e-pass-issue').value = btn.getAttribute('data-pass-issue') || '';
+        document.getElementById('e-pass-expiry').value = btn.getAttribute('data-pass-expiry') || '';
+        document.getElementById('e-street').value = btn.getAttribute('data-street') || '';
+        document.getElementById('e-house').value = btn.getAttribute('data-house') || '';
+        document.getElementById('e-entrance').value = btn.getAttribute('data-entrance') || '';
+        document.getElementById('e-building').value = btn.getAttribute('data-building') || '';
+        document.getElementById('e-apt').value = btn.getAttribute('data-apt') || '';
+        document.getElementById('e-social').value = btn.getAttribute('data-social') || '';
     }
 
     // Валидация кириллицы для ФИО (авто-капитализация первой буквы)

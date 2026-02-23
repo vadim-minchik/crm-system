@@ -360,6 +360,49 @@ body {
 	overflow-x: auto;
 }
 
+.table-responsive-clients {
+	overflow-x: auto;
+}
+
+.table-clients {
+	table-layout: fixed;
+	min-width: 100%;
+}
+
+.table-clients .td-ellipsis {
+	max-width: 200px;
+	overflow: hidden;
+}
+
+.table-clients .td-ellipsis > div,
+.table-clients .td-ellipsis > small {
+	max-width: 100%;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	display: block;
+}
+
+.table-clients .th-actions,
+.table-clients .td-actions {
+	position: sticky;
+	right: 0;
+	background: var(--card-bg);
+	z-index: 2;
+	white-space: nowrap;
+	box-shadow: -6px 0 12px rgba(0, 0, 0, 0.08);
+	min-width: 140px;
+}
+
+.table-clients thead .th-actions {
+	background: #fdfdfd;
+	z-index: 3;
+}
+
+.table-clients tbody tr:hover .td-actions {
+	background: #f8f9fa;
+}
+
 .badge {
 	padding: 6px 12px;
 	border-radius: var(--radius-sm);
