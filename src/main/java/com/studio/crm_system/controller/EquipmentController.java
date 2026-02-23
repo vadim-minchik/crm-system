@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -112,7 +113,7 @@ public class EquipmentController {
 		Map<Long, Long> freeCount       = new HashMap<>();
 
 		for (PreCategory pc : preCategories) {
-			categoriesCount.put(pc.getId(), categoryRepository.countByPreCategoryAndIsDeletedFalse(pc));
+			categoriesCount.put(pc.getId(), categoryRepository.countByPreCategoryAndParentCategoryIsNullAndIsDeletedFalse(pc));
 			unitsCount.put(pc.getId(), countUnitsInPreCategory(pc));
 			freeCount.put(pc.getId(), countFreeUnitsInPreCategory(pc));
 		}
@@ -186,7 +187,7 @@ public class EquipmentController {
 		if (pc == null || pc.getIsDeleted())
 			return "redirect:/inventory?error=not_found";
 
-		List<Category> categories = categoryRepository.findByPreCategoryAndIsDeletedFalse(pc);
+		List<Category> categories = categoryRepository.findByPreCategoryAndParentCategoryIsNullAndIsDeletedFalse(pc);
 
 		Map<Long, Long> modelsCount = new HashMap<>();
 		Map<Long, Long> unitsCount  = new HashMap<>();
@@ -210,20 +211,36 @@ public class EquipmentController {
 	@PostMapping("/precategory/{preCategoryId}/category/add")
 	public String addCategory(@PathVariable Long preCategoryId,
 	                          @RequestParam String name,
-	                          @RequestParam(required = false) String description) {
+	                          @RequestParam(required = false) String description,
+	                          @RequestParam(required = false) Long parentCategoryId) {
 		PreCategory pc = preCategoryRepository.findById(preCategoryId).orElse(null);
 		if (pc == null) return "redirect:/inventory?error=not_found";
 
-		if (name == null || name.trim().isEmpty())
-			return "redirect:/inventory/precategory/" + preCategoryId + "?error=name_required";
-		if (categoryRepository.existsByNameIgnoreCaseAndPreCategoryAndIsDeletedFalse(name.trim(), pc))
-			return "redirect:/inventory/precategory/" + preCategoryId + "?error=name_exists";
+		if (name == null || name.trim().isEmpty()) {
+			String redirect = parentCategoryId != null
+				? "/inventory/category/" + parentCategoryId
+				: "/inventory/precategory/" + preCategoryId;
+			return "redirect:" + redirect + "?error=name_required";
+		}
 
 		Category cat = new Category();
 		cat.setName(name.trim());
 		cat.setDescription(description != null ? description.trim() : null);
 		cat.setPreCategory(pc);
+		if (parentCategoryId != null) {
+			Category parent = categoryRepository.findById(parentCategoryId).orElse(null);
+			if (parent != null && !parent.getIsDeleted()) {
+				if (categoryRepository.existsByNameIgnoreCaseAndParentCategoryAndIsDeletedFalse(name.trim(), parent))
+					return "redirect:/inventory/category/" + parentCategoryId + "?error=name_exists";
+				cat.setParentCategory(parent);
+			}
+		} else {
+			if (categoryRepository.existsByNameIgnoreCaseAndPreCategoryAndParentCategoryIsNullAndIsDeletedFalse(name.trim(), pc))
+				return "redirect:/inventory/precategory/" + preCategoryId + "?error=name_exists";
+		}
 		categoryRepository.save(cat);
+		if (parentCategoryId != null)
+			return "redirect:/inventory/category/" + parentCategoryId + "?success=category_added";
 		return "redirect:/inventory/precategory/" + preCategoryId + "?success=category_added";
 	}
 
@@ -234,12 +251,12 @@ public class EquipmentController {
 		Category cat = categoryRepository.findById(id).orElse(null);
 		if (cat == null) return "redirect:/inventory?error=not_found";
 		if (name == null || name.trim().isEmpty())
-			return "redirect:/inventory/precategory/" + cat.getPreCategory().getId() + "?error=name_required";
+			return "redirect:/inventory/category/" + id + "?error=name_required";
 
 		cat.setName(name.trim());
 		cat.setDescription(description != null ? description.trim() : null);
 		categoryRepository.save(cat);
-		return "redirect:/inventory/precategory/" + cat.getPreCategory().getId() + "?success=category_updated";
+		return "redirect:/inventory/category/" + id + "?success=category_updated";
 	}
 
 	@PostMapping("/category/delete")
@@ -248,8 +265,14 @@ public class EquipmentController {
 		if (cat == null) return "redirect:/inventory?success=category_deleted";
 
 		Long pcId = cat.getPreCategory().getId();
+		if (categoryRepository.countByParentCategoryAndIsDeletedFalse(cat) > 0)
+			return "redirect:/inventory/category/" + id + "?error=has_children";
 		if (hasAnyBusyInCategory(cat))
-			return "redirect:/inventory/precategory/" + pcId + "?error=in_use";
+			return "redirect:/inventory/category/" + id + "?error=in_use";
+
+		String redirectBack = cat.getParentCategory() != null
+			? "/inventory/category/" + cat.getParentCategory().getId()
+			: "/inventory/precategory/" + pcId;
 
 		for (ToolName t : toolNameRepository.findByCategoryAndIsDeletedFalse(cat)) {
 			equipmentRepository.findByToolNameAndIsDeletedFalse(t)
@@ -259,7 +282,7 @@ public class EquipmentController {
 		}
 		cat.setIsDeleted(true);
 		categoryRepository.save(cat);
-		return "redirect:/inventory/precategory/" + pcId + "?success=category_deleted";
+		return "redirect:" + redirectBack + "?success=category_deleted";
 	}
 
 	@GetMapping("/category/{categoryId}")
@@ -271,7 +294,17 @@ public class EquipmentController {
 		if (category == null || category.getIsDeleted())
 			return "redirect:/inventory?error=not_found";
 
+		List<Category> subcategories = categoryRepository.findByParentCategoryAndIsDeletedFalse(category);
 		List<ToolName> toolNames = toolNameRepository.findByCategoryAndIsDeletedFalse(category);
+
+		Map<Long, Long> subcategoriesModelsCount = new HashMap<>();
+		Map<Long, Long> subcategoriesUnitsCount  = new HashMap<>();
+		Map<Long, Long> subcategoriesFreeCount   = new HashMap<>();
+		for (Category sub : subcategories) {
+			subcategoriesModelsCount.put(sub.getId(), toolNameRepository.countByCategoryAndIsDeletedFalse(sub));
+			subcategoriesUnitsCount.put(sub.getId(), countUnitsInCategory(sub));
+			subcategoriesFreeCount.put(sub.getId(), countFreeUnitsInCategory(sub));
+		}
 
 		Map<Long, Long> totalCount = new HashMap<>();
 		Map<Long, Long> freeCount  = new HashMap<>();
@@ -280,8 +313,17 @@ public class EquipmentController {
 			freeCount.put(t.getId(), equipmentRepository.countByToolNameAndStatusAndIsDeletedFalse(t, EquipmentStatus.FREE));
 		}
 
+		List<Category> breadcrumb = new ArrayList<>();
+		for (Category c = category; c != null; c = c.getParentCategory())
+			breadcrumb.add(0, c);
+
 		model.addAttribute("preCategory", category.getPreCategory());
 		model.addAttribute("category", category);
+		model.addAttribute("breadcrumb", breadcrumb);
+		model.addAttribute("subcategories", subcategories);
+		model.addAttribute("subcategoriesModelsCount", subcategoriesModelsCount);
+		model.addAttribute("subcategoriesUnitsCount", subcategoriesUnitsCount);
+		model.addAttribute("subcategoriesFreeCount", subcategoriesFreeCount);
 		model.addAttribute("toolNames", toolNames);
 		model.addAttribute("totalCount", totalCount);
 		model.addAttribute("freeCount", freeCount);

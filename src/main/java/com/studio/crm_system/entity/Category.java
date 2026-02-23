@@ -20,6 +20,10 @@ public class Category {
 	@JoinColumn(name = "pre_category_id", nullable = false)
 	private PreCategory preCategory;
 
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "parent_category_id")
+	private Category parentCategory;
+
 	@Column(nullable = false)
 	private Boolean isDeleted = false;
 
@@ -37,4 +41,7 @@ public class Category {
 
 	public Boolean getIsDeleted() { return isDeleted; }
 	public void setIsDeleted(Boolean isDeleted) { this.isDeleted = isDeleted; }
+
+	public Category getParentCategory() { return parentCategory; }
+	public void setParentCategory(Category parentCategory) { this.parentCategory = parentCategory; }
 }

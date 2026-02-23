@@ -43,6 +43,15 @@
   }
   .action-btn:hover { background: #f1f5f9; }
   .action-btn.danger:hover { background: #fee2e2; border-color: #fca5a5; color: #b91c1c; }
+  .cat-card {
+    border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px 20px;
+    transition: box-shadow .2s, transform .2s; background: #fff;
+    cursor: pointer; text-decoration: none; color: inherit; display: block; height: 100%;
+  }
+  .cat-card:hover { box-shadow: 0 6px 24px rgba(0,0,0,.10); transform: translateY(-2px); color: inherit; }
+  .cat-card .cat-name { font-size: 1rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cat-card .cat-desc { font-size: 0.81rem; color: #6c757d; margin-bottom: 12px; min-height: 16px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .badge-models { background: #ede9fe; color: #5b21b6; }
 </style>
 </head>
 <body>
@@ -64,23 +73,33 @@
             <a th:href="@{/inventory/precategory/{id}(id=${preCategory.id})}"
                th:text="${preCategory.name}" class="text-decoration-none">Раздел</a>
           </li>
+          <li th:each="bc, stat : ${breadcrumb}" th:if="${!stat.last}" class="breadcrumb-item">
+            <a th:href="@{/inventory/category/{id}(id=${bc.id})}" th:text="${bc.name}" class="text-decoration-none">Категория</a>
+          </li>
           <li class="breadcrumb-item active" th:text="${category.name}">Категория</li>
         </ol>
       </nav>
       <h2><i class="bi bi-layers me-2 text-primary"></i><span th:text="${category.name}">Категория</span></h2>
-      <p th:text="${category.description != null ? category.description : 'Модели оборудования в этой категории'}">Описание</p>
+      <p th:text="${category.description != null ? category.description : 'Подкатегории и модели в этой категории'}">Описание</p>
     </div>
-    <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#modalAddModel">
-      <i class="bi bi-plus-circle"></i> Добавить модель
-    </button>
+    <div class="d-flex gap-2">
+      <button class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#modalAddSubcategory">
+        <i class="bi bi-folder-plus"></i> Добавить подкатегорию
+      </button>
+      <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#modalAddModel">
+        <i class="bi bi-plus-circle"></i> Добавить модель
+      </button>
+    </div>
   </div>
 
   <div th:if="${param.error}" class="alert alert-danger alert-dismissible fade show" role="alert">
     <i class="bi bi-exclamation-triangle-fill me-2"></i><strong>Ошибка: </strong>
-    <span th:if="${param.error[0] == 'name_required'}">Введите название модели.</span>
-    <span th:if="${param.error[0] == 'name_exists'}">Модель с таким названием уже существует в этой категории.</span>
+    <span th:if="${param.error[0] == 'name_required'}">Введите название.</span>
+    <span th:if="${param.error[0] == 'name_exists'}">Категория или модель с таким названием уже существует.</span>
     <span th:if="${param.error[0] == 'model_in_use'}">Нельзя удалить: есть оборудование используется.</span>
     <span th:if="${param.error[0] == 'model_not_found'}">Модель не найдена.</span>
+    <span th:if="${param.error[0] == 'has_children'}">Сначала удалите подкатегории.</span>
+    <span th:if="${param.error[0] == 'in_use'}">Нельзя удалить: оборудование используется.</span>
     <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
   </div>
   <div th:if="${param.success}" class="alert alert-success alert-dismissible fade show" role="alert">
@@ -88,10 +107,52 @@
     <span th:if="${param.success[0] == 'model_added'}">Модель добавлена.</span>
     <span th:if="${param.success[0] == 'model_deleted'}">Модель удалена.</span>
     <span th:if="${param.success[0] == 'model_updated'}">Модель обновлена.</span>
+    <span th:if="${param.success[0] == 'category_added'}">Подкатегория добавлена.</span>
+    <span th:if="${param.success[0] == 'category_updated'}">Категория обновлена.</span>
+    <span th:if="${param.success[0] == 'category_deleted'}">Категория удалена.</span>
     <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
   </div>
 
   <div class="row g-3 mt-1">
+
+    <div class="col-md-4 col-lg-3" th:each="sub : ${subcategories}">
+      <div class="card-wrapper" style="position: relative; height: 100%;">
+        <a th:href="@{/inventory/category/{id}(id=${sub.id})}" class="cat-card">
+          <div class="d-flex align-items-center gap-2 mb-1">
+            <i class="bi bi-folder2-open text-primary"></i>
+            <div class="cat-name" th:text="${sub.name}">Подкатегория</div>
+          </div>
+          <div class="cat-desc" th:text="${sub.description != null ? sub.description : 'Нет описания'}">Описание</div>
+          <div class="d-flex flex-wrap gap-2">
+            <span class="badge-pill badge-models">
+              <i class="bi bi-layers me-1"></i><span th:text="${subcategoriesModelsCount[sub.id]}">0</span> моделей
+            </span>
+            <span class="badge-pill badge-free">
+              <i class="bi bi-check-circle me-1"></i><span th:text="${subcategoriesFreeCount[sub.id]}">0</span> свободно
+            </span>
+            <span class="badge-pill badge-units">Всего: <span th:text="${subcategoriesUnitsCount[sub.id]}">0</span></span>
+          </div>
+        </a>
+        <div class="card-actions">
+          <button type="button" class="action-btn" th:data-id="${sub.id}" th:data-name="${sub.name}" th:data-desc="${sub.description}"
+                  onclick="openEditCat(this)" title="Редактировать">
+            <i class="bi bi-pencil"></i>
+          </button>
+          <button type="button" class="action-btn danger" th:data-id="${sub.id}" th:data-name="${sub.name}"
+                  th:data-models="${subcategoriesModelsCount[sub.id]}" th:data-units="${subcategoriesUnitsCount[sub.id]}"
+                  onclick="openDeleteCat(this)" title="Удалить">
+            <i class="bi bi-trash"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-4 col-lg-3">
+      <button class="add-card" data-bs-toggle="modal" data-bs-target="#modalAddSubcategory">
+        <i class="bi bi-folder-plus fs-3"></i>
+        <span class="fw-semibold">Добавить подкатегорию</span>
+      </button>
+    </div>
 
     <div class="col-md-4 col-lg-3" th:each="t : ${toolNames}">
       <div class="card-wrapper" style="position: relative; height: 100%;">
@@ -138,12 +199,39 @@
       </button>
     </div>
 
-    <div class="col-12" th:if="${#lists.isEmpty(toolNames)}">
+    <div class="col-12" th:if="${#lists.isEmpty(subcategories) and #lists.isEmpty(toolNames)}">
       <div class="text-center py-5 text-muted">
-        <i class="bi bi-box fs-1 d-block mb-2"></i>
-        В этой категории пока нет моделей. Создайте первую!
+        <i class="bi bi-folder2 fs-1 d-block mb-2"></i>
+        В этой категории пока нет подкатегорий и моделей. Добавьте подкатегорию или модель.
       </div>
     </div>
+  </div>
+</div>
+
+<div class="modal fade" id="modalAddSubcategory" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <form th:action="@{/inventory/precategory/{id}/category/add(id=${preCategory.id})}" method="post" class="modal-content">
+      <input type="hidden" name="parentCategoryId" th:value="${category.id}">
+      <div class="modal-header">
+        <h5><i class="bi bi-folder-plus me-2"></i>Новая подкатегория</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label class="form-label fw-semibold">Название *</label>
+          <input type="text" name="name" class="form-control" maxlength="60" placeholder="Подкатегория" required autofocus>
+        </div>
+        <div>
+          <label class="form-label fw-semibold">Описание <span class="text-muted small">(опционально)</span></label>
+          <input type="text" name="description" class="form-control" maxlength="150">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="submit" class="btn btn-success w-100">
+          <i class="bi bi-check-circle me-1"></i> Добавить подкатегорию
+        </button>
+      </div>
+    </form>
   </div>
 </div>
 
@@ -249,15 +337,99 @@
   </div>
 </div>
 
+<div class="modal fade" id="modalEditCat" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <form th:action="@{/inventory/category/edit}" method="post" class="modal-content">
+      <div class="modal-header">
+        <h5><i class="bi bi-pencil me-2"></i>Редактировать подкатегорию</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" name="id" id="edit-cat-id">
+        <div class="mb-3">
+          <label class="form-label fw-semibold">Название *</label>
+          <input type="text" name="name" id="edit-cat-name" class="form-control" maxlength="60" required>
+        </div>
+        <div>
+          <label class="form-label fw-semibold">Описание <span class="text-muted small">(опционально)</span></label>
+          <input type="text" name="description" id="edit-cat-desc" class="form-control" maxlength="150">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Отмена</button>
+        <button type="submit" class="btn btn-primary">
+          <i class="bi bi-check-circle me-1"></i> Сохранить
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="modal fade" id="modalDeleteCat" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header bg-danger text-white">
+        <h5><i class="bi bi-exclamation-triangle-fill me-2"></i>Удаление подкатегории</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body px-4 py-3">
+        <p class="text-muted mb-1" style="font-size:0.85rem;">Вы собираетесь удалить подкатегорию:</p>
+        <p class="fw-bold fs-5 mb-4" id="del-cat-name" style="word-break:break-word;">—</p>
+        <div class="rounded-3 p-3 mb-3" style="background:#fffbeb; border:1px solid #fcd34d;">
+          <div class="fw-semibold mb-2" style="color:#92400e;">
+            <i class="bi bi-exclamation-triangle me-1"></i> Будет удалено вместе с подкатегорией:
+          </div>
+          <div class="d-flex gap-3">
+            <div class="text-center px-3 py-2 rounded-2" style="background:#fff; border:1px solid #fcd34d; min-width:80px;">
+              <div class="fw-bold fs-4" style="color:#b45309;" id="del-cat-models">0</div>
+              <div style="font-size:0.75rem; color:#92400e;">моделей</div>
+            </div>
+            <div class="text-center px-3 py-2 rounded-2" style="background:#fff; border:1px solid #fcd34d; min-width:80px;">
+              <div class="fw-bold fs-4" style="color:#b45309;" id="del-cat-units">0</div>
+              <div style="font-size:0.75rem; color:#92400e;">серийных номеров</div>
+            </div>
+          </div>
+        </div>
+        <div class="rounded-3 p-3" style="background:#fef2f2; border:1px solid #fca5a5;">
+          <i class="bi bi-shield-x me-2" style="color:#dc2626;"></i>
+          <strong style="color:#dc2626;">Это действие необратимо.</strong>
+          <span class="text-muted" style="font-size:0.88rem;"> Данные будут помечены как удалённые.</span>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <form th:action="@{/inventory/category/delete}" method="post" style="width:100%; display:flex; gap:8px;">
+          <input type="hidden" name="id" id="del-cat-id">
+          <button type="button" class="btn btn-outline-secondary flex-fill" data-bs-dismiss="modal">Отмена</button>
+          <button type="submit" class="btn btn-danger flex-fill">
+            <i class="bi bi-trash me-1"></i> Удалить
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
+  function openEditCat(btn) {
+    document.getElementById('edit-cat-id').value   = btn.dataset.id;
+    document.getElementById('edit-cat-name').value = btn.dataset.name;
+    document.getElementById('edit-cat-desc').value = (btn.dataset.desc !== 'null' && btn.dataset.desc) ? btn.dataset.desc : '';
+    new bootstrap.Modal(document.getElementById('modalEditCat')).show();
+  }
+  function openDeleteCat(btn) {
+    document.getElementById('del-cat-id').value           = btn.dataset.id;
+    document.getElementById('del-cat-name').textContent   = btn.dataset.name;
+    document.getElementById('del-cat-models').textContent = btn.dataset.models || '0';
+    document.getElementById('del-cat-units').textContent  = btn.dataset.units || '0';
+    new bootstrap.Modal(document.getElementById('modalDeleteCat')).show();
+  }
   function openEditModel(btn) {
     document.getElementById('edit-model-id').value   = btn.dataset.id;
     document.getElementById('edit-model-name').value = btn.dataset.name;
     document.getElementById('edit-model-desc').value = btn.dataset.desc !== 'null' ? (btn.dataset.desc || '') : '';
     new bootstrap.Modal(document.getElementById('modalEditModel')).show();
   }
-
   function openDeleteModel(btn) {
     document.getElementById('del-model-id').value          = btn.dataset.id;
     document.getElementById('del-model-name').textContent  = btn.dataset.name;
