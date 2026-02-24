@@ -76,14 +76,20 @@ public class RentalController {
 	                  @RequestParam List<Long> equipmentId,
 	                  @RequestParam String dateFrom,
 	                  @RequestParam String dateTo,
-	                  @RequestParam(required = false) String totalAmount) {
+	                  @RequestParam(required = false) String totalAmount,
+	                  @RequestParam(required = false) String additionalServicesAmount,
+	                  @RequestParam(required = false) String additionalServicesDescription,
+	                  @RequestParam(required = false) String deliveryAmount) {
 		LocalDateTime from = parseDateTime(dateFrom);
 		LocalDateTime to = parseDateTime(dateTo);
 		if (equipmentId == null || equipmentId.isEmpty()) {
 			return "redirect:/rentals?error=equipment_required";
 		}
 		BigDecimal manualTotal = parseDecimal(totalAmount);
-		String error = rentalService.createRentals(clientId, equipmentId, from, to, manualTotal);
+		BigDecimal addServ = parseDecimal(additionalServicesAmount);
+		BigDecimal delAmt = parseDecimal(deliveryAmount);
+		String error = rentalService.createRentals(clientId, equipmentId, from, to, manualTotal,
+				addServ, additionalServicesDescription, delAmt);
 		if (error != null) return "redirect:/rentals?error=" + error;
 		return "redirect:/rentals?success=rental_added";
 	}
@@ -92,10 +98,15 @@ public class RentalController {
 	public String edit(@RequestParam Long id,
 	                  @RequestParam String dateFrom,
 	                  @RequestParam String dateTo,
-	                  @RequestParam(required = false) BigDecimal totalAmount) {
+	                  @RequestParam(required = false) BigDecimal totalAmount,
+	                  @RequestParam(required = false) String additionalServicesAmount,
+	                  @RequestParam(required = false) String additionalServicesDescription,
+	                  @RequestParam(required = false) String deliveryAmount) {
 		LocalDateTime from = parseDateTime(dateFrom);
 		LocalDateTime to = parseDateTime(dateTo);
-		String error = rentalService.updateRental(id, from, to, totalAmount);
+		BigDecimal addServ = parseDecimal(additionalServicesAmount);
+		BigDecimal delAmt = parseDecimal(deliveryAmount);
+		String error = rentalService.updateRental(id, from, to, totalAmount, addServ, additionalServicesDescription, delAmt);
 		if (error != null) return "redirect:/rentals/" + id + "?error=" + error;
 		return "redirect:/rentals/" + id + "?success=rental_updated";
 	}

@@ -146,7 +146,8 @@ public class RentalService {
 	private static final int MAX_EQUIPMENT_PER_RENTAL = 50;
 
 	@Transactional
-	public String createRentals(Long clientId, List<Long> equipmentIds, LocalDateTime dateFrom, LocalDateTime dateTo, BigDecimal manualTotal) {
+	public String createRentals(Long clientId, List<Long> equipmentIds, LocalDateTime dateFrom, LocalDateTime dateTo, BigDecimal manualTotal,
+			BigDecimal additionalServicesAmount, String additionalServicesDescription, BigDecimal deliveryAmount) {
 		if (clientId == null) return "client_required";
 		if (equipmentIds == null || equipmentIds.isEmpty()) return "equipment_required";
 		if (equipmentIds.size() > MAX_EQUIPMENT_PER_RENTAL) return "too_many_equipment";
@@ -166,16 +167,22 @@ public class RentalService {
 			toRent.add(equipment);
 		}
 
-		BigDecimal totalSum;
+		BigDecimal baseSum;
 		if (manualTotal != null && manualTotal.compareTo(BigDecimal.ZERO) > 0) {
-			totalSum = manualTotal.setScale(2, RoundingMode.HALF_UP);
+			baseSum = manualTotal.setScale(2, RoundingMode.HALF_UP);
 		} else {
-			totalSum = BigDecimal.ZERO;
+			baseSum = BigDecimal.ZERO;
 			for (Equipment e : toRent) {
-				totalSum = totalSum.add(calculateTotal(dateFrom, dateTo, e));
+				baseSum = baseSum.add(calculateTotal(dateFrom, dateTo, e));
 			}
-			totalSum = totalSum.setScale(2, RoundingMode.HALF_UP);
+			baseSum = baseSum.setScale(2, RoundingMode.HALF_UP);
 		}
+
+		BigDecimal addServ = (additionalServicesAmount != null && additionalServicesAmount.compareTo(BigDecimal.ZERO) > 0)
+				? additionalServicesAmount.setScale(2, RoundingMode.HALF_UP) : BigDecimal.ZERO;
+		BigDecimal delAmt = (deliveryAmount != null && deliveryAmount.compareTo(BigDecimal.ZERO) > 0)
+				? deliveryAmount.setScale(2, RoundingMode.HALF_UP) : BigDecimal.ZERO;
+		BigDecimal totalSum = baseSum.add(addServ).add(delAmt).setScale(2, RoundingMode.HALF_UP);
 
 		Rental rental = new Rental();
 		rental.setClient(client);
@@ -183,6 +190,9 @@ public class RentalService {
 		rental.setDateFrom(dateFrom);
 		rental.setDateTo(dateTo);
 		rental.setTotalAmount(totalSum);
+		rental.setAdditionalServicesAmount(addServ.compareTo(BigDecimal.ZERO) > 0 ? addServ : null);
+		rental.setAdditionalServicesDescription(additionalServicesDescription != null && !additionalServicesDescription.isBlank() ? additionalServicesDescription.trim() : null);
+		rental.setDeliveryAmount(delAmt.compareTo(BigDecimal.ZERO) > 0 ? delAmt : null);
 		rental.setStatus(RentalStatus.ACTIVE);
 		rentalRepository.save(rental);
 
@@ -194,7 +204,8 @@ public class RentalService {
 	}
 
 	@Transactional
-	public String updateRental(Long id, LocalDateTime dateFrom, LocalDateTime dateTo, BigDecimal totalAmount) {
+	public String updateRental(Long id, LocalDateTime dateFrom, LocalDateTime dateTo, BigDecimal totalAmount,
+			BigDecimal additionalServicesAmount, String additionalServicesDescription, BigDecimal deliveryAmount) {
 		Rental rental = rentalRepository.findByIdWithEquipment(id).orElse(null);
 		if (rental == null) return "not_found";
 		if (dateFrom == null) return "date_from_required";
@@ -212,6 +223,9 @@ public class RentalService {
 								.map(e -> calculateTotal(dateFrom, dateTo, e))
 								.reduce(BigDecimal.ZERO, BigDecimal::add)).setScale(2, RoundingMode.HALF_UP);
 		rental.setTotalAmount(total);
+		rental.setAdditionalServicesAmount(additionalServicesAmount != null && additionalServicesAmount.compareTo(BigDecimal.ZERO) > 0 ? additionalServicesAmount.setScale(2, RoundingMode.HALF_UP) : null);
+		rental.setAdditionalServicesDescription(additionalServicesDescription != null && !additionalServicesDescription.isBlank() ? additionalServicesDescription.trim() : null);
+		rental.setDeliveryAmount(deliveryAmount != null && deliveryAmount.compareTo(BigDecimal.ZERO) > 0 ? deliveryAmount.setScale(2, RoundingMode.HALF_UP) : null);
 		rentalRepository.save(rental);
 		return null;
 	}

@@ -367,7 +367,29 @@
               <input type="text" name="totalAmount" id="rental-total-amount" class="form-control" placeholder="Необязательно — рассчитается по тарифам" pattern="[0-9]+([.,][0-9]{1,2})?" inputmode="decimal" autocomplete="off">
               <span class="input-group-text">Br</span>
             </div>
-            <div class="form-text text-muted">Оставьте пустым — сумма посчитается по полным дням (1-й день X, 2-й 0,8×, далее 0,6×). Либо введите сумму вручную.</div>
+            <div class="form-text text-muted">Сумма по прокату (по тарифам или вручную). Ниже можно добавить доп. услуги и доставку — итог пересчитается автоматически.</div>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Доп. услуги (Br)</label>
+            <input type="text" name="additionalServicesAmount" id="rental-additional-amount" class="form-control" placeholder="0" pattern="[0-9]+([.,][0-9]{1,2})?" inputmode="decimal" autocomplete="off">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Описание доп. услуги</label>
+            <input type="text" name="additionalServicesDescription" id="rental-additional-description" class="form-control" placeholder="Что входит в услугу" maxlength="500" autocomplete="off">
+          </div>
+          <div class="col-12">
+            <label class="form-label">Доставка</label>
+            <div class="d-flex flex-wrap align-items-center gap-2">
+              <div class="form-check">
+                <input type="checkbox" class="form-check-input" id="rental-delivery-check">
+                <label class="form-check-label" for="rental-delivery-check">Есть доставка</label>
+              </div>
+              <div class="input-group" style="width: 140px;">
+                <input type="text" id="rental-delivery-amount" class="form-control" placeholder="0" value="0" pattern="[0-9]+([.,][0-9]{1,2})?" inputmode="decimal" disabled autocomplete="off">
+                <span class="input-group-text">Br</span>
+              </div>
+              <input type="hidden" name="deliveryAmount" id="rental-delivery-hidden" value="0">
+            </div>
           </div>
         </div>
       </div>
@@ -570,16 +592,22 @@
     var dateToInput = document.getElementById('rental-date-to');
     if (!totalInput || selected.length === 0) {
       if (totalInput) totalInput.value = '';
+      rentalBaseAmount = 0;
+      updateRentalTotalFromExtras();
       return;
     }
     if (!dateFromInput || !dateToInput || !dateFromInput.value || !dateToInput.value) {
       totalInput.value = '';
+      rentalBaseAmount = 0;
+      updateRentalTotalFromExtras();
       return;
     }
     var from = new Date(dateFromInput.value);
     var to = new Date(dateToInput.value);
     if (to <= from) {
       totalInput.value = '';
+      rentalBaseAmount = 0;
+      updateRentalTotalFromExtras();
       return;
     }
     var fullDays = Math.floor((to - from) / (1000 * 60 * 60 * 24));
@@ -592,7 +620,40 @@
       else if (fullDays === 2) sum += d1 + d2;
       else sum += d1 + d2 + (fullDays - 2) * dSub;
     });
-    totalInput.value = Math.round(sum * 100) / 100;
+    rentalBaseAmount = Math.round(sum * 100) / 100;
+    updateRentalTotalFromExtras();
+  }
+
+  var rentalBaseAmount = 0;
+
+  function parseNum(inputId) {
+    var el = document.getElementById(inputId);
+    if (!el || !el.value) return 0;
+    var v = parseFloat(String(el.value).trim().replace(',', '.'));
+    return isNaN(v) ? 0 : Math.round(v * 100) / 100;
+  }
+
+  function updateRentalTotalFromExtras() {
+    var totalInput = document.getElementById('rental-total-amount');
+    var addInput = document.getElementById('rental-additional-amount');
+    var delCheck = document.getElementById('rental-delivery-check');
+    var delInput = document.getElementById('rental-delivery-amount');
+    if (!totalInput) return;
+    var add = addInput ? parseNum('rental-additional-amount') : 0;
+    var del = (delCheck && delCheck.checked && delInput) ? parseNum('rental-delivery-amount') : 0;
+    var total = Math.round((rentalBaseAmount + add + del) * 100) / 100;
+    totalInput.value = total > 0 ? total : '';
+  }
+
+  function onRentalTotalManualInput() {
+    var totalInput = document.getElementById('rental-total-amount');
+    var add = parseNum('rental-additional-amount');
+    var delCheck = document.getElementById('rental-delivery-check');
+    var delInput = document.getElementById('rental-delivery-amount');
+    var del = (delCheck && delCheck.checked && delInput) ? parseNum('rental-delivery-amount') : 0;
+    var total = parseNum('rental-total-amount');
+    rentalBaseAmount = Math.round((total - add - del) * 100) / 100;
+    if (rentalBaseAmount < 0) rentalBaseAmount = 0;
   }
 
   function norm(s) { return (s || '').toLowerCase().trim(); }
@@ -651,10 +712,30 @@
   if (dateFromInput) { dateFromInput.addEventListener('change', updateRentalTotalDisplay); dateFromInput.addEventListener('input', updateRentalTotalDisplay); }
   if (dateToInput) { dateToInput.addEventListener('change', updateRentalTotalDisplay); dateToInput.addEventListener('input', updateRentalTotalDisplay); }
 
+  var additionalAmountInput = document.getElementById('rental-additional-amount');
+  var deliveryCheck = document.getElementById('rental-delivery-check');
+  var deliveryAmountInput = document.getElementById('rental-delivery-amount');
+  var totalAmountInput = document.getElementById('rental-total-amount');
+  if (additionalAmountInput) { additionalAmountInput.addEventListener('input', updateRentalTotalFromExtras); additionalAmountInput.addEventListener('change', updateRentalTotalFromExtras); }
+  if (deliveryCheck) {
+    deliveryCheck.addEventListener('change', function() {
+      if (deliveryAmountInput) { deliveryAmountInput.disabled = !deliveryCheck.checked; if (!deliveryCheck.checked) deliveryAmountInput.value = '0'; }
+      updateRentalTotalFromExtras();
+    });
+  }
+  if (deliveryAmountInput) { deliveryAmountInput.addEventListener('input', updateRentalTotalFromExtras); deliveryAmountInput.addEventListener('change', updateRentalTotalFromExtras); }
+  if (totalAmountInput) { totalAmountInput.addEventListener('input', onRentalTotalManualInput); totalAmountInput.addEventListener('change', onRentalTotalManualInput); }
+
   if (modal) {
     modal.addEventListener('show.bs.modal', function() {
       searchInput.value = '';
       selected = [];
+      rentalBaseAmount = 0;
+      if (deliveryCheck) deliveryCheck.checked = false;
+      if (deliveryAmountInput) { deliveryAmountInput.value = '0'; deliveryAmountInput.disabled = true; }
+      if (document.getElementById('rental-delivery-hidden')) document.getElementById('rental-delivery-hidden').value = '0';
+      if (additionalAmountInput) additionalAmountInput.value = '';
+      if (document.getElementById('rental-additional-description')) document.getElementById('rental-additional-description').value = '';
       render();
       dropdown.style.display = 'none';
     });
@@ -670,6 +751,10 @@
         return;
       }
       searchInput.classList.remove('is-invalid');
+      var h = document.getElementById('rental-delivery-hidden');
+      var ch = document.getElementById('rental-delivery-check');
+      var delInp = document.getElementById('rental-delivery-amount');
+      if (h) h.value = (ch && ch.checked && delInp) ? (parseNum('rental-delivery-amount') || 0) : 0;
     });
   }
   searchInput.addEventListener('input', function() { searchInput.classList.remove('is-invalid'); });

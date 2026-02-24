@@ -39,6 +39,18 @@ public class Rental {
 	@Column(nullable = false, precision = 12, scale = 2)
 	private BigDecimal totalAmount;
 
+	/** Доп. услуги: сумма (Br). */
+	@Column(name = "additional_services_amount", precision = 12, scale = 2)
+	private BigDecimal additionalServicesAmount;
+
+	/** Доп. услуги: описание, что входит. */
+	@Column(name = "additional_services_description", length = 500)
+	private String additionalServicesDescription;
+
+	/** Доставка: стоимость (Br), null или 0 — без доставки. */
+	@Column(name = "delivery_amount", precision = 12, scale = 2)
+	private BigDecimal deliveryAmount;
+
 	@Column(nullable = false)
 	@Enumerated(EnumType.STRING)
 	private RentalStatus status = RentalStatus.ACTIVE;
@@ -79,6 +91,15 @@ public class Rental {
 
 	public BigDecimal getTotalAmount() { return totalAmount; }
 	public void setTotalAmount(BigDecimal totalAmount) { this.totalAmount = totalAmount; }
+
+	public BigDecimal getAdditionalServicesAmount() { return additionalServicesAmount; }
+	public void setAdditionalServicesAmount(BigDecimal additionalServicesAmount) { this.additionalServicesAmount = additionalServicesAmount; }
+
+	public String getAdditionalServicesDescription() { return additionalServicesDescription; }
+	public void setAdditionalServicesDescription(String additionalServicesDescription) { this.additionalServicesDescription = additionalServicesDescription; }
+
+	public BigDecimal getDeliveryAmount() { return deliveryAmount; }
+	public void setDeliveryAmount(BigDecimal deliveryAmount) { this.deliveryAmount = deliveryAmount; }
 
 	public RentalStatus getStatus() { return status; }
 	public void setStatus(RentalStatus status) { this.status = status; }

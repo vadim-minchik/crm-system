@@ -117,7 +117,14 @@
         <div class="section-title"><i class="bi bi-box-seam me-1"></i>Оборудование</div>
         <div class="info-row">
           <span class="info-label">Инструменты</span>
-          <span class="info-value" th:text="${rental.equipmentDisplayString}">—</span>
+          <span class="info-value">
+            <th:block th:with="equipmentList=${rental.equipmentList != null ? rental.equipmentList : T(java.util.Collections).emptyList()}">
+              <th:block th:each="equip, itStat : ${equipmentList}">
+                <a th:if="${equip != null}" th:href="@{/inventory/unit/{id}(id=${equip.id})}" class="text-decoration-none" th:text="${equip.title + ' — S/N ' + equip.serialNumber}">—</a><span th:if="${!itStat.last}">, </span>
+              </th:block>
+              <span th:if="${#lists.isEmpty(equipmentList)}">—</span>
+            </th:block>
+          </span>
         </div>
       </div>
 
@@ -126,6 +133,14 @@
         <div class="info-row">
           <span class="info-label">Итог (Br)</span>
           <span class="info-value fw-bold fs-5 text-primary" th:text="${rental.totalAmount != null ? (#numbers.formatDecimal(rental.totalAmount, 0, 'NONE', 2, 'POINT') + ' Br') : '—'}">—</span>
+        </div>
+        <div class="info-row" th:if="${rental.additionalServicesAmount != null}">
+          <span class="info-label">Доп. услуги</span>
+          <span class="info-value" th:text="${#numbers.formatDecimal(rental.additionalServicesAmount, 0, 'NONE', 2, 'POINT') + ' Br' + (rental.additionalServicesDescription != null && !rental.additionalServicesDescription.isBlank() ? ' — ' + rental.additionalServicesDescription : '')}">—</span>
+        </div>
+        <div class="info-row" th:if="${rental.deliveryAmount != null}">
+          <span class="info-label">Доставка</span>
+          <span class="info-value" th:text="${#numbers.formatDecimal(rental.deliveryAmount, 0, 'NONE', 2, 'POINT') + ' Br'}">—</span>
         </div>
       </div>
     </div>
@@ -161,6 +176,21 @@
                      th:value="${#numbers.formatDecimal(rental.totalAmount, 0, 'NONE', 2, 'POINT')}">
               <span class="input-group-text">Br</span>
             </div>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Доп. услуги (Br)</label>
+            <input type="text" name="additionalServicesAmount" class="form-control" pattern="[0-9]+([.,][0-9]{1,2})?"
+                   th:value="${rental.additionalServicesAmount != null ? #numbers.formatDecimal(rental.additionalServicesAmount, 0, 'NONE', 2, 'POINT') : ''}" placeholder="0">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Описание доп. услуги</label>
+            <input type="text" name="additionalServicesDescription" class="form-control" maxlength="500"
+                   th:value="${rental.additionalServicesDescription}" placeholder="Что входит">
+          </div>
+          <div class="col-12">
+            <label class="form-label">Доставка (Br)</label>
+            <input type="text" name="deliveryAmount" class="form-control" pattern="[0-9]+([.,][0-9]{1,2})?"
+                   th:value="${rental.deliveryAmount != null ? #numbers.formatDecimal(rental.deliveryAmount, 0, 'NONE', 2, 'POINT') : ''}" placeholder="0">
           </div>
         </div>
       </div>
