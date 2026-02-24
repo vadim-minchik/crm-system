@@ -1,8 +1,11 @@
 package com.studio.crm_system.controller;
 
+import com.studio.crm_system.dto.UnitHistoryEntry;
 import com.studio.crm_system.entity.Category;
 import com.studio.crm_system.entity.Equipment;
 import com.studio.crm_system.entity.PreCategory;
+import com.studio.crm_system.entity.Booking;
+import com.studio.crm_system.entity.Rental;
 import com.studio.crm_system.entity.ToolName;
 import com.studio.crm_system.entity.User;
 import com.studio.crm_system.repository.CategoryRepository;
@@ -11,6 +14,7 @@ import com.studio.crm_system.repository.PreCategoryRepository;
 import com.studio.crm_system.repository.ToolNameRepository;
 import com.studio.crm_system.repository.UserRepository;
 import com.studio.crm_system.service.BookingService;
+import com.studio.crm_system.service.RentalService;
 import com.studio.crm_system.enums.EquipmentStatus;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -21,12 +25,15 @@ import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 @Controller
 @RequestMapping("/inventory")
@@ -38,6 +45,7 @@ public class EquipmentController {
 	@Autowired private PreCategoryRepository preCategoryRepository;
 	@Autowired private UserRepository userRepository;
 	@Autowired private BookingService bookingService;
+	@Autowired private RentalService rentalService;
 
 	private User getCurrentUser() {
 		Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
@@ -414,6 +422,40 @@ public class EquipmentController {
 		toolName.setIsDeleted(true);
 		toolNameRepository.save(toolName);
 		return "redirect:/inventory/category/" + categoryId + "?success=model_deleted";
+	}
+
+	@GetMapping("/unit/{id}")
+	public String unitInfoAndHistory(@PathVariable Long id, Model model) {
+		User currentUser = getCurrentUser();
+		if (currentUser == null) return "redirect:/login";
+
+		Equipment unit = equipmentRepository.findByIdAndIsDeletedFalse(id).orElse(null);
+		if (unit == null) return "redirect:/inventory?error=not_found";
+
+		ToolName toolName = unit.getToolName();
+		Category category = toolName != null ? toolName.getCategory() : null;
+		PreCategory preCategory = category != null ? category.getPreCategory() : null;
+
+		LocalDateTime now = LocalDateTime.now();
+		List<UnitHistoryEntry> history = new ArrayList<>();
+		for (Rental r : rentalService.findRentalsByEquipmentId(id)) {
+			history.add(new UnitHistoryEntry(r, now));
+		}
+		for (Booking b : bookingService.findBookingsByEquipmentId(id)) {
+			history.add(new UnitHistoryEntry(b, now));
+		}
+		List<UnitHistoryEntry> sortedHistory = history.stream()
+				.sorted(Comparator.comparing(UnitHistoryEntry::isActive).reversed()
+						.thenComparing(UnitHistoryEntry::getSortDate, Comparator.nullsLast(Comparator.reverseOrder())))
+				.collect(Collectors.toList());
+
+		model.addAttribute("unit", unit);
+		model.addAttribute("toolName", toolName);
+		model.addAttribute("category", category);
+		model.addAttribute("preCategory", preCategory);
+		model.addAttribute("history", sortedHistory);
+		addCommonAttrs(model, currentUser);
+		return "html/unit_history";
 	}
 
 	@GetMapping("/{toolNameId}")

@@ -103,14 +103,14 @@
     <div class="card-table">
       <div class="table-responsive-rentals">
       <table class="table table-hover mb-0 table-rentals">
-          <thead><tr><th class="ps-4 td-ellipsis">Кто берёт</th><th>С</th><th>По</th><th class="td-ellipsis">Инструмент</th><th>Итог (BYN)</th><th class="th-actions text-end pe-4">Действия</th></tr></thead>
+          <thead><tr><th class="ps-4 td-ellipsis">Кто берёт</th><th>С</th><th>По</th><th class="td-ellipsis">Инструмент</th><th>Итог (Br)</th><th class="th-actions text-end pe-4">Действия</th></tr></thead>
           <tbody id="tbody-active">
             <tr th:each="r : ${activeRentals}">
               <td class="ps-4 td-ellipsis"><div th:text="${r.client != null ? (r.client.surname + ' ' + r.client.name + (r.client.patronymic != null ? ' ' + r.client.patronymic : '')) : '—'}">—</div></td>
               <td th:text="${#temporals.format(r.dateFrom, 'dd.MM.yyyy HH:mm')}">—</td>
               <td th:text="${#temporals.format(r.dateTo, 'dd.MM.yyyy HH:mm')}">—</td>
               <td class="td-ellipsis"><div th:text="${r.equipmentDisplayString}">—</div></td>
-              <td><strong th:text="${r.totalAmount != null ? (#numbers.formatDecimal(r.totalAmount, 0, 'NONE', 2, 'POINT') + ' BYN') : '—'}">—</strong></td>
+              <td><strong th:text="${r.totalAmount != null ? (#numbers.formatDecimal(r.totalAmount, 0, 'NONE', 2, 'POINT') + ' Br') : '—'}">—</strong></td>
               <td class="td-actions text-end pe-4">
                 <a th:href="@{/rentals/{id}(id=${r.id})}" class="btn btn-sm btn-outline-primary me-1"><i class="bi bi-eye"></i></a>
                 <form th:action="@{/rentals/cancel}" method="post" class="d-inline" onsubmit="return confirm('Отменить прокат? Оборудование станет свободным.');"><input type="hidden" name="id" th:value="${r.id}"><button type="submit" class="btn btn-sm btn-outline-secondary">Отменить</button></form>
@@ -153,14 +153,14 @@
     <div class="card-table">
       <div class="table-responsive-rentals">
       <table class="table table-hover mb-0 table-rentals">
-          <thead><tr><th class="ps-4 td-ellipsis">Кто берёт</th><th>С</th><th>По</th><th class="td-ellipsis">Инструмент</th><th>Итог (BYN)</th><th class="th-actions text-end pe-4">Действия</th></tr></thead>
+          <thead><tr><th class="ps-4 td-ellipsis">Кто берёт</th><th>С</th><th>По</th><th class="td-ellipsis">Инструмент</th><th>Итог (Br)</th><th class="th-actions text-end pe-4">Действия</th></tr></thead>
           <tbody id="tbody-history">
             <tr th:each="r : ${completedRentals}">
               <td class="ps-4 td-ellipsis"><div th:text="${r.client != null ? (r.client.surname + ' ' + r.client.name + (r.client.patronymic != null ? ' ' + r.client.patronymic : '')) : '—'}">—</div></td>
               <td th:text="${#temporals.format(r.dateFrom, 'dd.MM.yyyy HH:mm')}">—</td>
               <td th:text="${#temporals.format(r.dateTo, 'dd.MM.yyyy HH:mm')}">—</td>
               <td class="td-ellipsis"><div th:text="${r.equipmentDisplayString}">—</div></td>
-              <td><strong th:text="${r.totalAmount != null ? (#numbers.formatDecimal(r.totalAmount, 0, 'NONE', 2, 'POINT') + ' BYN') : '—'}">—</strong></td>
+              <td><strong th:text="${r.totalAmount != null ? (#numbers.formatDecimal(r.totalAmount, 0, 'NONE', 2, 'POINT') + ' Br') : '—'}">—</strong></td>
               <td class="td-actions text-end pe-4"><a th:href="@{/rentals/{id}(id=${r.id})}" class="btn btn-sm btn-outline-primary"><i class="bi bi-eye"></i></a></td>
           </tr>
             <tr th:if="${#lists.isEmpty(completedRentals)}"><td colspan="6" class="text-center py-5 text-muted">История пуста</td></tr>
@@ -173,14 +173,14 @@
       <div class="card-table">
         <div class="table-responsive-rentals">
         <table class="table table-hover mb-0 table-rentals">
-          <thead><tr><th class="ps-4 td-ellipsis">Кто берёт</th><th>С</th><th>По</th><th class="td-ellipsis">Инструмент</th><th>Итог (BYN)</th><th class="th-actions text-end pe-4">Действия</th></tr></thead>
+          <thead><tr><th class="ps-4 td-ellipsis">Кто берёт</th><th>С</th><th>По</th><th class="td-ellipsis">Инструмент</th><th>Итог (Br)</th><th class="th-actions text-end pe-4">Действия</th></tr></thead>
           <tbody id="tbody-debtors">
             <tr th:each="r : ${debtorRentals}">
               <td class="ps-4 td-ellipsis"><div th:text="${r.client != null ? (r.client.surname + ' ' + r.client.name + (r.client.patronymic != null ? ' ' + r.client.patronymic : '')) : '—'}">—</div></td>
               <td th:text="${#temporals.format(r.dateFrom, 'dd.MM.yyyy HH:mm')}">—</td>
               <td th:text="${#temporals.format(r.dateTo, 'dd.MM.yyyy HH:mm')}">—</td>
               <td class="td-ellipsis"><div th:text="${r.equipmentDisplayString}">—</div></td>
-              <td><strong th:text="${r.totalAmount != null ? (#numbers.formatDecimal(r.totalAmount, 0, 'NONE', 2, 'POINT') + ' BYN') : '—'}">—</strong></td>
+              <td><strong th:text="${r.totalAmount != null ? (#numbers.formatDecimal(r.totalAmount, 0, 'NONE', 2, 'POINT') + ' Br') : '—'}">—</strong></td>
               <td class="td-actions text-end pe-4">
                 <a th:href="@{/rentals/{id}(id=${r.id})}" class="btn btn-sm btn-outline-primary me-1"><i class="bi bi-eye"></i></a>
                 <form th:action="@{/rentals/complete}" method="post" class="d-inline"><input type="hidden" name="id" th:value="${r.id}"><button type="submit" class="btn btn-sm btn-outline-success">Завершить</button></form>
@@ -196,14 +196,14 @@
     <div class="card-table">
       <div class="table-responsive-rentals">
         <table class="table table-hover mb-0 table-rentals">
-          <thead><tr><th class="ps-4 td-ellipsis">Кто берёт</th><th>С</th><th>По</th><th class="td-ellipsis">Инструмент</th><th>Итог (BYN)</th><th class="th-actions text-end pe-4">Действия</th></tr></thead>
+          <thead><tr><th class="ps-4 td-ellipsis">Кто берёт</th><th>С</th><th>По</th><th class="td-ellipsis">Инструмент</th><th>Итог (Br)</th><th class="th-actions text-end pe-4">Действия</th></tr></thead>
           <tbody id="tbody-soon">
             <tr th:each="r : ${soonDebtorRentals}">
               <td class="ps-4 td-ellipsis"><div th:text="${r.client != null ? (r.client.surname + ' ' + r.client.name + (r.client.patronymic != null ? ' ' + r.client.patronymic : '')) : '—'}">—</div></td>
               <td th:text="${#temporals.format(r.dateFrom, 'dd.MM.yyyy HH:mm')}">—</td>
               <td th:text="${#temporals.format(r.dateTo, 'dd.MM.yyyy HH:mm')}">—</td>
               <td class="td-ellipsis"><div th:text="${r.equipmentDisplayString}">—</div></td>
-              <td><strong th:text="${r.totalAmount != null ? (#numbers.formatDecimal(r.totalAmount, 0, 'NONE', 2, 'POINT') + ' BYN') : '—'}">—</strong></td>
+              <td><strong th:text="${r.totalAmount != null ? (#numbers.formatDecimal(r.totalAmount, 0, 'NONE', 2, 'POINT') + ' Br') : '—'}">—</strong></td>
             <td class="td-actions text-end pe-4">
                 <a th:href="@{/rentals/{id}(id=${r.id})}" class="btn btn-sm btn-outline-primary me-1"><i class="bi bi-eye"></i></a>
                 <form th:action="@{/rentals/complete}" method="post" class="d-inline"><input type="hidden" name="id" th:value="${r.id}"><button type="submit" class="btn btn-sm btn-outline-success">Завершить</button></form>
@@ -219,14 +219,14 @@
       <div class="card-table">
         <div class="table-responsive-rentals">
         <table class="table table-hover mb-0 table-rentals">
-          <thead><tr><th class="ps-4 td-ellipsis">Кто берёт</th><th>С</th><th>По</th><th class="td-ellipsis">Инструмент</th><th>Итог (BYN)</th><th class="th-actions text-end pe-4">Действия</th></tr></thead>
+          <thead><tr><th class="ps-4 td-ellipsis">Кто берёт</th><th>С</th><th>По</th><th class="td-ellipsis">Инструмент</th><th>Итог (Br)</th><th class="th-actions text-end pe-4">Действия</th></tr></thead>
           <tbody id="tbody-cancelled">
             <tr th:each="r : ${cancelledRentals}">
               <td class="ps-4 td-ellipsis"><div th:text="${r.client != null ? (r.client.surname + ' ' + r.client.name + (r.client.patronymic != null ? ' ' + r.client.patronymic : '')) : '—'}">—</div></td>
               <td th:text="${#temporals.format(r.dateFrom, 'dd.MM.yyyy HH:mm')}">—</td>
               <td th:text="${#temporals.format(r.dateTo, 'dd.MM.yyyy HH:mm')}">—</td>
               <td class="td-ellipsis"><div th:text="${r.equipmentDisplayString}">—</div></td>
-              <td><strong th:text="${r.totalAmount != null ? (#numbers.formatDecimal(r.totalAmount, 0, 'NONE', 2, 'POINT') + ' BYN') : '—'}">—</strong></td>
+              <td><strong th:text="${r.totalAmount != null ? (#numbers.formatDecimal(r.totalAmount, 0, 'NONE', 2, 'POINT') + ' Br') : '—'}">—</strong></td>
               <td class="td-actions text-end pe-4"><a th:href="@{/rentals/{id}(id=${r.id})}" class="btn btn-sm btn-outline-primary"><i class="bi bi-eye"></i></a></td>
           </tr>
             <tr th:if="${#lists.isEmpty(cancelledRentals)}"><td colspan="6" class="text-center py-5 text-muted">Нет отменённых прокатов</td></tr>
@@ -362,10 +362,10 @@
             </div>
           </div>
           <div class="col-12">
-            <label class="form-label fw-semibold">Итог (BYN)</label>
+            <label class="form-label fw-semibold">Итог (Br)</label>
             <div class="input-group input-group-lg">
               <input type="text" name="totalAmount" id="rental-total-amount" class="form-control" placeholder="Необязательно — рассчитается по тарифам" pattern="[0-9]+([.,][0-9]{1,2})?" inputmode="decimal" autocomplete="off">
-              <span class="input-group-text">BYN</span>
+              <span class="input-group-text">Br</span>
             </div>
             <div class="form-text text-muted">Оставьте пустым — сумма посчитается по полным дням (1-й день X, 2-й 0,8×, далее 0,6×). Либо введите сумму вручную.</div>
           </div>

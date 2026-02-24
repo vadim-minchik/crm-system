@@ -38,6 +38,11 @@ public class BookingService {
 		return bookingRepository.findById(id);
 	}
 
+	/** Все брони по оборудованию для истории экземпляра (по дате окончания). */
+	public List<Booking> findBookingsByEquipmentId(Long equipmentId) {
+		return bookingRepository.findByEquipmentIdOrderByDateToDesc(equipmentId);
+	}
+
 	/** Конец текущей брони по оборудованию (минимальная dateTo среди активных броней) — для отображения «Забронирован до …». */
 	public Optional<LocalDateTime> getBookingEndDateForEquipment(Long equipmentId) {
 		List<Booking> list = bookingRepository.findBookingsContainingEquipmentAndDateToAfter(equipmentId, LocalDateTime.now());

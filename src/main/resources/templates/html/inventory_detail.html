@@ -67,7 +67,7 @@
         <tr>
           <th class="ps-4">Серийный №</th>
           <th>Состояние</th>
-          <th>1-й день (BYN)</th>
+          <th>1-й день (Br)</th>
           <th>Оценочная стоимость</th>
           <th>Статус</th>
           <th class="text-center">Действия</th>
@@ -84,9 +84,9 @@
                   class="fw-semibold">10/10</span>
           </td>
           <td>
-            <strong class="text-primary" th:text="${#numbers.formatDecimal(u.priceFirstDay, 0, 'NONE', 2, 'POINT')} + ' BYN'">0 BYN</strong>
+            <strong class="text-primary" th:text="${#numbers.formatDecimal(u.priceFirstDay, 0, 'NONE', 2, 'POINT')} + ' Br'">0 Br</strong>
           </td>
-          <td class="small text-muted" th:text="${#numbers.formatDecimal(u.baseValue, 0, 'NONE', 2, 'POINT')} + ' BYN'">0 BYN</td>
+          <td class="small text-muted" th:text="${#numbers.formatDecimal(u.baseValue, 0, 'NONE', 2, 'POINT')} + ' Br'">0 Br</td>
           <td>
             <span class="badge"
                   th:classappend="${u.status.name() == 'FREE' ? 'bg-success' : (u.status.name() == 'BUSY' ? 'bg-danger' : 'bg-warning text-dark')}"
@@ -94,6 +94,9 @@
           </td>
           <td class="text-center">
             <div class="d-flex justify-content-center gap-1">
+              <a th:href="@{/inventory/unit/{id}(id=${u.id})}" class="btn-icon text-primary" title="Информация и история">
+                <i class="bi bi-eye"></i>
+              </a>
               <button type="button" class="btn-icon"
                       th:data-id="${u.id}"
                       th:data-serial="${u.serialNumber}"
@@ -157,45 +160,45 @@
           </div>
           <div class="col-12"><p class="text-muted small mb-1">Обязательно: 1-й день и 1-й месяц. Остальное можно не вводить — подставятся по формуле (0,8× и 0,6×).</p></div>
           <div class="col-md-4">
-            <label class="form-label fw-semibold">1-й день (BYN) *</label>
+            <label class="form-label fw-semibold">1-й день (Br) *</label>
             <div class="input-group">
               <input type="text" name="priceFirstDay" class="form-control" placeholder="0.00" pattern="[0-9]+(\.[0-9]{1,2})?" step="0.01" min="0.01" required>
-              <span class="input-group-text">BYN</span>
+              <span class="input-group-text">Br</span>
             </div>
           </div>
           <div class="col-md-4">
-            <label class="form-label fw-semibold">2-й день (BYN)</label>
+            <label class="form-label fw-semibold">2-й день (Br)</label>
             <div class="input-group">
               <input type="text" name="priceSecondDay" class="form-control" placeholder="0,8×" pattern="[0-9]+(\.[0-9]{1,2})?" step="0.01">
-              <span class="input-group-text">BYN</span>
+              <span class="input-group-text">Br</span>
             </div>
           </div>
           <div class="col-md-4">
-            <label class="form-label fw-semibold">Послед. сутки (BYN)</label>
+            <label class="form-label fw-semibold">Послед. сутки (Br)</label>
             <div class="input-group">
               <input type="text" name="priceSubsequentDays" class="form-control" placeholder="0,6×" pattern="[0-9]+(\.[0-9]{1,2})?" step="0.01">
-              <span class="input-group-text">BYN</span>
+              <span class="input-group-text">Br</span>
             </div>
           </div>
           <div class="col-md-4">
-            <label class="form-label fw-semibold">1-й месяц (BYN) *</label>
+            <label class="form-label fw-semibold">1-й месяц (Br) *</label>
             <div class="input-group">
               <input type="text" name="priceFirstMonth" class="form-control" placeholder="0.00" pattern="[0-9]+(\.[0-9]{1,2})?" step="0.01" min="0.01" required>
-              <span class="input-group-text">BYN</span>
+              <span class="input-group-text">Br</span>
             </div>
           </div>
           <div class="col-md-4">
-            <label class="form-label fw-semibold">2-й месяц (BYN)</label>
+            <label class="form-label fw-semibold">2-й месяц (Br)</label>
             <div class="input-group">
               <input type="text" name="priceSecondMonth" class="form-control" placeholder="0,8×" pattern="[0-9]+(\.[0-9]{1,2})?" step="0.01">
-              <span class="input-group-text">BYN</span>
+              <span class="input-group-text">Br</span>
             </div>
           </div>
           <div class="col-md-4">
-            <label class="form-label fw-semibold">Послед. месяцы (BYN)</label>
+            <label class="form-label fw-semibold">Послед. месяцы (Br)</label>
             <div class="input-group">
               <input type="text" name="priceSubsequentMonths" class="form-control" placeholder="0,6×" pattern="[0-9]+(\.[0-9]{1,2})?" step="0.01">
-              <span class="input-group-text">BYN</span>
+              <span class="input-group-text">Br</span>
             </div>
           </div>
           <div class="col-md-6">
@@ -203,7 +206,7 @@
             <div class="input-group">
               <input type="text" name="baseValue" class="form-control"
                      placeholder="0.00" pattern="[0-9]+(\.[0-9]{1,2})?" step="0.01" min="0.01" required>
-              <span class="input-group-text">BYN</span>
+              <span class="input-group-text">Br</span>
             </div>
           </div>
           <div class="col-md-6">
@@ -239,45 +242,45 @@
                    class="form-control" required>
           </div>
           <div class="col-md-4">
-            <label class="form-label fw-semibold">1-й день (BYN)</label>
+            <label class="form-label fw-semibold">1-й день (Br)</label>
             <div class="input-group">
               <input type="text" name="priceFirstDay" id="edit-unit-price-first-day" class="form-control" pattern="[0-9]+(\.[0-9]{1,2})?" step="0.01" min="0.01" required>
-              <span class="input-group-text">BYN</span>
+              <span class="input-group-text">Br</span>
             </div>
           </div>
           <div class="col-md-4">
-            <label class="form-label fw-semibold">2-й день (BYN)</label>
+            <label class="form-label fw-semibold">2-й день (Br)</label>
             <div class="input-group">
               <input type="text" name="priceSecondDay" id="edit-unit-price-second-day" class="form-control" pattern="[0-9]+(\.[0-9]{1,2})?" step="0.01">
-              <span class="input-group-text">BYN</span>
+              <span class="input-group-text">Br</span>
             </div>
           </div>
           <div class="col-md-4">
-            <label class="form-label fw-semibold">Послед. сутки (BYN)</label>
+            <label class="form-label fw-semibold">Послед. сутки (Br)</label>
             <div class="input-group">
               <input type="text" name="priceSubsequentDays" id="edit-unit-price-subsequent-days" class="form-control" pattern="[0-9]+(\.[0-9]{1,2})?" step="0.01">
-              <span class="input-group-text">BYN</span>
+              <span class="input-group-text">Br</span>
             </div>
           </div>
           <div class="col-md-4">
-            <label class="form-label fw-semibold">1-й месяц (BYN)</label>
+            <label class="form-label fw-semibold">1-й месяц (Br)</label>
             <div class="input-group">
               <input type="text" name="priceFirstMonth" id="edit-unit-price-first-month" class="form-control" pattern="[0-9]+(\.[0-9]{1,2})?" step="0.01" min="0.01" required>
-              <span class="input-group-text">BYN</span>
+              <span class="input-group-text">Br</span>
             </div>
           </div>
           <div class="col-md-4">
-            <label class="form-label fw-semibold">2-й месяц (BYN)</label>
+            <label class="form-label fw-semibold">2-й месяц (Br)</label>
             <div class="input-group">
               <input type="text" name="priceSecondMonth" id="edit-unit-price-second-month" class="form-control" pattern="[0-9]+(\.[0-9]{1,2})?" step="0.01">
-              <span class="input-group-text">BYN</span>
+              <span class="input-group-text">Br</span>
             </div>
           </div>
           <div class="col-md-4">
-            <label class="form-label fw-semibold">Послед. месяцы (BYN)</label>
+            <label class="form-label fw-semibold">Послед. месяцы (Br)</label>
             <div class="input-group">
               <input type="text" name="priceSubsequentMonths" id="edit-unit-price-subsequent-months" class="form-control" pattern="[0-9]+(\.[0-9]{1,2})?" step="0.01">
-              <span class="input-group-text">BYN</span>
+              <span class="input-group-text">Br</span>
             </div>
           </div>
           <div class="col-md-6">
@@ -285,7 +288,7 @@
             <div class="input-group">
               <input type="text" name="baseValue" id="edit-unit-base-value"
                      class="form-control" pattern="[0-9]+(\.[0-9]{1,2})?" step="0.01" min="0.01" required>
-              <span class="input-group-text">BYN</span>
+              <span class="input-group-text">Br</span>
             </div>
           </div>
           <div class="col-md-6">

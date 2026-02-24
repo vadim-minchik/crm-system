@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+<meta charset="UTF-8">
+<title th:text="${unit.serialNumber + ' | Склад | STUDIO.CRM'}">Экземпляр | STUDIO.CRM</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+<link rel="stylesheet" th:href="@{/css/style.css}">
+<style>
+  .info-block { background: #f8fafc; border-radius: 12px; padding: 20px 24px; margin-bottom: 16px; }
+  .info-block .section-title { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #94a3b8; margin-bottom: 14px; }
+  .info-row { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 10px; }
+  .info-label { font-size: 0.8rem; color: #64748b; min-width: 140px; flex-shrink: 0; }
+  .info-value { font-size: 0.9rem; font-weight: 500; color: #1e293b; word-break: break-word; }
+</style>
+</head>
+<body>
+
+<div th:replace="~{html/fragments :: sidebar('inventory')}"></div>
+
+<div class="main-content">
+
+  <nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb" style="font-size:0.85rem;">
+      <li class="breadcrumb-item"><a th:href="@{/inventory}" class="text-decoration-none">Склад</a></li>
+      <li class="breadcrumb-item" th:if="${preCategory != null}">
+        <a th:href="@{/inventory/precategory/{id}(id=${preCategory.id})}" th:text="${preCategory.name}" class="text-decoration-none">Раздел</a>
+      </li>
+      <li class="breadcrumb-item" th:if="${category != null}">
+        <a th:href="@{/inventory/category/{id}(id=${category.id})}" th:text="${category.name}" class="text-decoration-none">Категория</a>
+      </li>
+      <li class="breadcrumb-item" th:if="${toolName != null}">
+        <a th:href="@{/inventory/{id}(id=${toolName.id})}" th:text="${toolName.name}" class="text-decoration-none">Модель</a>
+      </li>
+      <li class="breadcrumb-item active" th:text="${unit.serialNumber}">S/N</li>
+    </ol>
+  </nav>
+
+  <div class="d-flex align-items-center gap-3 mb-4">
+    <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center" style="width:56px;height:56px;font-size:1.4rem;">
+      <i class="bi bi-eye"></i>
+    </div>
+    <div class="flex-grow-1">
+      <h2 class="mb-1 fw-bold"><span th:text="${unit.serialNumber}">S/N</span> <small class="text-muted fw-normal" th:if="${toolName != null}" th:text="|(${toolName.name})|">модель</small></h2>
+      <span class="badge bg-success" th:if="${unit.status.name() == 'FREE'}" th:text="'Свободно'">Свободно</span>
+      <span class="badge bg-danger" th:if="${unit.status.name() == 'BUSY'}" th:text="'Занят'">Занят</span>
+      <span class="badge bg-warning text-dark" th:if="${unit.status.name() == 'RESERVED'}" th:text="'Забронирован'">Забронирован</span>
+    </div>
+    <a th:if="${toolName != null}" th:href="@{/inventory/{id}(id=${toolName.id})}" class="btn btn-outline-secondary">
+      <i class="bi bi-arrow-left me-1"></i> К списку экземпляров
+    </a>
+  </div>
+
+  <div class="info-block">
+    <div class="section-title"><i class="bi bi-box-seam me-1"></i>Информация об экземпляре</div>
+    <div class="info-row">
+      <span class="info-label">Серийный номер</span>
+      <span class="info-value" th:text="${unit.serialNumber}">—</span>
+    </div>
+    <div class="info-row" th:if="${toolName != null}">
+      <span class="info-label">Модель</span>
+      <span class="info-value" th:text="${toolName.name}">—</span>
+    </div>
+    <div class="info-row">
+      <span class="info-label">Состояние</span>
+      <span class="info-value" th:text="${unit.condition + '/10'}">—</span>
+    </div>
+    <div class="info-row">
+      <span class="info-label">Оценочная стоимость</span>
+      <span class="info-value" th:text="${#numbers.formatDecimal(unit.baseValue, 0, 'NONE', 2, 'POINT') + ' Br'}">—</span>
+    </div>
+    <div class="info-row">
+      <span class="info-label">1-й день / 1-й месяц (Br)</span>
+      <span class="info-value" th:text="${#numbers.formatDecimal(unit.priceFirstDay, 0, 'NONE', 2, 'POINT') + ' Br / ' + #numbers.formatDecimal(unit.priceFirstMonth, 0, 'NONE', 2, 'POINT') + ' Br'}">—</span>
+    </div>
+  </div>
+
+  <h5 class="mb-3"><i class="bi bi-clock-history me-2"></i>История использования</h5>
+  <div class="card-table">
+    <table class="table table-hover mb-0">
+      <thead>
+        <tr>
+          <th>Тип</th>
+          <th>Период</th>
+          <th>Клиент / Телефон</th>
+          <th class="text-center" style="width:100px;">Просмотр</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr th:each="e : ${history}" th:classappend="${e.active} ? 'table-warning'">
+          <td>
+            <span class="badge bg-primary" th:if="${e.type == 'rental'}">Прокат</span>
+            <span class="badge bg-info" th:if="${e.type == 'booking'}">Бронь</span>
+            <span class="badge bg-success ms-1" th:if="${e.active}">Сейчас</span>
+          </td>
+          <td>
+            <span th:if="${e.type == 'rental'}" th:text="${#temporals.format(e.rental.dateFrom, 'dd.MM.yyyy HH:mm') + ' — ' + #temporals.format(e.rental.dateTo, 'dd.MM.yyyy HH:mm')}">—</span>
+            <th:block th:if="${e.type == 'booking'}">
+              <span th:text="${e.booking.dateFrom != null ? #temporals.format(e.booking.dateFrom, 'dd.MM.yyyy HH:mm') : '—'}">—</span>
+              <span> — </span>
+              <span th:text="${#temporals.format(e.booking.dateTo, 'dd.MM.yyyy HH:mm')}">—</span>
+            </th:block>
+          </td>
+          <td>
+            <span th:if="${e.type == 'rental'}" th:text="${e.rental.client != null ? (e.rental.client.surname + ' ' + (e.rental.client.name != null ? e.rental.client.name : '')) : '—'}">—</span>
+            <span th:if="${e.type == 'booking'}" th:text="${e.booking.phoneNumber}">—</span>
+          </td>
+          <td class="text-center">
+            <a th:if="${e.type == 'rental'}" th:href="@{/rentals/{id}(id=${e.rental.id})}" class="btn btn-sm btn-outline-primary" title="Открыть заказ">
+              <i class="bi bi-eye"></i>
+            </a>
+            <a th:if="${e.type == 'booking'}" th:href="@{/rentals/booking/{id}(id=${e.booking.id})}" class="btn btn-sm btn-outline-primary" title="Открыть бронь">
+              <i class="bi bi-eye"></i>
+            </a>
+          </td>
+        </tr>
+        <tr th:if="${#lists.isEmpty(history)}">
+          <td colspan="4" class="text-center py-4 text-muted">
+            <i class="bi bi-inbox fs-4 d-block mb-2"></i>
+            Нет записей в истории
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

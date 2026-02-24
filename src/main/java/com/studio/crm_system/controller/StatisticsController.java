@@ -1,0 +1,105 @@
+package com.studio.crm_system.controller;
+
+import com.studio.crm_system.entity.User;
+import com.studio.crm_system.repository.UserRepository;
+import com.studio.crm_system.service.ExpenseService;
+import com.studio.crm_system.service.StatisticsService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.format.annotation.DateTimeFormat.ISO;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.List;
+import java.util.stream.Collectors;
+
+@Controller
+@RequestMapping("/statistics")
+public class StatisticsController {
+
+	@Autowired
+	private UserRepository userRepository;
+
+	@Autowired
+	private StatisticsService statisticsService;
+
+	private User getCurrentUser() {
+		Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+		String username = (principal instanceof UserDetails)
+				? ((UserDetails) principal).getUsername()
+				: principal.toString();
+		return userRepository.findByLogin(username).orElse(null);
+	}
+
+	@Autowired
+	private ExpenseService expenseService;
+
+	@GetMapping
+	public String showStatistics(
+			@RequestParam(required = false) @DateTimeFormat(iso = ISO.DATE) LocalDate dateFrom,
+			@RequestParam(required = false) @DateTimeFormat(iso = ISO.DATE) LocalDate dateTo,
+			@RequestParam(required = false) String tab,
+			Model model) {
+		User user = getCurrentUser();
+		if (user == null) return "redirect:/login";
+
+		model.addAttribute("currentUser", user);
+		model.addAttribute("username", user.getLogin());
+		model.addAttribute("currentUserRole", user.getRole());
+
+		model.addAttribute("clientsCount", statisticsService.getClientsCount());
+		model.addAttribute("equipmentTotal", statisticsService.getEquipmentTotalCount());
+		model.addAttribute("equipmentFree", statisticsService.getEquipmentFreeCount());
+		model.addAttribute("equipmentBusy", statisticsService.getEquipmentBusyCount());
+		model.addAttribute("equipmentReserved", statisticsService.getEquipmentReservedCount());
+		model.addAttribute("activeRentalsCount", statisticsService.getActiveRentalsCount());
+		model.addAttribute("completedRentalsCount", statisticsService.getCompletedRentalsCount());
+		model.addAttribute("debtorsCount", statisticsService.getDebtorsCount());
+		model.addAttribute("bookingsCount", statisticsService.getBookingsCount());
+		model.addAttribute("staffCount", statisticsService.getStaffCount());
+		model.addAttribute("pointsCount", statisticsService.getPointsCount());
+
+		BigDecimal totalRevenue = statisticsService.getTotalRevenue();
+		model.addAttribute("totalRevenue", totalRevenue != null ? totalRevenue : BigDecimal.ZERO);
+
+		model.addAttribute("clientsList", statisticsService.getClientsList());
+		model.addAttribute("freeEquipmentList", statisticsService.getFreeEquipmentList());
+		model.addAttribute("busyEquipmentList", statisticsService.getBusyEquipmentList());
+		model.addAttribute("reservedEquipmentList", statisticsService.getReservedEquipmentList());
+		model.addAttribute("allEquipmentList", statisticsService.getAllEquipmentList());
+		model.addAttribute("activeRentalsList", statisticsService.getActiveRentalsList());
+		model.addAttribute("completedRentalsList", statisticsService.getCompletedRentalsList());
+		model.addAttribute("debtorsList", statisticsService.getDebtorsList());
+		model.addAttribute("bookingsList", statisticsService.getBookingsList());
+		model.addAttribute("staffList", statisticsService.getStaffList());
+		model.addAttribute("pointsList", statisticsService.getPointsList());
+		model.addAttribute("allRentalsList", statisticsService.getAllRentalsList());
+
+		boolean useRange = dateFrom != null && dateTo != null && !dateFrom.isAfter(dateTo);
+		List<com.studio.crm_system.dto.RevenueByMonthDto> revenueByMonth = useRange
+				? statisticsService.getRevenueByDateRange(dateFrom, dateTo)
+				: statisticsService.getRevenueByMonthLast12();
+		model.addAttribute("revenueByMonth", revenueByMonth);
+		model.addAttribute("revenueDateFrom", dateFrom);
+		model.addAttribute("revenueDateTo", dateTo);
+		model.addAttribute("revenueChartLabels", revenueByMonth.stream().map(com.studio.crm_system.dto.RevenueByMonthDto::getMonthLabel).collect(Collectors.toList()));
+		model.addAttribute("revenueChartValues", revenueByMonth.stream().map(d -> d.getTotal().doubleValue()).collect(Collectors.toList()));
+		model.addAttribute("chartEquipmentLabels", statisticsService.getChartEquipmentLabels());
+		model.addAttribute("chartEquipmentValues", statisticsService.getChartEquipmentValues());
+		model.addAttribute("chartRentalLabels", statisticsService.getChartRentalLabels());
+		model.addAttribute("chartRentalValues", statisticsService.getChartRentalValues());
+
+		model.addAttribute("expensesList", expenseService.findAll());
+		model.addAttribute("totalExpenses", expenseService.getTotalExpenses());
+		model.addAttribute("activeFullStatsTab", "expenses".equals(tab) ? "expenses" : null);
+
+		return "html/statistics";
+	}
+}

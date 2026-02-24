@@ -124,8 +124,8 @@
       <div class="info-block">
         <div class="section-title"><i class="bi bi-currency-exchange me-1"></i>Сумма</div>
         <div class="info-row">
-          <span class="info-label">Итог (BYN)</span>
-          <span class="info-value fw-bold fs-5 text-primary" th:text="${rental.totalAmount != null ? (#numbers.formatDecimal(rental.totalAmount, 0, 'NONE', 2, 'POINT') + ' BYN') : '—'}">—</span>
+          <span class="info-label">Итог (Br)</span>
+          <span class="info-value fw-bold fs-5 text-primary" th:text="${rental.totalAmount != null ? (#numbers.formatDecimal(rental.totalAmount, 0, 'NONE', 2, 'POINT') + ' Br') : '—'}">—</span>
         </div>
       </div>
     </div>
@@ -154,12 +154,12 @@
                    th:value="${rentalDateToInput}">
           </div>
           <div class="col-12">
-            <label class="form-label fw-semibold">Итог (BYN) *</label>
+            <label class="form-label fw-semibold">Итог (Br) *</label>
             <div class="input-group">
               <input type="text" name="totalAmount" class="form-control" required
                      pattern="[0-9]+(\.[0-9]{1,2})?"
                      th:value="${#numbers.formatDecimal(rental.totalAmount, 0, 'NONE', 2, 'POINT')}">
-              <span class="input-group-text">BYN</span>
+              <span class="input-group-text">Br</span>
             </div>
           </div>
         </div>

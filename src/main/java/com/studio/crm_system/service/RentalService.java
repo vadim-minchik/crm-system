@@ -59,6 +59,11 @@ public class RentalService {
 		return rentalRepository.findByIdWithEquipment(id);
 	}
 
+	/** Все прокаты по оборудованию для истории экземпляра. */
+	public List<Rental> findRentalsByEquipmentId(Long equipmentId) {
+		return rentalRepository.findByEquipmentIdOrderByDateFromDesc(equipmentId);
+	}
+
 	public Optional<Client> findClientById(Long id) {
 		return clientRepository.findByIdAndIsDeletedFalse(id);
 	}
@@ -71,7 +76,6 @@ public class RentalService {
 		return equipmentRepository.findByStatusAndIsDeletedFalse(EquipmentStatus.FREE);
 	}
 
-	private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("dd.MM.yyyy");
 	private static final DateTimeFormatter DATETIME_FMT = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm");
 
 	public List<EquipmentSelectOption> getEquipmentOptionsForSelect() {

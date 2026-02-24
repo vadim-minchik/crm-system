@@ -26,4 +26,8 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
 	/** Брони, которые уже начались и ещё не истекли — для перевода оборудования в RESERVED. */
 	@Query("SELECT b FROM Booking b WHERE b.dateTo > :now AND (b.dateFrom IS NULL OR b.dateFrom <= :now)")
 	List<Booking> findBookingsStartedAndNotEnded(@Param("now") LocalDateTime now);
+
+	/** Все брони по оборудованию для истории (по дате окончания, новые сверху). */
+	@Query("SELECT DISTINCT b FROM Booking b JOIN b.equipmentList e WHERE e.id = :equipmentId ORDER BY b.dateTo DESC")
+	List<Booking> findByEquipmentIdOrderByDateToDesc(@Param("equipmentId") Long equipmentId);
 }
