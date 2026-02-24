@@ -4,6 +4,8 @@ import com.studio.crm_system.entity.Equipment;
 import com.studio.crm_system.entity.ToolName;
 import com.studio.crm_system.enums.EquipmentStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -17,6 +19,8 @@ public interface EquipmentRepository extends JpaRepository<Equipment, Long> {
 	List<Equipment> findByStatusInAndIsDeletedFalse(Collection<EquipmentStatus> statuses);
 
 	List<Equipment> findByToolNameAndIsDeletedFalse(ToolName toolName);
+
+	Page<Equipment> findByToolNameAndIsDeletedFalse(ToolName toolName, Pageable pageable);
 
 	List<Equipment> findByToolNameAndStatusAndIsDeletedFalse(ToolName toolName, EquipmentStatus status);
 

@@ -1,6 +1,7 @@
 package com.studio.crm_system.controller;
 
 import com.studio.crm_system.dto.UnitHistoryEntry;
+import com.studio.crm_system.dto.InventoryUnitRowDto;
 import com.studio.crm_system.entity.Category;
 import com.studio.crm_system.entity.Equipment;
 import com.studio.crm_system.entity.PreCategory;
@@ -19,6 +20,10 @@ import com.studio.crm_system.enums.EquipmentStatus;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
@@ -46,6 +51,8 @@ public class EquipmentController {
 	@Autowired private UserRepository userRepository;
 	@Autowired private BookingService bookingService;
 	@Autowired private RentalService rentalService;
+
+	private static final int INVENTORY_UNITS_PAGE_SIZE = 25;
 
 	private User getCurrentUser() {
 		Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
@@ -468,19 +475,69 @@ public class EquipmentController {
 			return "redirect:/inventory?error=not_found";
 
 		Category category = toolName.getCategory();
-		List<Equipment> units = equipmentRepository.findByToolNameAndIsDeletedFalse(toolName);
+		Pageable pageable = PageRequest.of(0, INVENTORY_UNITS_PAGE_SIZE, Sort.by("id"));
+		Page<Equipment> unitsPage = equipmentRepository.findByToolNameAndIsDeletedFalse(toolName, pageable);
+		List<Equipment> units = unitsPage.getContent();
 		Set<Long> equipmentIdsWithBooking = new HashSet<>();
 		for (Equipment u : units) {
 			if (bookingService.hasActiveOrFutureBooking(u.getId())) equipmentIdsWithBooking.add(u.getId());
 		}
+		long totalUnits = unitsPage.getTotalElements();
+		boolean hasMoreUnits = unitsPage.hasNext();
 
 		model.addAttribute("preCategory", category.getPreCategory());
 		model.addAttribute("category", category);
 		model.addAttribute("toolName", toolName);
 		model.addAttribute("units", units);
 		model.addAttribute("equipmentIdsWithBooking", equipmentIdsWithBooking);
+		model.addAttribute("totalUnits", totalUnits);
+		model.addAttribute("hasMoreUnits", hasMoreUnits);
+		model.addAttribute("toolNameId", toolNameId);
 		addCommonAttrs(model, currentUser);
 		return "html/inventory_detail";
+	}
+
+	/**
+	 * Подгрузка следующей страницы экземпляров для бесконечного скролла (JSON).
+	 */
+	@GetMapping(value = "/{toolNameId}/units/page", produces = "application/json")
+	@ResponseBody
+	public Map<String, Object> getUnitsPage(@PathVariable Long toolNameId,
+	                                        @RequestParam(defaultValue = "0") int page,
+	                                        @RequestParam(defaultValue = "25") int size) {
+		Map<String, Object> result = new HashMap<>();
+		ToolName toolName = toolNameRepository.findById(toolNameId).orElse(null);
+		if (toolName == null || toolName.getIsDeleted()) {
+			result.put("content", List.of());
+			result.put("totalElements", 0L);
+			result.put("hasNext", false);
+			return result;
+		}
+		Pageable pageable = PageRequest.of(Math.max(0, page), Math.min(100, Math.max(1, size)), Sort.by("id"));
+		Page<Equipment> unitsPage = equipmentRepository.findByToolNameAndIsDeletedFalse(toolName, pageable);
+		List<InventoryUnitRowDto> rows = new ArrayList<>();
+		for (Equipment u : unitsPage.getContent()) {
+			InventoryUnitRowDto dto = new InventoryUnitRowDto();
+			dto.setId(u.getId());
+			dto.setSerialNumber(u.getSerialNumber());
+			dto.setCondition(u.getCondition());
+			dto.setPriceFirstDay(u.getPriceFirstDay());
+			dto.setPriceSecondDay(u.getPriceSecondDay());
+			dto.setPriceSubsequentDays(u.getPriceSubsequentDays());
+			dto.setPriceFirstMonth(u.getPriceFirstMonth());
+			dto.setPriceSecondMonth(u.getPriceSecondMonth());
+			dto.setPriceSubsequentMonths(u.getPriceSubsequentMonths());
+			dto.setBaseValue(u.getBaseValue());
+			dto.setStatus(u.getStatus().name());
+			dto.setStatusLabel(u.getStatus() == EquipmentStatus.FREE ? "Свободно"
+				: (u.getStatus() == EquipmentStatus.BUSY ? "Занят" : "Забронирован"));
+			dto.setInBooking(bookingService.hasActiveOrFutureBooking(u.getId()));
+			rows.add(dto);
+		}
+		result.put("content", rows);
+		result.put("totalElements", unitsPage.getTotalElements());
+		result.put("hasNext", unitsPage.hasNext());
+		return result;
 	}
 
 	private static final BigDecimal COEF_08 = new BigDecimal("0.8");
