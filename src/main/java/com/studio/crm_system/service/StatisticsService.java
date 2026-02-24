@@ -3,6 +3,7 @@ package com.studio.crm_system.service;
 import com.studio.crm_system.entity.Booking;
 import com.studio.crm_system.entity.Client;
 import com.studio.crm_system.entity.Equipment;
+import com.studio.crm_system.entity.Expense;
 import com.studio.crm_system.entity.Point;
 import com.studio.crm_system.entity.Rental;
 import com.studio.crm_system.entity.User;
@@ -11,6 +12,7 @@ import com.studio.crm_system.enums.RentalStatus;
 import com.studio.crm_system.repository.BookingRepository;
 import com.studio.crm_system.repository.ClientRepository;
 import com.studio.crm_system.repository.EquipmentRepository;
+import com.studio.crm_system.repository.ExpenseRepository;
 import com.studio.crm_system.repository.PointRepository;
 import com.studio.crm_system.repository.RentalRepository;
 import com.studio.crm_system.repository.UserRepository;
@@ -45,6 +47,7 @@ public class StatisticsService {
 	@Autowired private BookingRepository bookingRepository;
 	@Autowired private UserRepository userRepository;
 	@Autowired private PointRepository pointRepository;
+	@Autowired private ExpenseRepository expenseRepository;
 
 	/** Количество клиентов (без удалённых). */
 	public long getClientsCount() {
@@ -243,6 +246,70 @@ public class StatisticsService {
 		List<RevenueByMonthDto> result = new ArrayList<>();
 		for (Map.Entry<YearMonth, BigDecimal> e : byMonth.entrySet()) {
 			result.add(new RevenueByMonthDto(e.getKey().format(MONTH_FMT), e.getValue()));
+		}
+		return result;
+	}
+
+	/** Суммы расходов по тем же 12 месяцам, что и getRevenueByMonthLast12 (тот же порядок). */
+	public List<BigDecimal> getExpensesByMonthLast12() {
+		List<Expense> all = expenseRepository.findByIsDeletedFalseOrderByExpenseDateDesc();
+		Map<YearMonth, BigDecimal> byMonth = new LinkedHashMap<>();
+		YearMonth now = YearMonth.now();
+		for (int i = REVENUE_MONTHS - 1; i >= 0; i--) {
+			byMonth.put(now.minusMonths(i), BigDecimal.ZERO);
+		}
+		for (Expense e : all) {
+			if (e.getExpenseDate() == null) continue;
+			YearMonth ym = YearMonth.from(e.getExpenseDate());
+			if (!byMonth.containsKey(ym)) continue;
+			BigDecimal amt = e.getAmount() != null ? e.getAmount() : BigDecimal.ZERO;
+			byMonth.put(ym, byMonth.get(ym).add(amt));
+		}
+		return new ArrayList<>(byMonth.values());
+	}
+
+	/** Расходы за тот же период и с теми же подписями, что и getRevenueByDateRange. */
+	public List<RevenueByMonthDto> getExpensesByDateRange(LocalDate from, LocalDate to) {
+		if (from == null || to == null || from.isAfter(to)) return List.of();
+		long days = ChronoUnit.DAYS.between(from, to) + 1;
+		if (days > 366) return List.of();
+
+		List<Expense> all = expenseRepository.findByIsDeletedFalseOrderByExpenseDateDesc();
+		boolean byWeek = days > MAX_DAYS_FOR_DAILY;
+		WeekFields wf = WeekFields.of(Locale.getDefault());
+		Map<LocalDate, BigDecimal> byPeriodRaw = new TreeMap<>();
+
+		if (byWeek) {
+			LocalDate weekStart = from.with(wf.dayOfWeek(), 1);
+			for (LocalDate w = weekStart; !w.isAfter(to); w = w.plusWeeks(1)) {
+				if (!w.plusDays(6).isBefore(from)) byPeriodRaw.put(w, BigDecimal.ZERO);
+			}
+		} else {
+			for (long i = 0; i < days; i++) {
+				byPeriodRaw.put(from.plusDays(i), BigDecimal.ZERO);
+			}
+		}
+
+		for (Expense e : all) {
+			if (e.getExpenseDate() == null) continue;
+			LocalDate d = e.getExpenseDate();
+			if (d.isBefore(from) || d.isAfter(to)) continue;
+			BigDecimal amt = e.getAmount() != null ? e.getAmount() : BigDecimal.ZERO;
+			if (byWeek) {
+				LocalDate key = d.with(wf.dayOfWeek(), 1);
+				if (key.isBefore(from)) key = key.plusWeeks(1);
+				byPeriodRaw.merge(key, amt, BigDecimal::add);
+			} else {
+				byPeriodRaw.merge(d, amt, BigDecimal::add);
+			}
+		}
+
+		List<RevenueByMonthDto> result = new ArrayList<>();
+		for (Map.Entry<LocalDate, BigDecimal> e : byPeriodRaw.entrySet()) {
+			String label = byWeek
+				? (e.getKey().format(WEEK_FMT) + " – " + e.getKey().plusDays(6).format(WEEK_FMT))
+				: e.getKey().format(DAY_FMT);
+			result.add(new RevenueByMonthDto(label, e.getValue()));
 		}
 		return result;
 	}

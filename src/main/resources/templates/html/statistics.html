@@ -152,7 +152,11 @@
     <div class="col-lg-6">
       <div class="card border-0 shadow-sm h-100">
         <div class="card-header bg-white border-0 pt-3 d-flex flex-wrap align-items-center justify-content-between gap-2">
-          <h6 class="mb-0">Выручка, Br</h6>
+          <h6 class="mb-0">Выручка и расходы, Br</h6>
+          <div class="d-flex flex-wrap align-items-center gap-3">
+            <span class="small text-success fw-semibold"><i class="bi bi-arrow-up-circle me-1"></i>Выручка за период: <span th:text="${#numbers.formatDecimal(chartPeriodRevenue != null ? chartPeriodRevenue : 0, 1, 2)}">0</span> Br</span>
+            <span class="small text-danger fw-semibold"><i class="bi bi-arrow-down-circle me-1"></i>Затраты за период: <span th:text="${#numbers.formatDecimal(chartPeriodExpenses != null ? chartPeriodExpenses : 0, 1, 2)}">0</span> Br</span>
+          </div>
           <form th:action="@{/statistics}" method="get" class="d-flex flex-wrap align-items-center gap-2">
             <label class="small text-muted mb-0">С:</label>
             <input type="date" name="dateFrom" class="form-control form-control-sm" style="width: auto;"
@@ -165,10 +169,13 @@
         </div>
         <div class="card-body">
           <p class="small text-muted mb-2" th:if="${revenueDateFrom != null and revenueDateTo != null}">
-            Период: с <span th:text="${#temporals.format(revenueDateFrom, 'dd.MM.yyyy')}"></span> по <span th:text="${#temporals.format(revenueDateTo, 'dd.MM.yyyy')}"></span>. Учитываются завершённые прокаты по дате окончания.
+            Период: с <span th:text="${#temporals.format(revenueDateFrom, 'dd.MM.yyyy')}"></span> по <span th:text="${#temporals.format(revenueDateTo, 'dd.MM.yyyy')}"></span>. Выручка — по дате окончания проката, расходы — по дате расхода.
           </p>
           <p class="small text-muted mb-2" th:unless="${revenueDateFrom != null and revenueDateTo != null}">
-            Укажите период «С» и «По» и нажмите «Показать» — график построится по выручке за выбранные дни. Без периода — последние 12 месяцев.
+            Укажите период «С» и «По» и нажмите «Показать» — график построится по выручке и расходам за выбранные дни. Без периода — последние 12 месяцев.
+          </p>
+          <p class="small text-info mb-2">
+            <i class="bi bi-info-circle me-1"></i><strong>Как считается выручка:</strong> в график попадают только <strong>завершённые</strong> прокаты (по дате окончания). Активные и забронированные прокаты — это будущие деньги, они учтутся в выручке после завершения.
           </p>
           <canvas id="chartRevenue" height="220"></canvas>
         </div>
@@ -177,13 +184,25 @@
     <div class="col-lg-3">
       <div class="card border-0 shadow-sm h-100">
         <div class="card-header bg-white border-0 pt-3"><h6 class="mb-0">Оборудование по статусам</h6></div>
-        <div class="card-body"><canvas id="chartEquipment" height="220"></canvas></div>
+        <div class="card-body">
+          <canvas id="chartEquipment" height="220"></canvas>
+          <div class="mt-2 pt-2 border-top small">
+            <p class="text-muted mb-1">Доля от общего парка: <span class="text-success">свободных <strong th:text="${equipmentFreePct}">0</strong>%</span>, <span class="text-warning">занятых <strong th:text="${equipmentBusyPct}">0</strong>%</span>, <span class="text-info">в брони <strong th:text="${equipmentReservedPct}">0</strong>%</span>.</p>
+            <a th:href="@{/inventory}" class="text-decoration-none"><i class="bi bi-box-seam me-1"></i>Перейти в склад техники <i class="bi bi-arrow-right small"></i></a>
+          </div>
+        </div>
       </div>
     </div>
     <div class="col-lg-3">
       <div class="card border-0 shadow-sm h-100">
         <div class="card-header bg-white border-0 pt-3"><h6 class="mb-0">Прокаты по статусам</h6></div>
-        <div class="card-body"><canvas id="chartRentals" height="220"></canvas></div>
+        <div class="card-body">
+          <canvas id="chartRentals" height="220"></canvas>
+          <div class="mt-2 pt-2 border-top small">
+            <p class="text-muted mb-1">Выручка по завершённым прокатам: <strong class="text-success"><span th:text="${#numbers.formatDecimal(totalRevenue != null ? totalRevenue : 0, 1, 2)}">0</span> Br</strong></p>
+            <a th:href="@{/rentals}" class="text-decoration-none"><i class="bi bi-journal-text me-1"></i>Перейти в журнал прокатов <i class="bi bi-arrow-right small"></i></a>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -196,12 +215,16 @@
       <span th:if="${param.success[0] == 'expense_added'}">Расход добавлен.</span>
       <span th:if="${param.success[0] == 'expense_updated'}">Расход сохранён.</span>
       <span th:if="${param.success[0] == 'expense_deleted'}">Расход удалён.</span>
+      <span th:if="${param.success[0] == 'recurring_added'}">Повторяющийся расход добавлен. Записи созданы автоматически.</span>
+      <span th:if="${param.success[0] == 'recurring_updated'}">Шаблон повторяющегося расхода сохранён.</span>
+      <span th:if="${param.success[0] == 'recurring_deleted'}">Повторяющийся расход удалён.</span>
       <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     </div>
     <div th:if="${param.error}" class="alert alert-danger alert-dismissible py-2" role="alert">
       <span th:if="${param.error[0] == 'invalid_amount'}">Укажите корректную сумму.</span>
       <span th:if="${param.error[0] == 'description_required'}">Укажите описание.</span>
       <span th:if="${param.error[0] == 'not_found'}">Расход не найден.</span>
+      <span th:if="${param.error[0] == 'recurring_validation'}" th:text="${recurringValidationError != null ? recurringValidationError : 'Проверьте данные повторяющегося расхода.'}">Ошибка валидации.</span>
       <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     </div>
   </div>
@@ -298,6 +321,37 @@
         </div>
         <div class="card-footer bg-white border-0 text-muted small" th:if="${#lists.isEmpty(expensesList)}">Нет записей о расходах. Нажмите «Добавить расход».</div>
       </div>
+      <div class="card border-0 shadow-sm mt-3">
+        <div class="card-header bg-white border-0 d-flex flex-wrap align-items-center justify-content-between gap-2">
+          <span class="fw-semibold"><i class="bi bi-arrow-repeat me-1"></i>Повторяющиеся расходы</span>
+          <span class="small text-muted">Система автоматически создаёт расходы по шаблону в указанные даты.</span>
+          <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#modalRecurringAdd"><i class="bi bi-plus-lg me-1"></i>Добавить повторяющийся расход</button>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-hover table-sm mb-0">
+            <thead><tr><th>Описание</th><th>Категория</th><th>Сумма, Br</th><th>С какого</th><th>По какое</th><th>Как часто</th><th></th></tr></thead>
+            <tbody>
+              <tr th:each="rec : ${recurringExpensesList}">
+                <td th:text="${rec.description}">—</td>
+                <td th:text="${rec.category != null ? rec.category : '—'}">—</td>
+                <td th:text="${#numbers.formatDecimal(rec.amount, 1, 2)}">—</td>
+                <td th:text="${#temporals.format(rec.startDate, 'dd.MM.yyyy')}">—</td>
+                <td th:text="${#temporals.format(rec.endDate, 'dd.MM.yyyy')}">—</td>
+                <td th:text="${rec.periodType != null ? rec.periodType.label : '—'}">—</td>
+                <td>
+                  <button type="button" class="btn btn-sm btn-outline-secondary me-1 btn-recurring-edit" data-bs-toggle="modal" data-bs-target="#modalRecurringEdit" th:data-id="${rec.id}" th:data-amount="${rec.amount}" th:data-description="${rec.description}" th:data-category="${rec.category != null ? rec.category : ''}" th:data-start="${#temporals.format(rec.startDate, 'yyyy-MM-dd')}" th:data-end="${#temporals.format(rec.endDate, 'yyyy-MM-dd')}" th:data-period="${rec.periodType != null ? rec.periodType.name() : 'MONTHLY'}">Изменить</button>
+                  <form th:action="@{/statistics/expenses/recurring/delete}" method="post" class="d-inline" onsubmit="return confirm('Удалить этот шаблон? Уже созданные расходы останутся в списке.');">
+                    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                    <input type="hidden" name="id" th:value="${rec.id}">
+                    <button type="submit" class="btn btn-sm btn-outline-danger">Удалить</button>
+                  </form>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="card-footer bg-white border-0 text-muted small" th:if="${#lists.isEmpty(recurringExpensesList)}">Нет шаблонов. Добавьте повторяющийся расход (например, аренда) — система будет создавать записи в указанные даты.</div>
+      </div>
       <div class="modal fade" id="modalExpenseAdd" tabindex="-1">
         <div class="modal-dialog">
           <div class="modal-content">
@@ -327,6 +381,58 @@
                 <div class="mb-2"><label class="form-label">Сумма, Br *</label><input type="number" name="amount" id="editExpenseAmount" class="form-control" step="0.01" min="0.01" required></div>
                 <div class="mb-2"><label class="form-label">Описание *</label><input type="text" name="description" id="editExpenseDescription" class="form-control" required maxlength="500"></div>
                 <div class="mb-2"><label class="form-label">Категория</label><input type="text" name="category" id="editExpenseCategory" class="form-control" maxlength="100"></div>
+              </div>
+              <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button><button type="submit" class="btn btn-primary">Сохранить</button></div>
+            </form>
+          </div>
+        </div>
+      </div>
+      <div class="modal fade" id="modalRecurringAdd" tabindex="-1">
+        <div class="modal-dialog">
+          <div class="modal-content">
+            <div class="modal-header"><h5 class="modal-title">Добавить повторяющийся расход</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <form th:action="@{/statistics/expenses/recurring/add}" method="post">
+              <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+              <div class="modal-body">
+                <p class="small text-muted">Система будет автоматически создавать расход в указанные даты по выбранной периодичности.</p>
+                <div class="mb-2"><label class="form-label">Сумма, Br *</label><input type="number" name="amount" class="form-control" step="0.01" min="0.01" required placeholder="0.00"></div>
+                <div class="mb-2"><label class="form-label">Описание *</label><input type="text" name="description" class="form-control" required maxlength="500" placeholder="Например: аренда помещения"></div>
+                <div class="mb-2"><label class="form-label">Категория</label><input type="text" name="category" class="form-control" maxlength="100" placeholder="аренда, коммунальные"></div>
+                <div class="row g-2">
+                  <div class="col-6"><label class="form-label">С какого *</label><input type="date" name="startDate" class="form-control" required th:value="${#temporals.format(#temporals.createNow().withDayOfMonth(1), 'yyyy-MM-dd')}"></div>
+                  <div class="col-6"><label class="form-label">По какое *</label><input type="date" name="endDate" class="form-control" required th:value="${#temporals.format(#temporals.createNow().withMonth(12).withDayOfMonth(31), 'yyyy-MM-dd')}"></div>
+                </div>
+                <div class="mb-2 mt-2"><label class="form-label">Как часто</label><select name="periodType" class="form-select">
+                  <option value="DAILY">Раз в день</option>
+                  <option value="WEEKLY">Раз в неделю</option>
+                  <option value="MONTHLY" selected>Раз в месяц</option>
+                </select></div>
+              </div>
+              <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button><button type="submit" class="btn btn-primary">Добавить</button></div>
+            </form>
+          </div>
+        </div>
+      </div>
+      <div class="modal fade" id="modalRecurringEdit" tabindex="-1">
+        <div class="modal-dialog">
+          <div class="modal-content">
+            <div class="modal-header"><h5 class="modal-title">Изменить повторяющийся расход</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <form id="formRecurringEdit" th:action="@{/statistics/expenses/recurring/edit}" method="post">
+              <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+              <input type="hidden" name="id" id="editRecurringId">
+              <div class="modal-body">
+                <div class="mb-2"><label class="form-label">Сумма, Br *</label><input type="number" name="amount" id="editRecurringAmount" class="form-control" step="0.01" min="0.01" required></div>
+                <div class="mb-2"><label class="form-label">Описание *</label><input type="text" name="description" id="editRecurringDescription" class="form-control" required maxlength="500"></div>
+                <div class="mb-2"><label class="form-label">Категория</label><input type="text" name="category" id="editRecurringCategory" class="form-control" maxlength="100"></div>
+                <div class="row g-2">
+                  <div class="col-6"><label class="form-label">С какого *</label><input type="date" name="startDate" id="editRecurringStart" class="form-control" required></div>
+                  <div class="col-6"><label class="form-label">По какое *</label><input type="date" name="endDate" id="editRecurringEnd" class="form-control" required></div>
+                </div>
+                <div class="mb-2 mt-2"><label class="form-label">Как часто</label><select name="periodType" id="editRecurringPeriod" class="form-select">
+                  <option value="DAILY">Раз в день</option>
+                  <option value="WEEKLY">Раз в неделю</option>
+                  <option value="MONTHLY">Раз в месяц</option>
+                </select></div>
               </div>
               <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button><button type="submit" class="btn btn-primary">Сохранить</button></div>
             </form>
@@ -610,6 +716,7 @@
 /*<![CDATA[*/
   var revenueLabels = /*[[${revenueChartLabels}]]*/ [];
   var revenueValues = /*[[${revenueChartValues}]]*/ [];
+  var expenseValues = /*[[${expenseChartValues}]]*/ [];
   var eqLabels = /*[[${chartEquipmentLabels}]]*/ [];
   var eqValues = /*[[${chartEquipmentValues}]]*/ [];
   var rentalLabels = /*[[${chartRentalLabels}]]*/ [];
@@ -619,12 +726,15 @@
     if (typeof Chart !== 'undefined') {
       if (revenueLabels.length && document.getElementById('chartRevenue')) {
         new Chart(document.getElementById('chartRevenue'), {
-          type: 'bar',
+          type: 'line',
           data: {
             labels: revenueLabels,
-            datasets: [{ label: 'Выручка, Br', data: revenueValues, backgroundColor: 'rgba(25, 135, 84, 0.7)', borderColor: '#198754', borderWidth: 1 }]
+            datasets: [
+              { label: 'Выручка, Br', data: revenueValues, borderColor: '#198754', backgroundColor: 'rgba(25, 135, 84, 0.15)', borderWidth: 2, fill: true, tension: 0.2, pointStyle: 'rectRot', pointRadius: 5, pointBackgroundColor: '#198754', pointBorderColor: '#198754', pointBorderWidth: 1 },
+              { label: 'Расходы, Br', data: expenseValues.length === revenueLabels.length ? expenseValues : revenueLabels.map(function() { return 0; }), borderColor: '#dc3545', backgroundColor: 'rgba(220, 53, 69, 0.15)', borderWidth: 2, fill: true, tension: 0.2, pointStyle: 'rectRot', pointRadius: 5, pointBackgroundColor: '#dc3545', pointBorderColor: '#dc3545', pointBorderWidth: 1 }
+            ]
           },
-          options: { responsive: true, maintainAspectRatio: true, scales: { y: { beginAtZero: true } }, plugins: { legend: { display: false } } }
+          options: { responsive: true, maintainAspectRatio: true, scales: { x: { grid: { color: 'rgba(0,0,0,0.06)' } }, y: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.06)' } } }, plugins: { legend: { display: true, position: 'top' } } }
         });
       }
       if (eqLabels.length && document.getElementById('chartEquipment')) {
@@ -691,6 +801,20 @@
       document.getElementById('editExpenseAmount').value = btn.getAttribute('data-amount') || '';
       document.getElementById('editExpenseDescription').value = btn.getAttribute('data-description') || '';
       document.getElementById('editExpenseCategory').value = btn.getAttribute('data-category') || '';
+    });
+  }
+  var modalRecurringEdit = document.getElementById('modalRecurringEdit');
+  if (modalRecurringEdit) {
+    modalRecurringEdit.addEventListener('show.bs.modal', function(e) {
+      var btn = e.relatedTarget;
+      if (!btn || !btn.classList.contains('btn-recurring-edit')) return;
+      document.getElementById('editRecurringId').value = btn.getAttribute('data-id') || '';
+      document.getElementById('editRecurringAmount').value = btn.getAttribute('data-amount') || '';
+      document.getElementById('editRecurringDescription').value = btn.getAttribute('data-description') || '';
+      document.getElementById('editRecurringCategory').value = btn.getAttribute('data-category') || '';
+      document.getElementById('editRecurringStart').value = btn.getAttribute('data-start') || '';
+      document.getElementById('editRecurringEnd').value = btn.getAttribute('data-end') || '';
+      document.getElementById('editRecurringPeriod').value = btn.getAttribute('data-period') || 'MONTHLY';
     });
   }
 })();

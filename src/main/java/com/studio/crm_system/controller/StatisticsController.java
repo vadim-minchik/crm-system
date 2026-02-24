@@ -3,6 +3,7 @@ package com.studio.crm_system.controller;
 import com.studio.crm_system.entity.User;
 import com.studio.crm_system.repository.UserRepository;
 import com.studio.crm_system.service.ExpenseService;
+import com.studio.crm_system.service.RecurringExpenseService;
 import com.studio.crm_system.service.StatisticsService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -41,6 +42,9 @@ public class StatisticsController {
 	@Autowired
 	private ExpenseService expenseService;
 
+	@Autowired
+	private RecurringExpenseService recurringExpenseService;
+
 	@GetMapping
 	public String showStatistics(
 			@RequestParam(required = false) @DateTimeFormat(iso = ISO.DATE) LocalDate dateFrom,
@@ -59,6 +63,16 @@ public class StatisticsController {
 		model.addAttribute("equipmentFree", statisticsService.getEquipmentFreeCount());
 		model.addAttribute("equipmentBusy", statisticsService.getEquipmentBusyCount());
 		model.addAttribute("equipmentReserved", statisticsService.getEquipmentReservedCount());
+		long eqTotal = statisticsService.getEquipmentTotalCount();
+		if (eqTotal > 0) {
+			model.addAttribute("equipmentFreePct", Math.round(100.0 * statisticsService.getEquipmentFreeCount() / eqTotal));
+			model.addAttribute("equipmentBusyPct", Math.round(100.0 * statisticsService.getEquipmentBusyCount() / eqTotal));
+			model.addAttribute("equipmentReservedPct", Math.round(100.0 * statisticsService.getEquipmentReservedCount() / eqTotal));
+		} else {
+			model.addAttribute("equipmentFreePct", 0);
+			model.addAttribute("equipmentBusyPct", 0);
+			model.addAttribute("equipmentReservedPct", 0);
+		}
 		model.addAttribute("activeRentalsCount", statisticsService.getActiveRentalsCount());
 		model.addAttribute("completedRentalsCount", statisticsService.getCompletedRentalsCount());
 		model.addAttribute("debtorsCount", statisticsService.getDebtorsCount());
@@ -86,18 +100,28 @@ public class StatisticsController {
 		List<com.studio.crm_system.dto.RevenueByMonthDto> revenueByMonth = useRange
 				? statisticsService.getRevenueByDateRange(dateFrom, dateTo)
 				: statisticsService.getRevenueByMonthLast12();
+		List<BigDecimal> expenseValues = useRange
+				? statisticsService.getExpensesByDateRange(dateFrom, dateTo).stream().map(com.studio.crm_system.dto.RevenueByMonthDto::getTotal).collect(Collectors.toList())
+				: statisticsService.getExpensesByMonthLast12();
 		model.addAttribute("revenueByMonth", revenueByMonth);
 		model.addAttribute("revenueDateFrom", dateFrom);
 		model.addAttribute("revenueDateTo", dateTo);
 		model.addAttribute("revenueChartLabels", revenueByMonth.stream().map(com.studio.crm_system.dto.RevenueByMonthDto::getMonthLabel).collect(Collectors.toList()));
 		model.addAttribute("revenueChartValues", revenueByMonth.stream().map(d -> d.getTotal().doubleValue()).collect(Collectors.toList()));
+		model.addAttribute("expenseChartValues", expenseValues.stream().map(BigDecimal::doubleValue).collect(Collectors.toList()));
+		BigDecimal chartPeriodRevenue = revenueByMonth.stream().map(com.studio.crm_system.dto.RevenueByMonthDto::getTotal).reduce(BigDecimal.ZERO, BigDecimal::add);
+		BigDecimal chartPeriodExpenses = expenseValues.stream().reduce(BigDecimal.ZERO, BigDecimal::add);
+		model.addAttribute("chartPeriodRevenue", chartPeriodRevenue);
+		model.addAttribute("chartPeriodExpenses", chartPeriodExpenses);
 		model.addAttribute("chartEquipmentLabels", statisticsService.getChartEquipmentLabels());
 		model.addAttribute("chartEquipmentValues", statisticsService.getChartEquipmentValues());
 		model.addAttribute("chartRentalLabels", statisticsService.getChartRentalLabels());
 		model.addAttribute("chartRentalValues", statisticsService.getChartRentalValues());
 
+		expenseService.generateRecurringExpensesUpTo(LocalDate.now());
 		model.addAttribute("expensesList", expenseService.findAll());
 		model.addAttribute("totalExpenses", expenseService.getTotalExpenses());
+		model.addAttribute("recurringExpensesList", recurringExpenseService.findAll());
 		model.addAttribute("activeFullStatsTab", "expenses".equals(tab) ? "expenses" : null);
 
 		return "html/statistics";
