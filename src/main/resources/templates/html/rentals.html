@@ -45,6 +45,8 @@
     <span th:if="${param.error[0] == 'date_to_in_past'}">Дата «по какое» должна быть в будущем.</span>
     <span th:if="${param.error[0] == 'equipment_not_free'}">Это оборудование уже занято или забронировано.</span>
     <span th:if="${param.error[0] == 'too_many_equipment'}">Можно выбрать не более 50 инструментов за раз.</span>
+    <span th:if="${param.error[0] == 'booking_start_before_rental_end'}">Дата начала брони должна быть после окончания текущего проката этого оборудования.</span>
+    <span th:if="${param.error[0] == 'booking_overlap'}">Период брони пересекается с уже существующей бронью этого оборудования. Можно ставить бронь до или после — без пересечения по датам.</span>
     <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
   </div>
   <div th:if="${param.success}" class="alert alert-success alert-dismissible fade show" role="alert">
@@ -99,16 +101,17 @@
   <div class="tab-content">
     <div class="tab-pane fade show active" id="tab-active">
     <div class="card-table">
-      <table class="table table-hover mb-0">
-          <thead><tr><th class="ps-4">Кто берёт</th><th>С</th><th>По</th><th>Инструмент</th><th>Итог (BYN)</th><th class="text-center">Действия</th></tr></thead>
+      <div class="table-responsive-rentals">
+      <table class="table table-hover mb-0 table-rentals">
+          <thead><tr><th class="ps-4 td-ellipsis">Кто берёт</th><th>С</th><th>По</th><th class="td-ellipsis">Инструмент</th><th>Итог (BYN)</th><th class="th-actions text-end pe-4">Действия</th></tr></thead>
           <tbody id="tbody-active">
             <tr th:each="r : ${activeRentals}">
-              <td class="ps-4" th:text="${r.client != null ? (r.client.surname + ' ' + r.client.name + (r.client.patronymic != null ? ' ' + r.client.patronymic : '')) : '—'}">—</td>
+              <td class="ps-4 td-ellipsis"><div th:text="${r.client != null ? (r.client.surname + ' ' + r.client.name + (r.client.patronymic != null ? ' ' + r.client.patronymic : '')) : '—'}">—</div></td>
               <td th:text="${#temporals.format(r.dateFrom, 'dd.MM.yyyy HH:mm')}">—</td>
               <td th:text="${#temporals.format(r.dateTo, 'dd.MM.yyyy HH:mm')}">—</td>
-              <td th:text="${r.equipmentDisplayString}">—</td>
+              <td class="td-ellipsis"><div th:text="${r.equipmentDisplayString}">—</div></td>
               <td><strong th:text="${r.totalAmount != null ? (#numbers.formatDecimal(r.totalAmount, 0, 'NONE', 2, 'POINT') + ' BYN') : '—'}">—</strong></td>
-              <td class="text-center">
+              <td class="td-actions text-end pe-4">
                 <a th:href="@{/rentals/{id}(id=${r.id})}" class="btn btn-sm btn-outline-primary me-1"><i class="bi bi-eye"></i></a>
                 <form th:action="@{/rentals/cancel}" method="post" class="d-inline" onsubmit="return confirm('Отменить прокат? Оборудование станет свободным.');"><input type="hidden" name="id" th:value="${r.id}"><button type="submit" class="btn btn-sm btn-outline-secondary">Отменить</button></form>
             </td>
@@ -117,60 +120,68 @@
           </tbody>
         </table>
       </div>
+      </div>
     </div>
     <div class="tab-pane fade" id="tab-bookings">
       <div class="card-table">
-        <table class="table table-hover mb-0">
-          <thead><tr><th class="ps-4">Телефон</th><th>Инструмент</th><th>По какое (дата и время)</th><th>Когда забронировано</th><th>Комментарий</th><th class="text-center">Действия</th></tr></thead>
+        <div class="table-responsive-rentals">
+        <table class="table table-hover mb-0 table-rentals">
+          <thead><tr><th class="ps-4 td-ellipsis">Телефон</th><th class="td-ellipsis">Инструмент</th><th>С</th><th>По</th><th>Когда создано</th><th class="td-ellipsis">Комментарий</th><th class="th-actions text-end pe-4">Действия</th></tr></thead>
           <tbody id="tbody-bookings">
             <tr th:each="b : ${bookings}">
-              <td class="ps-4" th:text="${b.phoneNumber}">—</td>
-              <td th:text="${b.equipmentDisplayString}">—</td>
+              <td class="ps-4 td-ellipsis"><div th:text="${b.phoneNumber}">—</div></td>
+              <td class="td-ellipsis"><div th:text="${b.equipmentDisplayString}">—</div></td>
+              <td th:text="${b.dateFrom != null ? #temporals.format(b.dateFrom, 'dd.MM.yyyy HH:mm') : '—'}">—</td>
               <td th:text="${b.dateTo != null ? #temporals.format(b.dateTo, 'dd.MM.yyyy HH:mm') : '—'}">—</td>
               <td th:text="${#temporals.format(b.createdAt, 'dd.MM.yyyy HH:mm')}">—</td>
-              <td><small class="text-muted" th:text="${b.comment != null && !#strings.isEmpty(b.comment) ? b.comment : '—'}">—</small></td>
-              <td class="text-center">
+              <td class="td-ellipsis"><small class="text-muted d-block" th:text="${b.comment != null && !#strings.isEmpty(b.comment) ? b.comment : '—'}">—</small></td>
+              <td class="td-actions text-end pe-4">
+                <a th:href="@{/rentals/booking/{id}(id=${b.id})}" class="btn btn-sm btn-outline-primary me-1" title="Просмотр"><i class="bi bi-eye"></i></a>
                 <form th:action="@{/rentals/booking/delete}" method="post" class="d-inline" onsubmit="return confirm('Удалить бронь? Оборудование снова станет доступным.');">
                   <input type="hidden" name="id" th:value="${b.id}">
-                  <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i> Удалить бронь</button>
+                  <button type="submit" class="btn btn-sm btn-outline-danger" title="Удалить бронь"><i class="bi bi-trash"></i></button>
                 </form>
             </td>
           </tr>
-            <tr th:if="${#lists.isEmpty(bookings)}"><td colspan="6" class="text-center py-5 text-muted">Нет броней</td></tr>
+            <tr th:if="${#lists.isEmpty(bookings)}"><td colspan="7" class="text-center py-5 text-muted">Нет броней</td></tr>
         </tbody>
       </table>
+        </div>
     </div>
   </div>
     <div class="tab-pane fade" id="tab-history">
     <div class="card-table">
-      <table class="table table-hover mb-0">
-          <thead><tr><th class="ps-4">Кто берёт</th><th>С</th><th>По</th><th>Инструмент</th><th>Итог (BYN)</th><th class="text-center">Действия</th></tr></thead>
+      <div class="table-responsive-rentals">
+      <table class="table table-hover mb-0 table-rentals">
+          <thead><tr><th class="ps-4 td-ellipsis">Кто берёт</th><th>С</th><th>По</th><th class="td-ellipsis">Инструмент</th><th>Итог (BYN)</th><th class="th-actions text-end pe-4">Действия</th></tr></thead>
           <tbody id="tbody-history">
             <tr th:each="r : ${completedRentals}">
-              <td class="ps-4" th:text="${r.client != null ? (r.client.surname + ' ' + r.client.name + (r.client.patronymic != null ? ' ' + r.client.patronymic : '')) : '—'}">—</td>
+              <td class="ps-4 td-ellipsis"><div th:text="${r.client != null ? (r.client.surname + ' ' + r.client.name + (r.client.patronymic != null ? ' ' + r.client.patronymic : '')) : '—'}">—</div></td>
               <td th:text="${#temporals.format(r.dateFrom, 'dd.MM.yyyy HH:mm')}">—</td>
               <td th:text="${#temporals.format(r.dateTo, 'dd.MM.yyyy HH:mm')}">—</td>
-              <td th:text="${r.equipmentDisplayString}">—</td>
+              <td class="td-ellipsis"><div th:text="${r.equipmentDisplayString}">—</div></td>
               <td><strong th:text="${r.totalAmount != null ? (#numbers.formatDecimal(r.totalAmount, 0, 'NONE', 2, 'POINT') + ' BYN') : '—'}">—</strong></td>
-              <td class="text-center"><a th:href="@{/rentals/{id}(id=${r.id})}" class="btn btn-sm btn-outline-primary"><i class="bi bi-eye"></i></a></td>
+              <td class="td-actions text-end pe-4"><a th:href="@{/rentals/{id}(id=${r.id})}" class="btn btn-sm btn-outline-primary"><i class="bi bi-eye"></i></a></td>
           </tr>
             <tr th:if="${#lists.isEmpty(completedRentals)}"><td colspan="6" class="text-center py-5 text-muted">История пуста</td></tr>
           </tbody>
         </table>
       </div>
+      </div>
     </div>
     <div class="tab-pane fade" id="tab-debtors">
       <div class="card-table">
-        <table class="table table-hover mb-0">
-          <thead><tr><th class="ps-4">Кто берёт</th><th>С</th><th>По</th><th>Инструмент</th><th>Итог (BYN)</th><th class="text-center">Действия</th></tr></thead>
+        <div class="table-responsive-rentals">
+        <table class="table table-hover mb-0 table-rentals">
+          <thead><tr><th class="ps-4 td-ellipsis">Кто берёт</th><th>С</th><th>По</th><th class="td-ellipsis">Инструмент</th><th>Итог (BYN)</th><th class="th-actions text-end pe-4">Действия</th></tr></thead>
           <tbody id="tbody-debtors">
             <tr th:each="r : ${debtorRentals}">
-              <td class="ps-4" th:text="${r.client != null ? (r.client.surname + ' ' + r.client.name + (r.client.patronymic != null ? ' ' + r.client.patronymic : '')) : '—'}">—</td>
+              <td class="ps-4 td-ellipsis"><div th:text="${r.client != null ? (r.client.surname + ' ' + r.client.name + (r.client.patronymic != null ? ' ' + r.client.patronymic : '')) : '—'}">—</div></td>
               <td th:text="${#temporals.format(r.dateFrom, 'dd.MM.yyyy HH:mm')}">—</td>
               <td th:text="${#temporals.format(r.dateTo, 'dd.MM.yyyy HH:mm')}">—</td>
-              <td th:text="${r.equipmentDisplayString}">—</td>
+              <td class="td-ellipsis"><div th:text="${r.equipmentDisplayString}">—</div></td>
               <td><strong th:text="${r.totalAmount != null ? (#numbers.formatDecimal(r.totalAmount, 0, 'NONE', 2, 'POINT') + ' BYN') : '—'}">—</strong></td>
-              <td class="text-center">
+              <td class="td-actions text-end pe-4">
                 <a th:href="@{/rentals/{id}(id=${r.id})}" class="btn btn-sm btn-outline-primary me-1"><i class="bi bi-eye"></i></a>
                 <form th:action="@{/rentals/complete}" method="post" class="d-inline"><input type="hidden" name="id" th:value="${r.id}"><button type="submit" class="btn btn-sm btn-outline-success">Завершить</button></form>
             </td>
@@ -178,20 +189,22 @@
             <tr th:if="${#lists.isEmpty(debtorRentals)}"><td colspan="6" class="text-center py-5 text-muted">Нет должников</td></tr>
         </tbody>
       </table>
+        </div>
     </div>
   </div>
     <div class="tab-pane fade" id="tab-soon">
     <div class="card-table">
-        <table class="table table-hover mb-0">
-          <thead><tr><th class="ps-4">Кто берёт</th><th>С</th><th>По</th><th>Инструмент</th><th>Итог (BYN)</th><th class="text-center">Действия</th></tr></thead>
+      <div class="table-responsive-rentals">
+        <table class="table table-hover mb-0 table-rentals">
+          <thead><tr><th class="ps-4 td-ellipsis">Кто берёт</th><th>С</th><th>По</th><th class="td-ellipsis">Инструмент</th><th>Итог (BYN)</th><th class="th-actions text-end pe-4">Действия</th></tr></thead>
           <tbody id="tbody-soon">
             <tr th:each="r : ${soonDebtorRentals}">
-              <td class="ps-4" th:text="${r.client != null ? (r.client.surname + ' ' + r.client.name + (r.client.patronymic != null ? ' ' + r.client.patronymic : '')) : '—'}">—</td>
+              <td class="ps-4 td-ellipsis"><div th:text="${r.client != null ? (r.client.surname + ' ' + r.client.name + (r.client.patronymic != null ? ' ' + r.client.patronymic : '')) : '—'}">—</div></td>
               <td th:text="${#temporals.format(r.dateFrom, 'dd.MM.yyyy HH:mm')}">—</td>
               <td th:text="${#temporals.format(r.dateTo, 'dd.MM.yyyy HH:mm')}">—</td>
-              <td th:text="${r.equipmentDisplayString}">—</td>
+              <td class="td-ellipsis"><div th:text="${r.equipmentDisplayString}">—</div></td>
               <td><strong th:text="${r.totalAmount != null ? (#numbers.formatDecimal(r.totalAmount, 0, 'NONE', 2, 'POINT') + ' BYN') : '—'}">—</strong></td>
-            <td class="text-center">
+            <td class="td-actions text-end pe-4">
                 <a th:href="@{/rentals/{id}(id=${r.id})}" class="btn btn-sm btn-outline-primary me-1"><i class="bi bi-eye"></i></a>
                 <form th:action="@{/rentals/complete}" method="post" class="d-inline"><input type="hidden" name="id" th:value="${r.id}"><button type="submit" class="btn btn-sm btn-outline-success">Завершить</button></form>
             </td>
@@ -200,30 +213,33 @@
           </tbody>
         </table>
       </div>
+      </div>
     </div>
     <div class="tab-pane fade" id="tab-cancelled">
       <div class="card-table">
-        <table class="table table-hover mb-0">
-          <thead><tr><th class="ps-4">Кто берёт</th><th>С</th><th>По</th><th>Инструмент</th><th>Итог (BYN)</th><th class="text-center">Действия</th></tr></thead>
+        <div class="table-responsive-rentals">
+        <table class="table table-hover mb-0 table-rentals">
+          <thead><tr><th class="ps-4 td-ellipsis">Кто берёт</th><th>С</th><th>По</th><th class="td-ellipsis">Инструмент</th><th>Итог (BYN)</th><th class="th-actions text-end pe-4">Действия</th></tr></thead>
           <tbody id="tbody-cancelled">
             <tr th:each="r : ${cancelledRentals}">
-              <td class="ps-4" th:text="${r.client != null ? (r.client.surname + ' ' + r.client.name + (r.client.patronymic != null ? ' ' + r.client.patronymic : '')) : '—'}">—</td>
+              <td class="ps-4 td-ellipsis"><div th:text="${r.client != null ? (r.client.surname + ' ' + r.client.name + (r.client.patronymic != null ? ' ' + r.client.patronymic : '')) : '—'}">—</div></td>
               <td th:text="${#temporals.format(r.dateFrom, 'dd.MM.yyyy HH:mm')}">—</td>
               <td th:text="${#temporals.format(r.dateTo, 'dd.MM.yyyy HH:mm')}">—</td>
-              <td th:text="${r.equipmentDisplayString}">—</td>
+              <td class="td-ellipsis"><div th:text="${r.equipmentDisplayString}">—</div></td>
               <td><strong th:text="${r.totalAmount != null ? (#numbers.formatDecimal(r.totalAmount, 0, 'NONE', 2, 'POINT') + ' BYN') : '—'}">—</strong></td>
-              <td class="text-center"><a th:href="@{/rentals/{id}(id=${r.id})}" class="btn btn-sm btn-outline-primary"><i class="bi bi-eye"></i></a></td>
+              <td class="td-actions text-end pe-4"><a th:href="@{/rentals/{id}(id=${r.id})}" class="btn btn-sm btn-outline-primary"><i class="bi bi-eye"></i></a></td>
           </tr>
             <tr th:if="${#lists.isEmpty(cancelledRentals)}"><td colspan="6" class="text-center py-5 text-muted">Нет отменённых прокатов</td></tr>
         </tbody>
       </table>
+        </div>
       </div>
     </div>
   </div>
 </div>
 
 <div class="modal fade" id="modalAddBooking" tabindex="-1">
-  <div class="modal-dialog modal-dialog-centered modal-lg">
+  <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg">
     <form th:action="@{/rentals/booking/add}" method="post" class="modal-content">
       <div class="modal-header">
         <h5><i class="bi bi-bookmark-plus me-2"></i>Оформление брони</h5>
@@ -235,29 +251,35 @@
             <label class="form-label fw-semibold">Номер телефона *</label>
             <input type="text" name="phoneNumber" class="form-control form-control-lg" required placeholder="+375291234567">
           </div>
-          <div class="col-12">
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">С какого числа и времени</label>
+            <input type="datetime-local" name="dateFrom" class="form-control form-control-lg" step="60">
+            <div class="form-text text-muted">Необязательно — если пусто, бронь действует с момента создания.</div>
+          </div>
+          <div class="col-md-6">
             <label class="form-label fw-semibold">По какое число и время *</label>
             <input type="datetime-local" name="dateTo" class="form-control form-control-lg" required step="60">
-            <div class="form-text text-muted">После этой даты и времени бронь автоматически удалится навсегда, оборудование снова станет доступным.</div>
+            <div class="form-text text-muted">После этой даты бронь удалится, оборудование снова станет доступным.</div>
           </div>
           <div class="col-12">
-            <label class="form-label fw-semibold">Оборудование (свободное) * — до 50</label>
+            <label class="form-label fw-semibold">Оборудование * — до 50</label>
             <div class="equipment-search-wrap position-relative booking-equipment-wrap">
               <input type="text" id="booking-equipment-search" class="form-control form-control-lg" autocomplete="off"
                      placeholder="Поиск по названию или серийному номеру — добавляйте в список...">
               <div id="booking-equipment-dropdown" class="equipment-dropdown list-group position-absolute w-100 shadow-sm" style="display: none; max-height: 260px; overflow-y: auto; z-index: 1050;"></div>
             </div>
-            <div id="booking-equipment-ids" class="mb-2 d-flex flex-wrap gap-2 align-items-center"></div>
+            <div id="booking-equipment-ids" class="equipment-tags-row mb-2 d-flex flex-wrap gap-2 align-items-center"></div>
             <div id="booking-equipment-hidden"></div>
-            <div id="booking-equipment-placeholder" class="form-text text-muted">Добавляйте свободное оборудование из списка.</div>
-            <div th:if="${#lists.isEmpty(freeEquipmentForBooking)}" class="form-text text-warning">Нет свободного оборудования.</div>
+            <div id="booking-equipment-placeholder" class="form-text text-muted mt-1">Можно выбирать свободное, в прокате и уже забронированное — можно ставить бронь на бронь (следующая с даты окончания предыдущей). В списке указан конец брони.</div>
+            <div th:if="${#lists.isEmpty(equipmentOptionsForBooking)}" class="form-text text-warning">Нет доступного оборудования для брони.</div>
             <div id="booking-equipment-list-source" style="display: none;" aria-hidden="true">
-              <div th:each="e : ${freeEquipmentForBooking}" class="booking-equipment-option list-group-item list-group-item-action list-group-item-light py-2"
+              <div th:each="e : ${equipmentOptionsForBooking}" class="booking-equipment-option list-group-item list-group-item-action py-2"
                    th:data-id="${e.id}"
                    th:data-title="${e.title}"
                    th:data-serial="${e.serialNumber}"
+                   th:classappend="${e.free ? 'list-group-item-light' : 'list-group-item-secondary'}"
                    role="button"
-                   th:text="${e.title + ' — S/N ' + e.serialNumber + ' · Свободен'}">—</div>
+                   th:text="${e.title + ' — S/N ' + e.serialNumber + ' · ' + e.statusLabel}">—</div>
             </div>
           </div>
           <div class="col-12">
@@ -267,7 +289,7 @@
         </div>
       </div>
       <div class="modal-footer">
-        <button type="submit" class="btn btn-primary btn-lg" th:disabled="${#lists.isEmpty(freeEquipmentForBooking)}">
+        <button type="submit" class="btn btn-primary btn-lg" th:disabled="${#lists.isEmpty(equipmentOptionsForBooking)}">
           <i class="bi bi-bookmark-check me-1"></i> Забронировать
         </button>
       </div>
@@ -276,7 +298,7 @@
 </div>
 
 <div class="modal fade" id="modalAddRental" tabindex="-1">
-  <div class="modal-dialog modal-dialog-centered modal-lg">
+  <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg">
     <form th:action="@{/rentals/add}" method="post" class="modal-content">
       <div class="modal-header">
         <h5><i class="bi bi-plus-circle me-2"></i>Оформить прокат</h5>
@@ -321,18 +343,18 @@
                      placeholder="Поиск по названию или серийному номеру — выберите и добавляйте в список...">
               <div id="equipment-dropdown" class="equipment-dropdown list-group position-absolute w-100 shadow-sm" style="display: none; max-height: 260px; overflow-y: auto; z-index: 1050;"></div>
             </div>
-            <div id="rental-equipment-ids" class="mb-2 d-flex flex-wrap gap-2 align-items-center"></div>
+            <div id="rental-equipment-ids" class="equipment-tags-row mb-2 d-flex flex-wrap gap-2 align-items-center"></div>
             <div id="rental-equipment-hidden"></div>
-            <div id="equipment-search-placeholder" class="form-text text-muted">Добавляйте инструменты из списка (свободные — кликабельны). Итог можно задать вручную ниже или оставить пустым для авторасчёта.</div>
+            <div id="equipment-search-placeholder" class="form-text text-muted mt-1">Добавляйте инструменты из списка (свободные — кликабельны). Итог можно задать вручную ниже или оставить пустым для авторасчёта.</div>
             <div id="equipment-list-source" style="display: none;" aria-hidden="true">
               <div th:each="e : ${equipmentOptions}" class="equipment-option list-group-item list-group-item-action py-2"
                    th:data-id="${e.id}"
                    th:data-title="${e.title}"
                    th:data-serial="${e.serialNumber}"
                    th:data-status-label="${e.statusLabel}"
-                   th:data-price-day="${e.pricePerDay}"
-                   th:data-price-week="${e.pricePerWeek}"
-                   th:data-price-hour="${e.pricePerHour}"
+                   th:data-price-first-day="${e.priceFirstDay}"
+                   th:data-price-second-day="${e.priceSecondDay}"
+                   th:data-price-subsequent-days="${e.priceSubsequentDays}"
                    th:data-free="${e.free}"
                    th:classappend="${!e.free ? 'list-group-item-secondary' : 'list-group-item-light'}"
                    role="button"
@@ -345,7 +367,7 @@
               <input type="text" name="totalAmount" id="rental-total-amount" class="form-control" placeholder="Необязательно — рассчитается по тарифам" pattern="[0-9]+([.,][0-9]{1,2})?" inputmode="decimal" autocomplete="off">
               <span class="input-group-text">BYN</span>
             </div>
-            <div class="form-text text-muted">Оставьте пустым, чтобы сумма посчиталась по дням/часам автоматически. Либо введите свою сумму вручную (например: 50 или 12.50).</div>
+            <div class="form-text text-muted">Оставьте пустым — сумма посчитается по полным дням (1-й день X, 2-й 0,8×, далее 0,6×). Либо введите сумму вручную.</div>
           </div>
         </div>
       </div>
@@ -525,16 +547,17 @@
       hiddenContainer.appendChild(inp);
       var badge = document.createElement('span');
       badge.className = 'badge bg-primary d-inline-flex align-items-center gap-1';
-      badge.textContent = item.title;
+      var textSpan = document.createElement('span');
+      textSpan.className = 'equipment-tag-text';
+      textSpan.textContent = item.title;
+      badge.appendChild(textSpan);
       var btn = document.createElement('button');
       btn.type = 'button';
-      btn.className = 'btn btn-link btn-sm p-0 ms-1 text-white text-decoration-none';
+      btn.className = 'btn btn-link btn-sm p-0 text-white text-decoration-none';
       btn.setAttribute('aria-label', 'Удалить');
       btn.innerHTML = '&times;';
-      btn.addEventListener('click', function() {
-        selected = selected.filter(function(x) { return x.id !== item.id; });
-        render();
-      });
+      btn.style.lineHeight = '1';
+      btn.addEventListener('click', function(e) { e.preventDefault(); e.stopPropagation(); selected = selected.filter(function(x) { return x.id !== item.id; }); render(); });
       badge.appendChild(btn);
       container.appendChild(badge);
     });
@@ -559,18 +582,15 @@
       totalInput.value = '';
       return;
     }
-    var hours = (to - from) / (1000 * 60 * 60);
+    var fullDays = Math.floor((to - from) / (1000 * 60 * 60 * 24));
+    if (fullDays < 1) fullDays = 0;
     var sum = 0;
     selected.forEach(function(item) {
-      var priceDay = item.pricePerDay || 0;
-      var priceHour = item.pricePerHour || 0;
-      if (hours < 24) {
-        sum += priceHour * hours;
-      } else {
-        var fullDays = Math.floor(hours / 24);
-        var remainderHours = hours - fullDays * 24;
-        sum += fullDays * priceDay + remainderHours * priceHour;
-      }
+      var d1 = item.priceFirstDay || 0, d2 = item.priceSecondDay || 0, dSub = item.priceSubsequentDays || 0;
+      if (fullDays === 0) return;
+      if (fullDays === 1) sum += d1;
+      else if (fullDays === 2) sum += d1 + d2;
+      else sum += d1 + d2 + (fullDays - 2) * dSub;
     });
     totalInput.value = Math.round(sum * 100) / 100;
   }
@@ -593,9 +613,10 @@
         var already = selected.some(function(x) { return String(x.id) === String(id); });
         if (free && !already && selected.length < MAX) {
           clone.addEventListener('click', function() {
-            var priceDay = parseFloat(el.getAttribute('data-price-day')) || 0;
-            var priceHour = parseFloat(el.getAttribute('data-price-hour')) || 0;
-            selected.push({ id: id, title: el.textContent.trim(), pricePerDay: priceDay, pricePerHour: priceHour });
+            var d1 = parseFloat(el.getAttribute('data-price-first-day')) || 0;
+            var d2 = parseFloat(el.getAttribute('data-price-second-day')) || 0;
+            var dSub = parseFloat(el.getAttribute('data-price-subsequent-days')) || 0;
+            selected.push({ id: id, title: el.textContent.trim(), priceFirstDay: d1, priceSecondDay: d2, priceSubsequentDays: dSub });
             render();
             dropdown.style.display = 'none';
           });
@@ -678,17 +699,18 @@
       inp.value = item.id;
       hiddenContainer.appendChild(inp);
       var badge = document.createElement('span');
-      badge.className = 'badge bg-info d-inline-flex align-items-center gap-1';
-      badge.textContent = item.title;
+      badge.className = 'badge bg-primary d-inline-flex align-items-center gap-1';
+      var textSpan = document.createElement('span');
+      textSpan.className = 'equipment-tag-text';
+      textSpan.textContent = item.title;
+      badge.appendChild(textSpan);
       var btn = document.createElement('button');
       btn.type = 'button';
-      btn.className = 'btn btn-link btn-sm p-0 ms-1 text-white text-decoration-none';
+      btn.className = 'btn btn-link btn-sm p-0 text-white text-decoration-none';
       btn.setAttribute('aria-label', 'Удалить');
       btn.innerHTML = '&times;';
-      btn.addEventListener('click', function() {
-        selected = selected.filter(function(x) { return x.id !== item.id; });
-        render();
-      });
+      btn.style.lineHeight = '1';
+      btn.addEventListener('click', function(e) { e.preventDefault(); e.stopPropagation(); selected = selected.filter(function(x) { return x.id !== item.id; }); render(); });
       badge.appendChild(btn);
       container.appendChild(badge);
     });

@@ -75,7 +75,7 @@
     <i class="bi bi-exclamation-triangle-fill me-2"></i><strong>Ошибка: </strong>
     <span th:if="${param.error[0] == 'name_required'}">Введите название.</span>
     <span th:if="${param.error[0] == 'name_exists'}">Категория с таким названием уже существует в этом разделе.</span>
-    <span th:if="${param.error[0] == 'in_use'}">Нельзя удалить: есть оборудование используется.</span>
+    <span th:if="${param.error[0] == 'in_use'}">Нельзя удалить: оборудование в прокате или в брони.</span>
     <span th:if="${param.error[0] == 'not_found'}">Запись не найдена.</span>
     <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
   </div>
@@ -115,12 +115,15 @@
                   onclick="openEditCat(this)" title="Редактировать">
             <i class="bi bi-pencil"></i>
           </button>
-          <button type="button" class="action-btn danger"
+          <button th:if="${!categoryIdsLocked.contains(c.id)}" type="button" class="action-btn danger"
                   th:data-id="${c.id}" th:data-name="${c.name}"
                   th:data-models="${modelsCount[c.id]}" th:data-units="${unitsCount[c.id]}"
                   onclick="openDeleteCat(this)" title="Удалить">
             <i class="bi bi-trash"></i>
           </button>
+          <span th:if="${categoryIdsLocked.contains(c.id)}" class="action-btn text-muted" style="cursor: default;" title="Нельзя удалить: в прокате или в брони">
+            <i class="bi bi-lock"></i>
+          </span>
         </div>
       </div>
     </div>

@@ -96,10 +96,10 @@
     <i class="bi bi-exclamation-triangle-fill me-2"></i><strong>Ошибка: </strong>
     <span th:if="${param.error[0] == 'name_required'}">Введите название.</span>
     <span th:if="${param.error[0] == 'name_exists'}">Категория или модель с таким названием уже существует.</span>
-    <span th:if="${param.error[0] == 'model_in_use'}">Нельзя удалить: есть оборудование используется.</span>
+    <span th:if="${param.error[0] == 'model_in_use'}">Нельзя удалить: оборудование в прокате или в брони.</span>
     <span th:if="${param.error[0] == 'model_not_found'}">Модель не найдена.</span>
     <span th:if="${param.error[0] == 'has_children'}">Сначала удалите подкатегории.</span>
-    <span th:if="${param.error[0] == 'in_use'}">Нельзя удалить: оборудование используется.</span>
+    <span th:if="${param.error[0] == 'in_use'}">Нельзя удалить: оборудование в прокате или в брони.</span>
     <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
   </div>
   <div th:if="${param.success}" class="alert alert-success alert-dismissible fade show" role="alert">
@@ -138,11 +138,14 @@
                   onclick="openEditCat(this)" title="Редактировать">
             <i class="bi bi-pencil"></i>
           </button>
-          <button type="button" class="action-btn danger" th:data-id="${sub.id}" th:data-name="${sub.name}"
+          <button th:if="${!subcategoryIdsLocked.contains(sub.id)}" type="button" class="action-btn danger" th:data-id="${sub.id}" th:data-name="${sub.name}"
                   th:data-models="${subcategoriesModelsCount[sub.id]}" th:data-units="${subcategoriesUnitsCount[sub.id]}"
                   onclick="openDeleteCat(this)" title="Удалить">
             <i class="bi bi-trash"></i>
           </button>
+          <span th:if="${subcategoryIdsLocked.contains(sub.id)}" class="action-btn text-muted" style="cursor: default;" title="Нельзя удалить: в прокате или в брони">
+            <i class="bi bi-lock"></i>
+          </span>
         </div>
       </div>
     </div>
@@ -180,7 +183,7 @@
                   title="Редактировать">
             <i class="bi bi-pencil"></i>
           </button>
-          <button type="button" class="action-btn danger"
+          <button th:if="${!modelIdsLocked.contains(t.id)}" type="button" class="action-btn danger"
                   th:data-id="${t.id}"
                   th:data-name="${t.name}"
                   th:data-units="${totalCount[t.id]}"
@@ -188,6 +191,9 @@
                   title="Удалить">
             <i class="bi bi-trash"></i>
           </button>
+          <span th:if="${modelIdsLocked.contains(t.id)}" class="action-btn text-muted" style="cursor: default;" title="Нельзя удалить: в прокате или в брони">
+            <i class="bi bi-lock"></i>
+          </span>
         </div>
       </div>
     </div>

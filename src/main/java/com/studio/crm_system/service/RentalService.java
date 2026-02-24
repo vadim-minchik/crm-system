@@ -29,6 +29,7 @@ public class RentalService {
 	@Autowired private RentalRepository rentalRepository;
 	@Autowired private ClientRepository clientRepository;
 	@Autowired private EquipmentRepository equipmentRepository;
+	@Autowired private BookingService bookingService;
 
 	public List<Rental> findAll() {
 		return rentalRepository.findAllByOrderByDateFromDesc();
@@ -71,49 +72,71 @@ public class RentalService {
 	}
 
 	private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("dd.MM.yyyy");
+	private static final DateTimeFormatter DATETIME_FMT = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm");
 
 	public List<EquipmentSelectOption> getEquipmentOptionsForSelect() {
 		List<Equipment> all = equipmentRepository.findByIsDeletedFalse();
-		return all.stream().map(e -> {
-			String statusLabel;
-			boolean free = (e.getStatus() == EquipmentStatus.FREE);
-			if (e.getStatus() == EquipmentStatus.FREE) {
-				statusLabel = "Свободен";
-			} else if (e.getStatus() == EquipmentStatus.BUSY) {
-				Optional<Rental> active = rentalRepository.findFirstByEquipmentIdAndStatusInOrderByDateToDesc(e.getId(), java.util.List.of(RentalStatus.ACTIVE, RentalStatus.SOON_DEBTOR, RentalStatus.DEBTOR));
-				statusLabel = active.map(r -> "В прокате до " + r.getDateTo().toLocalDate().format(DATE_FMT)).orElse("В прокате");
-			} else {
-				statusLabel = "Забронирован";
-			}
-			return new EquipmentSelectOption(
-					e.getId(),
-					e.getTitle(),
-					e.getSerialNumber(),
-					statusLabel,
-					e.getPricePerDay(),
-					e.getPricePerWeek(),
-					e.getPricePerHour(),
-					free
-			);
-		}).collect(Collectors.toList());
+		return all.stream().map(e -> toEquipmentSelectOption(e)).collect(Collectors.toList());
+	}
+
+	/** Оборудование для выбора в форме брони: свободное, в прокате и уже забронированное (цепочка броней). */
+	public List<EquipmentSelectOption> getEquipmentOptionsForBooking() {
+		List<Equipment> list = equipmentRepository.findByStatusInAndIsDeletedFalse(
+				java.util.List.of(EquipmentStatus.FREE, EquipmentStatus.BUSY, EquipmentStatus.RESERVED));
+		return list.stream().map(e -> toEquipmentSelectOption(e)).collect(Collectors.toList());
+	}
+
+	private EquipmentSelectOption toEquipmentSelectOption(Equipment e) {
+		String statusLabel;
+		boolean free = (e.getStatus() == EquipmentStatus.FREE);
+		if (e.getStatus() == EquipmentStatus.FREE) {
+			// Свободен сейчас, но если впереди есть брони — показываем с и по (последняя в цепочке)
+			statusLabel = bookingService.getLastFutureBookingForEquipment(e.getId())
+					.map(b -> {
+						LocalDateTime from = b.getDateFrom() != null ? b.getDateFrom() : b.getCreatedAt();
+						return "Свободен, далее забронировано с " + from.format(DATETIME_FMT) + " по " + b.getDateTo().format(DATETIME_FMT);
+					})
+					.orElse("Свободен");
+		} else if (e.getStatus() == EquipmentStatus.BUSY) {
+			Optional<Rental> active = rentalRepository.findFirstByEquipmentIdAndStatusInOrderByDateToDesc(e.getId(), java.util.List.of(RentalStatus.ACTIVE, RentalStatus.SOON_DEBTOR, RentalStatus.DEBTOR));
+			statusLabel = active.map(r -> "В прокате с " + r.getDateFrom().format(DATETIME_FMT) + " по " + r.getDateTo().format(DATETIME_FMT)).orElse("В прокате");
+		} else {
+			// RESERVED: показываем с и по текущей брони
+			statusLabel = bookingService.getActiveBookingForEquipment(e.getId())
+					.map(b -> {
+						LocalDateTime from = b.getDateFrom() != null ? b.getDateFrom() : b.getCreatedAt();
+						return "Забронирован с " + from.format(DATETIME_FMT) + " по " + b.getDateTo().format(DATETIME_FMT);
+					})
+					.orElse("Забронирован");
+		}
+		return new EquipmentSelectOption(
+				e.getId(),
+				e.getTitle(),
+				e.getSerialNumber(),
+				statusLabel,
+				e.getPriceFirstDay(),
+				e.getPriceSecondDay(),
+				e.getPriceSubsequentDays(),
+				free
+		);
 	}
 
 	public List<Client> findAllClients() {
 		return clientRepository.findByIsDeletedFalse();
 	}
 
+	/** Считает сумму по полным дням: 1-й день X, 2-й 0.8X, далее 0.6X за день (значения из equipment). */
 	public BigDecimal calculateTotal(LocalDateTime dateFrom, LocalDateTime dateTo, Equipment equipment) {
 		if (dateFrom == null || dateTo == null || equipment == null) return BigDecimal.ZERO;
 		if (!dateTo.isAfter(dateFrom)) return BigDecimal.ZERO;
-		double hours = ChronoUnit.MINUTES.between(dateFrom, dateTo) / 60.0;
-		if (hours < 24) {
-			return equipment.getPricePerHour().multiply(BigDecimal.valueOf(hours)).setScale(2, RoundingMode.HALF_UP);
-		}
-		int fullDays = (int) (hours / 24);
-		double remainderHours = hours - fullDays * 24;
-		BigDecimal dayPart = equipment.getPricePerDay().multiply(BigDecimal.valueOf(fullDays));
-		BigDecimal hourPart = equipment.getPricePerHour().multiply(BigDecimal.valueOf(remainderHours));
-		return dayPart.add(hourPart).setScale(2, RoundingMode.HALF_UP);
+		long fullDays = ChronoUnit.DAYS.between(dateFrom.toLocalDate(), dateTo.toLocalDate());
+		if (fullDays <= 0) return BigDecimal.ZERO;
+		BigDecimal d1 = equipment.getPriceFirstDay();
+		BigDecimal d2 = equipment.getPriceSecondDay();
+		BigDecimal dSub = equipment.getPriceSubsequentDays();
+		if (fullDays == 1) return d1.setScale(2, RoundingMode.HALF_UP);
+		if (fullDays == 2) return d1.add(d2).setScale(2, RoundingMode.HALF_UP);
+		return d1.add(d2).add(dSub.multiply(BigDecimal.valueOf(fullDays - 2))).setScale(2, RoundingMode.HALF_UP);
 	}
 
 	private static final int MAX_EQUIPMENT_PER_RENTAL = 50;
@@ -201,8 +224,7 @@ public class RentalService {
 		rentalRepository.save(rental);
 
 		for (Equipment eq : rental.getEquipmentList()) {
-			eq.setStatus(EquipmentStatus.FREE);
-			equipmentRepository.save(eq);
+			bookingService.releaseEquipment(eq.getId());
 		}
 		return null;
 	}
@@ -217,8 +239,7 @@ public class RentalService {
 		rentalRepository.save(rental);
 
 		for (Equipment eq : rental.getEquipmentList()) {
-			eq.setStatus(EquipmentStatus.FREE);
-			equipmentRepository.save(eq);
+			bookingService.releaseEquipment(eq.getId());
 		}
 		return null;
 	}

@@ -403,6 +403,85 @@ body {
 	background: #f8f9fa;
 }
 
+.table-responsive-rentals {
+	overflow-x: auto;
+	overflow-y: auto;
+	max-height: calc(100vh - 280px);
+}
+
+.table-rentals {
+	table-layout: fixed;
+	min-width: 100%;
+}
+
+.table-rentals .td-ellipsis {
+	max-width: 220px;
+	overflow: hidden;
+}
+
+.table-rentals .td-ellipsis > div,
+.table-rentals .td-ellipsis > small {
+	max-width: 100%;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	display: block;
+}
+
+.table-rentals .th-actions,
+.table-rentals .td-actions {
+	position: sticky;
+	right: 0;
+	background: var(--card-bg);
+	z-index: 2;
+	white-space: nowrap;
+	box-shadow: -6px 0 12px rgba(0, 0, 0, 0.08);
+	min-width: 140px;
+}
+
+.table-rentals thead .th-actions {
+	background: #fdfdfd;
+	z-index: 3;
+}
+
+.table-rentals tbody tr:hover .td-actions {
+	background: #f8f9fa;
+}
+
+.equipment-dropdown .list-group-item,
+.booking-equipment-option,
+.equipment-option {
+	max-width: 100%;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+#rental-equipment-ids .badge,
+#booking-equipment-ids .badge,
+.rental-equipment-tag,
+.booking-equipment-tag {
+	max-width: 360px;
+	display: inline-flex;
+	align-items: center;
+	vertical-align: middle;
+	gap: 4px;
+}
+
+#rental-equipment-ids .badge .equipment-tag-text,
+#booking-equipment-ids .badge .equipment-tag-text {
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	flex: 1;
+}
+
+#rental-equipment-ids .badge .btn,
+#booking-equipment-ids .badge .btn {
+	flex-shrink: 0;
+}
+
 .badge {
 	padding: 6px 12px;
 	border-radius: var(--radius-sm);

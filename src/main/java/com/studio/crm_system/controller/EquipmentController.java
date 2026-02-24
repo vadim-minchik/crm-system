@@ -10,6 +10,7 @@ import com.studio.crm_system.repository.EquipmentRepository;
 import com.studio.crm_system.repository.PreCategoryRepository;
 import com.studio.crm_system.repository.ToolNameRepository;
 import com.studio.crm_system.repository.UserRepository;
+import com.studio.crm_system.service.BookingService;
 import com.studio.crm_system.enums.EquipmentStatus;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -22,8 +23,10 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @Controller
 @RequestMapping("/inventory")
@@ -34,6 +37,7 @@ public class EquipmentController {
 	@Autowired private CategoryRepository categoryRepository;
 	@Autowired private PreCategoryRepository preCategoryRepository;
 	@Autowired private UserRepository userRepository;
+	@Autowired private BookingService bookingService;
 
 	private User getCurrentUser() {
 		Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
@@ -95,8 +99,18 @@ public class EquipmentController {
 	private boolean hasAnyBusyInCategory(Category cat) {
 		for (ToolName t : toolNameRepository.findByCategoryAndIsDeletedFalse(cat)) {
 			boolean busy = equipmentRepository.findByToolNameAndIsDeletedFalse(t)
-					.stream().anyMatch(e -> e.getStatus() != EquipmentStatus.FREE);
+					.stream().anyMatch(e -> e.getStatus() != EquipmentStatus.FREE
+							|| bookingService.hasActiveOrFutureBooking(e.getId()));
 			if (busy) return true;
+		}
+		return false;
+	}
+
+	/** Проверяет, есть ли занятое оборудование (в прокате или в брони) в категории и во всей поддереве подкатегорий. */
+	private boolean hasAnyBusyInCategoryTree(Category cat) {
+		if (hasAnyBusyInCategory(cat)) return true;
+		for (Category child : categoryRepository.findByParentCategoryAndIsDeletedFalse(cat)) {
+			if (hasAnyBusyInCategoryTree(child)) return true;
 		}
 		return false;
 	}
@@ -112,13 +126,16 @@ public class EquipmentController {
 		Map<Long, Long> unitsCount      = new HashMap<>();
 		Map<Long, Long> freeCount       = new HashMap<>();
 
+		Set<Long> precategoryIdsLocked = new HashSet<>();
 		for (PreCategory pc : preCategories) {
 			categoriesCount.put(pc.getId(), categoryRepository.countByPreCategoryAndParentCategoryIsNullAndIsDeletedFalse(pc));
 			unitsCount.put(pc.getId(), countUnitsInPreCategory(pc));
 			freeCount.put(pc.getId(), countFreeUnitsInPreCategory(pc));
+			if (hasAnyBusyInPreCategory(pc)) precategoryIdsLocked.add(pc.getId());
 		}
 
 		model.addAttribute("preCategories", preCategories);
+		model.addAttribute("precategoryIdsLocked", precategoryIdsLocked);
 		model.addAttribute("categoriesCount", categoriesCount);
 		model.addAttribute("unitsCount", unitsCount);
 		model.addAttribute("freeCount", freeCount);
@@ -193,10 +210,12 @@ public class EquipmentController {
 		Map<Long, Long> unitsCount  = new HashMap<>();
 		Map<Long, Long> freeCount   = new HashMap<>();
 
+		Set<Long> categoryIdsLocked = new HashSet<>();
 		for (Category c : categories) {
 			modelsCount.put(c.getId(), toolNameRepository.countByCategoryAndIsDeletedFalse(c));
 			unitsCount.put(c.getId(), countUnitsInCategory(c));
 			freeCount.put(c.getId(), countFreeUnitsInCategory(c));
+			if (hasAnyBusyInCategoryTree(c)) categoryIdsLocked.add(c.getId());
 		}
 
 		model.addAttribute("preCategory", pc);
@@ -204,6 +223,7 @@ public class EquipmentController {
 		model.addAttribute("modelsCount", modelsCount);
 		model.addAttribute("unitsCount", unitsCount);
 		model.addAttribute("freeCount", freeCount);
+		model.addAttribute("categoryIdsLocked", categoryIdsLocked);
 		addCommonAttrs(model, currentUser);
 		return "html/inventory_precategory";
 	}
@@ -267,7 +287,7 @@ public class EquipmentController {
 		Long pcId = cat.getPreCategory().getId();
 		if (categoryRepository.countByParentCategoryAndIsDeletedFalse(cat) > 0)
 			return "redirect:/inventory/category/" + id + "?error=has_children";
-		if (hasAnyBusyInCategory(cat))
+		if (hasAnyBusyInCategoryTree(cat))
 			return "redirect:/inventory/category/" + id + "?error=in_use";
 
 		String redirectBack = cat.getParentCategory() != null
@@ -300,17 +320,24 @@ public class EquipmentController {
 		Map<Long, Long> subcategoriesModelsCount = new HashMap<>();
 		Map<Long, Long> subcategoriesUnitsCount  = new HashMap<>();
 		Map<Long, Long> subcategoriesFreeCount   = new HashMap<>();
+		Set<Long> subcategoryIdsLocked = new HashSet<>();
 		for (Category sub : subcategories) {
 			subcategoriesModelsCount.put(sub.getId(), toolNameRepository.countByCategoryAndIsDeletedFalse(sub));
 			subcategoriesUnitsCount.put(sub.getId(), countUnitsInCategory(sub));
 			subcategoriesFreeCount.put(sub.getId(), countFreeUnitsInCategory(sub));
+			if (hasAnyBusyInCategoryTree(sub)) subcategoryIdsLocked.add(sub.getId());
 		}
 
 		Map<Long, Long> totalCount = new HashMap<>();
 		Map<Long, Long> freeCount  = new HashMap<>();
+		Set<Long> modelIdsLocked = new HashSet<>();
 		for (ToolName t : toolNames) {
 			totalCount.put(t.getId(), equipmentRepository.countByToolNameAndIsDeletedFalse(t));
 			freeCount.put(t.getId(), equipmentRepository.countByToolNameAndStatusAndIsDeletedFalse(t, EquipmentStatus.FREE));
+			List<Equipment> units = equipmentRepository.findByToolNameAndIsDeletedFalse(t);
+			boolean locked = units.stream().anyMatch(e -> e.getStatus() != EquipmentStatus.FREE)
+					|| units.stream().anyMatch(e -> bookingService.hasActiveOrFutureBooking(e.getId()));
+			if (locked) modelIdsLocked.add(t.getId());
 		}
 
 		List<Category> breadcrumb = new ArrayList<>();
@@ -324,9 +351,11 @@ public class EquipmentController {
 		model.addAttribute("subcategoriesModelsCount", subcategoriesModelsCount);
 		model.addAttribute("subcategoriesUnitsCount", subcategoriesUnitsCount);
 		model.addAttribute("subcategoriesFreeCount", subcategoriesFreeCount);
+		model.addAttribute("subcategoryIdsLocked", subcategoryIdsLocked);
 		model.addAttribute("toolNames", toolNames);
 		model.addAttribute("totalCount", totalCount);
 		model.addAttribute("freeCount", freeCount);
+		model.addAttribute("modelIdsLocked", modelIdsLocked);
 		addCommonAttrs(model, currentUser);
 		return "html/inventory_models";
 	}
@@ -374,8 +403,9 @@ public class EquipmentController {
 		if (toolName == null) return "redirect:/inventory?error=not_found";
 
 		Long categoryId = toolName.getCategory().getId();
-		boolean busy = equipmentRepository.findByToolNameAndIsDeletedFalse(toolName)
-				.stream().anyMatch(e -> e.getStatus() != EquipmentStatus.FREE);
+		List<Equipment> modelUnits = equipmentRepository.findByToolNameAndIsDeletedFalse(toolName);
+		boolean busy = modelUnits.stream().anyMatch(e -> e.getStatus() != EquipmentStatus.FREE)
+				|| modelUnits.stream().anyMatch(e -> bookingService.hasActiveOrFutureBooking(e.getId()));
 		if (busy)
 			return "redirect:/inventory/category/" + categoryId + "?error=in_use";
 
@@ -397,19 +427,47 @@ public class EquipmentController {
 
 		Category category = toolName.getCategory();
 		List<Equipment> units = equipmentRepository.findByToolNameAndIsDeletedFalse(toolName);
+		Set<Long> equipmentIdsWithBooking = new HashSet<>();
+		for (Equipment u : units) {
+			if (bookingService.hasActiveOrFutureBooking(u.getId())) equipmentIdsWithBooking.add(u.getId());
+		}
 
 		model.addAttribute("preCategory", category.getPreCategory());
 		model.addAttribute("category", category);
 		model.addAttribute("toolName", toolName);
 		model.addAttribute("units", units);
+		model.addAttribute("equipmentIdsWithBooking", equipmentIdsWithBooking);
 		addCommonAttrs(model, currentUser);
 		return "html/inventory_detail";
+	}
+
+	private static final BigDecimal COEF_08 = new BigDecimal("0.8");
+	private static final BigDecimal COEF_06 = new BigDecimal("0.6");
+
+	private void applyPriceFormula(Equipment eq, BigDecimal firstDay, BigDecimal firstMonth,
+	                               BigDecimal secondDay, BigDecimal subsequentDays,
+	                               BigDecimal secondMonth, BigDecimal subsequentMonths) {
+		eq.setPriceFirstDay(firstDay);
+		eq.setPriceSecondDay(secondDay != null && secondDay.compareTo(BigDecimal.ZERO) > 0
+				? secondDay : firstDay.multiply(COEF_08).setScale(2, RoundingMode.HALF_UP));
+		eq.setPriceSubsequentDays(subsequentDays != null && subsequentDays.compareTo(BigDecimal.ZERO) > 0
+				? subsequentDays : firstDay.multiply(COEF_06).setScale(2, RoundingMode.HALF_UP));
+		eq.setPriceFirstMonth(firstMonth);
+		eq.setPriceSecondMonth(secondMonth != null && secondMonth.compareTo(BigDecimal.ZERO) > 0
+				? secondMonth : firstMonth.multiply(COEF_08).setScale(2, RoundingMode.HALF_UP));
+		eq.setPriceSubsequentMonths(subsequentMonths != null && subsequentMonths.compareTo(BigDecimal.ZERO) > 0
+				? subsequentMonths : firstMonth.multiply(COEF_06).setScale(2, RoundingMode.HALF_UP));
 	}
 
 	@PostMapping("/{toolNameId}/add")
 	public String addUnit(@PathVariable Long toolNameId,
 	                      @RequestParam String serialNumber,
-	                      @RequestParam BigDecimal pricePerDay,
+	                      @RequestParam BigDecimal priceFirstDay,
+	                      @RequestParam BigDecimal priceFirstMonth,
+	                      @RequestParam(required = false) BigDecimal priceSecondDay,
+	                      @RequestParam(required = false) BigDecimal priceSubsequentDays,
+	                      @RequestParam(required = false) BigDecimal priceSecondMonth,
+	                      @RequestParam(required = false) BigDecimal priceSubsequentMonths,
 	                      @RequestParam BigDecimal baseValue,
 	                      @RequestParam(required = false) Integer condition) {
 
@@ -418,7 +476,9 @@ public class EquipmentController {
 
 		if (serialNumber == null || serialNumber.trim().isEmpty())
 			return "redirect:/inventory/" + toolNameId + "?error=serial_required";
-		if (pricePerDay == null || pricePerDay.compareTo(BigDecimal.ZERO) <= 0)
+		if (priceFirstDay == null || priceFirstDay.compareTo(BigDecimal.ZERO) <= 0)
+			return "redirect:/inventory/" + toolNameId + "?error=price_required";
+		if (priceFirstMonth == null || priceFirstMonth.compareTo(BigDecimal.ZERO) <= 0)
 			return "redirect:/inventory/" + toolNameId + "?error=price_required";
 		if (baseValue == null || baseValue.compareTo(BigDecimal.ZERO) <= 0)
 			return "redirect:/inventory/" + toolNameId + "?error=base_value_required";
@@ -426,13 +486,10 @@ public class EquipmentController {
 		Equipment eq = new Equipment();
 		eq.setToolName(toolName);
 		eq.setSerialNumber(serialNumber.trim());
-		eq.setPricePerDay(pricePerDay);
 		eq.setBaseValue(baseValue);
 		eq.setCondition(condition != null ? condition : 10);
 		eq.setStatus(EquipmentStatus.FREE);
-		eq.setPricePerHour(pricePerDay.divide(new BigDecimal("8"), 2, RoundingMode.HALF_UP));
-		eq.setPricePerWeek(pricePerDay.multiply(new BigDecimal("6")).setScale(2, RoundingMode.HALF_UP));
-		eq.setPricePerMonth(pricePerDay.multiply(new BigDecimal("25")).setScale(2, RoundingMode.HALF_UP));
+		applyPriceFormula(eq, priceFirstDay, priceFirstMonth, priceSecondDay, priceSubsequentDays, priceSecondMonth, priceSubsequentMonths);
 
 		try {
 			equipmentRepository.save(eq);
@@ -445,7 +502,12 @@ public class EquipmentController {
 	@PostMapping("/edit")
 	public String editUnit(@RequestParam Long id,
 	                       @RequestParam String serialNumber,
-	                       @RequestParam BigDecimal pricePerDay,
+	                       @RequestParam BigDecimal priceFirstDay,
+	                       @RequestParam BigDecimal priceFirstMonth,
+	                       @RequestParam(required = false) BigDecimal priceSecondDay,
+	                       @RequestParam(required = false) BigDecimal priceSubsequentDays,
+	                       @RequestParam(required = false) BigDecimal priceSecondMonth,
+	                       @RequestParam(required = false) BigDecimal priceSubsequentMonths,
 	                       @RequestParam BigDecimal baseValue,
 	                       @RequestParam(required = false) Integer condition) {
 
@@ -454,12 +516,9 @@ public class EquipmentController {
 
 		Long toolNameId = eq.getToolName().getId();
 		eq.setSerialNumber(serialNumber.trim());
-		eq.setPricePerDay(pricePerDay);
 		eq.setBaseValue(baseValue);
 		eq.setCondition(condition != null ? condition : eq.getCondition());
-		eq.setPricePerHour(pricePerDay.divide(new BigDecimal("8"), 2, RoundingMode.HALF_UP));
-		eq.setPricePerWeek(pricePerDay.multiply(new BigDecimal("6")).setScale(2, RoundingMode.HALF_UP));
-		eq.setPricePerMonth(pricePerDay.multiply(new BigDecimal("25")).setScale(2, RoundingMode.HALF_UP));
+		applyPriceFormula(eq, priceFirstDay, priceFirstMonth, priceSecondDay, priceSubsequentDays, priceSecondMonth, priceSubsequentMonths);
 
 		try {
 			equipmentRepository.save(eq);
@@ -476,6 +535,8 @@ public class EquipmentController {
 
 		Long toolNameId = eq.getToolName().getId();
 		if (eq.getStatus() != EquipmentStatus.FREE)
+			return "redirect:/inventory/" + toolNameId + "?error=unit_in_use";
+		if (bookingService.hasActiveOrFutureBooking(eq.getId()))
 			return "redirect:/inventory/" + toolNameId + "?error=unit_in_use";
 
 		eq.setIsDeleted(true);

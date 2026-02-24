@@ -45,7 +45,7 @@ public class RentalController {
 		model.addAttribute("soonDebtorRentals", nullToEmpty(rentalService.findSoonDebtors()));
 		model.addAttribute("cancelledRentals", nullToEmpty(rentalService.findCancelled()));
 		model.addAttribute("bookings", nullToEmpty(bookingService.findAll()));
-		model.addAttribute("freeEquipmentForBooking", nullToEmpty(bookingService.findFreeEquipment()));
+		model.addAttribute("equipmentOptionsForBooking", nullToEmpty(rentalService.getEquipmentOptionsForBooking()));
 		model.addAttribute("clients", nullToEmpty(rentalService.findAllClients()));
 		model.addAttribute("equipmentOptions", nullToEmpty(rentalService.getEquipmentOptionsForSelect()));
 		model.addAttribute("currentUser", user);
@@ -117,19 +117,36 @@ public class RentalController {
 	@PostMapping("/booking/add")
 	public String addBooking(@RequestParam String phoneNumber,
 	                        @RequestParam List<Long> equipmentId,
+	                        @RequestParam(required = false) String dateFrom,
 	                        @RequestParam String dateTo,
 	                        @RequestParam(required = false) String comment) {
+		LocalDateTime from = (dateFrom != null && !dateFrom.isBlank()) ? parseDateTime(dateFrom) : null;
 		LocalDateTime to = parseDateTime(dateTo);
 		String error;
 		if (equipmentId == null || equipmentId.isEmpty()) {
 			error = "equipment_required";
 		} else if (equipmentId.size() == 1) {
-			error = bookingService.create(phoneNumber, equipmentId.get(0), to, comment);
+			error = bookingService.create(phoneNumber, equipmentId.get(0), from, to, comment);
 		} else {
-			error = bookingService.createBatch(phoneNumber, equipmentId, to, comment);
+			error = bookingService.createBatch(phoneNumber, equipmentId, from, to, comment);
 		}
 		if (error != null) return "redirect:/rentals?error=" + error;
 		return "redirect:/rentals?success=booking_added";
+	}
+
+	@GetMapping("/booking/{id}")
+	public String bookingDetail(@PathVariable Long id, Model model) {
+		User user = getCurrentUser();
+		if (user == null) return "redirect:/login";
+
+		var booking = bookingService.findById(id).orElse(null);
+		if (booking == null) return "redirect:/rentals?error=not_found";
+
+		model.addAttribute("booking", booking);
+		model.addAttribute("currentUser", user);
+		model.addAttribute("username", user.getLogin());
+		model.addAttribute("currentUserRole", user.getRole());
+		return "html/booking_detail";
 	}
 
 	@PostMapping("/booking/delete")

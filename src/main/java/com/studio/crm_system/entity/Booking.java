@@ -23,6 +23,9 @@ public class Booking {
 			inverseJoinColumns = @JoinColumn(name = "equipment_id"))
 	private List<Equipment> equipmentList = new ArrayList<>();
 
+	@Column
+	private LocalDateTime dateFrom;
+
 	@Column(nullable = false)
 	private LocalDateTime dateTo;
 
@@ -56,6 +59,9 @@ public class Booking {
 		}
 		return sb.toString();
 	}
+
+	public LocalDateTime getDateFrom() { return dateFrom; }
+	public void setDateFrom(LocalDateTime dateFrom) { this.dateFrom = dateFrom; }
 
 	public LocalDateTime getDateTo() { return dateTo; }
 	public void setDateTo(LocalDateTime dateTo) { this.dateTo = dateTo; }

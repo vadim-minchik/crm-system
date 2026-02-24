@@ -48,7 +48,7 @@
     <span th:if="${param.error[0] == 'price_required'}">Введите корректную цену.</span>
     <span th:if="${param.error[0] == 'base_value_required'}">Введите оценочную стоимость.</span>
     <span th:if="${param.error[0] == 'save_failed'}">Не удалось сохранить. Проверьте данные.</span>
-    <span th:if="${param.error[0] == 'unit_in_use'}">Нельзя удалить: оборудование используется.</span>
+    <span th:if="${param.error[0] == 'unit_in_use'}">Нельзя удалить: оборудование в прокате или в брони.</span>
     <span th:if="${param.error[0] == 'unit_not_found'}">Экземпляр не найден.</span>
     <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
   </div>
@@ -67,7 +67,7 @@
         <tr>
           <th class="ps-4">Серийный №</th>
           <th>Состояние</th>
-          <th>Сутки (BYN)</th>
+          <th>1-й день (BYN)</th>
           <th>Оценочная стоимость</th>
           <th>Статус</th>
           <th class="text-center">Действия</th>
@@ -84,7 +84,7 @@
                   class="fw-semibold">10/10</span>
           </td>
           <td>
-            <strong class="text-primary" th:text="${#numbers.formatDecimal(u.pricePerDay, 0, 'NONE', 2, 'POINT')} + ' BYN'">0 BYN</strong>
+            <strong class="text-primary" th:text="${#numbers.formatDecimal(u.priceFirstDay, 0, 'NONE', 2, 'POINT')} + ' BYN'">0 BYN</strong>
           </td>
           <td class="small text-muted" th:text="${#numbers.formatDecimal(u.baseValue, 0, 'NONE', 2, 'POINT')} + ' BYN'">0 BYN</td>
           <td>
@@ -97,14 +97,19 @@
               <button type="button" class="btn-icon"
                       th:data-id="${u.id}"
                       th:data-serial="${u.serialNumber}"
-                      th:data-price-day="${u.pricePerDay}"
+                      th:data-price-first-day="${u.priceFirstDay}"
+                      th:data-price-second-day="${u.priceSecondDay}"
+                      th:data-price-subsequent-days="${u.priceSubsequentDays}"
+                      th:data-price-first-month="${u.priceFirstMonth}"
+                      th:data-price-second-month="${u.priceSecondMonth}"
+                      th:data-price-subsequent-months="${u.priceSubsequentMonths}"
                       th:data-base-value="${u.baseValue}"
                       th:data-condition="${u.condition}"
                       onclick="openEditModal(this)"
                       title="Редактировать">
                 <i class="bi bi-pencil"></i>
               </button>
-              <button th:if="${u.status.name() == 'FREE'}"
+              <button th:if="${u.status.name() == 'FREE' and !equipmentIdsWithBooking.contains(u.id)}"
                       type="button" class="btn-icon text-danger"
                       th:data-id="${u.id}"
                       th:data-serial="${u.serialNumber}"
@@ -112,10 +117,10 @@
                       title="Удалить">
                 <i class="bi bi-trash"></i>
               </button>
-              <span th:if="${u.status.name() != 'FREE'}"
+              <span th:if="${u.status.name() != 'FREE' or equipmentIdsWithBooking.contains(u.id)}"
                     class="btn-icon text-muted"
                     style="cursor: default;"
-                    th:title="${u.status.name() == 'BUSY' ? 'Нельзя удалить: сейчас используется' : 'Нельзя удалить: забронировано'}">
+                    title="Нельзя удалить: в прокате или в брони">
                 <i class="bi bi-lock"></i>
               </span>
             </div>
@@ -150,14 +155,48 @@
             <input type="text" name="serialNumber" class="form-control"
                    placeholder="S/N" required autofocus>
           </div>
-          <div class="col-md-6">
-            <label class="form-label fw-semibold">Стоимость/день *</label>
+          <div class="col-12"><p class="text-muted small mb-1">Обязательно: 1-й день и 1-й месяц. Остальное можно не вводить — подставятся по формуле (0,8× и 0,6×).</p></div>
+          <div class="col-md-4">
+            <label class="form-label fw-semibold">1-й день (BYN) *</label>
             <div class="input-group">
-              <input type="text" name="pricePerDay" class="form-control"
-                     placeholder="0.00" pattern="[0-9]+(\.[0-9]{1,2})?" step="0.01" min="0.01" required>
+              <input type="text" name="priceFirstDay" class="form-control" placeholder="0.00" pattern="[0-9]+(\.[0-9]{1,2})?" step="0.01" min="0.01" required>
               <span class="input-group-text">BYN</span>
             </div>
-            <div class="form-text">Час, неделя, месяц рассчитается автоматически</div>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label fw-semibold">2-й день (BYN)</label>
+            <div class="input-group">
+              <input type="text" name="priceSecondDay" class="form-control" placeholder="0,8×" pattern="[0-9]+(\.[0-9]{1,2})?" step="0.01">
+              <span class="input-group-text">BYN</span>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label fw-semibold">Послед. сутки (BYN)</label>
+            <div class="input-group">
+              <input type="text" name="priceSubsequentDays" class="form-control" placeholder="0,6×" pattern="[0-9]+(\.[0-9]{1,2})?" step="0.01">
+              <span class="input-group-text">BYN</span>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label fw-semibold">1-й месяц (BYN) *</label>
+            <div class="input-group">
+              <input type="text" name="priceFirstMonth" class="form-control" placeholder="0.00" pattern="[0-9]+(\.[0-9]{1,2})?" step="0.01" min="0.01" required>
+              <span class="input-group-text">BYN</span>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label fw-semibold">2-й месяц (BYN)</label>
+            <div class="input-group">
+              <input type="text" name="priceSecondMonth" class="form-control" placeholder="0,8×" pattern="[0-9]+(\.[0-9]{1,2})?" step="0.01">
+              <span class="input-group-text">BYN</span>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label fw-semibold">Послед. месяцы (BYN)</label>
+            <div class="input-group">
+              <input type="text" name="priceSubsequentMonths" class="form-control" placeholder="0,6×" pattern="[0-9]+(\.[0-9]{1,2})?" step="0.01">
+              <span class="input-group-text">BYN</span>
+            </div>
           </div>
           <div class="col-md-6">
             <label class="form-label fw-semibold">Оценочная стоимость *</label>
@@ -199,11 +238,45 @@
             <input type="text" name="serialNumber" id="edit-unit-serial"
                    class="form-control" required>
           </div>
-          <div class="col-md-6">
-            <label class="form-label fw-semibold">Стоимость/день</label>
+          <div class="col-md-4">
+            <label class="form-label fw-semibold">1-й день (BYN)</label>
             <div class="input-group">
-              <input type="text" name="pricePerDay" id="edit-unit-price"
-                     class="form-control" pattern="[0-9]+(\.[0-9]{1,2})?" step="0.01" min="0.01" required>
+              <input type="text" name="priceFirstDay" id="edit-unit-price-first-day" class="form-control" pattern="[0-9]+(\.[0-9]{1,2})?" step="0.01" min="0.01" required>
+              <span class="input-group-text">BYN</span>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label fw-semibold">2-й день (BYN)</label>
+            <div class="input-group">
+              <input type="text" name="priceSecondDay" id="edit-unit-price-second-day" class="form-control" pattern="[0-9]+(\.[0-9]{1,2})?" step="0.01">
+              <span class="input-group-text">BYN</span>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label fw-semibold">Послед. сутки (BYN)</label>
+            <div class="input-group">
+              <input type="text" name="priceSubsequentDays" id="edit-unit-price-subsequent-days" class="form-control" pattern="[0-9]+(\.[0-9]{1,2})?" step="0.01">
+              <span class="input-group-text">BYN</span>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label fw-semibold">1-й месяц (BYN)</label>
+            <div class="input-group">
+              <input type="text" name="priceFirstMonth" id="edit-unit-price-first-month" class="form-control" pattern="[0-9]+(\.[0-9]{1,2})?" step="0.01" min="0.01" required>
+              <span class="input-group-text">BYN</span>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label fw-semibold">2-й месяц (BYN)</label>
+            <div class="input-group">
+              <input type="text" name="priceSecondMonth" id="edit-unit-price-second-month" class="form-control" pattern="[0-9]+(\.[0-9]{1,2})?" step="0.01">
+              <span class="input-group-text">BYN</span>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label fw-semibold">Послед. месяцы (BYN)</label>
+            <div class="input-group">
+              <input type="text" name="priceSubsequentMonths" id="edit-unit-price-subsequent-months" class="form-control" pattern="[0-9]+(\.[0-9]{1,2})?" step="0.01">
               <span class="input-group-text">BYN</span>
             </div>
           </div>
@@ -264,13 +337,20 @@
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
+  function setEditPrice(id, val) {
+    var v = parseFloat(val);
+    document.getElementById(id).value = (val != null && !isNaN(v)) ? v.toFixed(2) : '';
+  }
   function openEditModal(btn) {
     document.getElementById('edit-unit-id').value = btn.getAttribute('data-id');
     document.getElementById('edit-unit-serial').value = btn.getAttribute('data-serial');
-    // Форматируем цену с 2 знаками после запятой
-    const priceDay = parseFloat(btn.getAttribute('data-price-day'));
-    document.getElementById('edit-unit-price').value = isNaN(priceDay) ? '' : priceDay.toFixed(2);
-    const baseValue = parseFloat(btn.getAttribute('data-base-value'));
+    setEditPrice('edit-unit-price-first-day', btn.getAttribute('data-price-first-day'));
+    setEditPrice('edit-unit-price-second-day', btn.getAttribute('data-price-second-day'));
+    setEditPrice('edit-unit-price-subsequent-days', btn.getAttribute('data-price-subsequent-days'));
+    setEditPrice('edit-unit-price-first-month', btn.getAttribute('data-price-first-month'));
+    setEditPrice('edit-unit-price-second-month', btn.getAttribute('data-price-second-month'));
+    setEditPrice('edit-unit-price-subsequent-months', btn.getAttribute('data-price-subsequent-months'));
+    var baseValue = parseFloat(btn.getAttribute('data-base-value'));
     document.getElementById('edit-unit-base-value').value = isNaN(baseValue) ? '' : baseValue.toFixed(2);
     document.getElementById('edit-unit-condition').value = btn.getAttribute('data-condition');
     new bootstrap.Modal(document.getElementById('modalEditUnit')).show();

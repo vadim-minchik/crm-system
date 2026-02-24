@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+<meta charset="UTF-8">
+<title th:text="'Бронь #' + ${booking.id} + ' | STUDIO.CRM'">Бронь | STUDIO.CRM</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+<link rel="stylesheet" th:href="@{/css/style.css}">
+<style>
+  .info-block { background: #f8fafc; border-radius: 12px; padding: 20px 24px; margin-bottom: 16px; }
+  .info-block .section-title {
+    font-size: 0.72rem; font-weight: 700; letter-spacing: 0.08em;
+    text-transform: uppercase; color: #94a3b8; margin-bottom: 14px;
+  }
+  .info-row { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 10px; }
+  .info-label { font-size: 0.8rem; color: #64748b; min-width: 180px; flex-shrink: 0; }
+  .info-value { font-size: 0.9rem; font-weight: 500; color: #1e293b; word-break: break-word; }
+</style>
+</head>
+<body>
+
+<div th:replace="~{html/fragments :: sidebar('rentals')}"></div>
+
+<div class="main-content">
+
+  <nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb" style="font-size:0.85rem;">
+      <li class="breadcrumb-item"><a th:href="@{/rentals}" class="text-decoration-none">Журнал прокатов</a></li>
+      <li class="breadcrumb-item active" th:text="'Бронь #' + ${booking.id}">Бронь</li>
+    </ol>
+  </nav>
+
+  <div th:if="${param.error}" class="alert alert-danger alert-dismissible fade show" role="alert">
+    <i class="bi bi-exclamation-triangle-fill me-2"></i><strong>Ошибка: </strong>
+    <span th:if="${param.error[0] == 'not_found'}">Бронь не найдена.</span>
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+  </div>
+
+  <div class="row g-4">
+    <div class="col-lg-8">
+      <div class="d-flex align-items-center gap-3 mb-4">
+        <div class="rounded-circle bg-info text-white d-flex align-items-center justify-content-center"
+             style="width:56px;height:56px;font-size:1.4rem;flex-shrink:0;">
+          <i class="bi bi-bookmark-check"></i>
+        </div>
+        <div class="flex-grow-1">
+          <h2 class="mb-0 fw-bold" th:text="'Бронь #' + ${booking.id}">Бронь</h2>
+          <span class="badge bg-info">Забронировано</span>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+          <a th:href="@{/rentals}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i> К журналу
+          </a>
+          <form th:action="@{/rentals/booking/delete}" method="post" class="d-inline mb-0" onsubmit="return confirm('Удалить бронь? Оборудование снова станет доступным.');">
+            <input type="hidden" name="id" th:value="${booking.id}">
+            <button type="submit" class="btn btn-outline-danger">
+              <i class="bi bi-trash me-1"></i> Удалить бронь
+            </button>
+          </form>
+        </div>
+      </div>
+
+      <div class="info-block">
+        <div class="section-title"><i class="bi bi-telephone me-1"></i>Контакт</div>
+        <div class="info-row">
+          <span class="info-label">Телефон</span>
+          <span class="info-value" th:text="${booking.phoneNumber}">—</span>
+        </div>
+      </div>
+
+      <div class="info-block">
+        <div class="section-title"><i class="bi bi-calendar-event me-1"></i>Период</div>
+        <div class="info-row">
+          <span class="info-label">С</span>
+          <span class="info-value" th:text="${booking.dateFrom != null ? #temporals.format(booking.dateFrom, 'dd.MM.yyyy HH:mm') : '—'}">—</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">По</span>
+          <span class="info-value" th:text="${#temporals.format(booking.dateTo, 'dd.MM.yyyy HH:mm')}">—</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Когда создано</span>
+          <span class="info-value" th:text="${#temporals.format(booking.createdAt, 'dd.MM.yyyy HH:mm')}">—</span>
+        </div>
+      </div>
+
+      <div class="info-block">
+        <div class="section-title"><i class="bi bi-box-seam me-1"></i>Оборудование</div>
+        <div class="info-row">
+          <span class="info-label">Инструменты</span>
+          <span class="info-value" th:text="${booking.equipmentDisplayString}">—</span>
+        </div>
+      </div>
+
+      <div th:if="${booking.comment != null && !#strings.isEmpty(booking.comment)}" class="info-block">
+        <div class="section-title"><i class="bi bi-chat-text me-1"></i>Комментарий</div>
+        <div class="info-row">
+          <span class="info-value" th:text="${booking.comment}">—</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

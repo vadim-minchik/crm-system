@@ -25,17 +25,29 @@ public class Equipment {
 	@Column(nullable = false, precision = 10, scale = 2)
 	private BigDecimal baseValue;
 
-	@Column(nullable = false, precision = 10, scale = 2)
-	private BigDecimal pricePerHour;
+	/** Первые сутки (100%). */
+	@Column(name = "price_first_day", nullable = false, precision = 10, scale = 2)
+	private BigDecimal priceFirstDay;
 
-	@Column(nullable = false, precision = 10, scale = 2)
-	private BigDecimal pricePerDay;
+	/** Вторые сутки (обычно 0,8 от первых). */
+	@Column(name = "price_second_day", nullable = false, precision = 10, scale = 2)
+	private BigDecimal priceSecondDay;
 
-	@Column(nullable = false, precision = 10, scale = 2)
-	private BigDecimal pricePerWeek;
+	/** Последующие сутки (обычно 0,6 от первых). */
+	@Column(name = "price_subsequent_days", nullable = false, precision = 10, scale = 2)
+	private BigDecimal priceSubsequentDays;
 
-	@Column(nullable = false, precision = 10, scale = 2)
-	private BigDecimal pricePerMonth;
+	/** Первый месяц (100%). */
+	@Column(name = "price_first_month", nullable = false, precision = 10, scale = 2)
+	private BigDecimal priceFirstMonth;
+
+	/** Второй месяц (обычно 0,8 от первого). */
+	@Column(name = "price_second_month", nullable = false, precision = 10, scale = 2)
+	private BigDecimal priceSecondMonth;
+
+	/** Последующие месяцы (обычно 0,6 от первого). */
+	@Column(name = "price_subsequent_months", nullable = false, precision = 10, scale = 2)
+	private BigDecimal priceSubsequentMonths;
 
 	@Column(nullable = false)
 	@Enumerated(EnumType.STRING)
@@ -67,17 +79,23 @@ public class Equipment {
 	public BigDecimal getBaseValue() { return baseValue; }
 	public void setBaseValue(BigDecimal baseValue) { this.baseValue = baseValue; }
 
-	public BigDecimal getPricePerHour() { return pricePerHour; }
-	public void setPricePerHour(BigDecimal pricePerHour) { this.pricePerHour = pricePerHour; }
+	public BigDecimal getPriceFirstDay() { return priceFirstDay; }
+	public void setPriceFirstDay(BigDecimal priceFirstDay) { this.priceFirstDay = priceFirstDay; }
 
-	public BigDecimal getPricePerDay() { return pricePerDay; }
-	public void setPricePerDay(BigDecimal pricePerDay) { this.pricePerDay = pricePerDay; }
+	public BigDecimal getPriceSecondDay() { return priceSecondDay; }
+	public void setPriceSecondDay(BigDecimal priceSecondDay) { this.priceSecondDay = priceSecondDay; }
 
-	public BigDecimal getPricePerWeek() { return pricePerWeek; }
-	public void setPricePerWeek(BigDecimal pricePerWeek) { this.pricePerWeek = pricePerWeek; }
+	public BigDecimal getPriceSubsequentDays() { return priceSubsequentDays; }
+	public void setPriceSubsequentDays(BigDecimal priceSubsequentDays) { this.priceSubsequentDays = priceSubsequentDays; }
 
-	public BigDecimal getPricePerMonth() { return pricePerMonth; }
-	public void setPricePerMonth(BigDecimal pricePerMonth) { this.pricePerMonth = pricePerMonth; }
+	public BigDecimal getPriceFirstMonth() { return priceFirstMonth; }
+	public void setPriceFirstMonth(BigDecimal priceFirstMonth) { this.priceFirstMonth = priceFirstMonth; }
+
+	public BigDecimal getPriceSecondMonth() { return priceSecondMonth; }
+	public void setPriceSecondMonth(BigDecimal priceSecondMonth) { this.priceSecondMonth = priceSecondMonth; }
+
+	public BigDecimal getPriceSubsequentMonths() { return priceSubsequentMonths; }
+	public void setPriceSubsequentMonths(BigDecimal priceSubsequentMonths) { this.priceSubsequentMonths = priceSubsequentMonths; }
 
 	public EquipmentStatus getStatus() { return status; }
 	public void setStatus(EquipmentStatus status) { this.status = status; }
