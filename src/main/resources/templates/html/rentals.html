@@ -112,6 +112,7 @@
               <td class="td-ellipsis"><div th:text="${r.equipmentDisplayString}">—</div></td>
               <td><strong th:text="${r.totalAmount != null ? (#numbers.formatDecimal(r.totalAmount, 0, 'NONE', 2, 'POINT') + ' Br') : '—'}">—</strong></td>
               <td class="td-actions text-end pe-4">
+                <button type="button" class="btn btn-sm btn-outline-secondary me-1" th:attr="data-rental-id=${r.id}" onclick="openDocumentModal(this)" title="Сформировать документ (договор, акт)"><i class="bi bi-file-earmark-text"></i></button>
                 <a th:href="@{/rentals/{id}(id=${r.id})}" class="btn btn-sm btn-outline-primary me-1"><i class="bi bi-eye"></i></a>
                 <form th:action="@{/rentals/cancel}" method="post" class="d-inline" onsubmit="return confirm('Отменить прокат? Оборудование станет свободным.');"><input type="hidden" name="id" th:value="${r.id}"><button type="submit" class="btn btn-sm btn-outline-secondary">Отменить</button></form>
             </td>
@@ -161,7 +162,9 @@
               <td th:text="${#temporals.format(r.dateTo, 'dd.MM.yyyy HH:mm')}">—</td>
               <td class="td-ellipsis"><div th:text="${r.equipmentDisplayString}">—</div></td>
               <td><strong th:text="${r.totalAmount != null ? (#numbers.formatDecimal(r.totalAmount, 0, 'NONE', 2, 'POINT') + ' Br') : '—'}">—</strong></td>
-              <td class="td-actions text-end pe-4"><a th:href="@{/rentals/{id}(id=${r.id})}" class="btn btn-sm btn-outline-primary"><i class="bi bi-eye"></i></a></td>
+              <td class="td-actions text-end pe-4">
+                <button type="button" class="btn btn-sm btn-outline-secondary me-1" th:attr="data-rental-id=${r.id}" onclick="openDocumentModal(this)" title="Сформировать документ"><i class="bi bi-file-earmark-text"></i></button>
+                <a th:href="@{/rentals/{id}(id=${r.id})}" class="btn btn-sm btn-outline-primary"><i class="bi bi-eye"></i></a></td>
           </tr>
             <tr th:if="${#lists.isEmpty(completedRentals)}"><td colspan="6" class="text-center py-5 text-muted">История пуста</td></tr>
           </tbody>
@@ -182,6 +185,7 @@
               <td class="td-ellipsis"><div th:text="${r.equipmentDisplayString}">—</div></td>
               <td><strong th:text="${r.totalAmount != null ? (#numbers.formatDecimal(r.totalAmount, 0, 'NONE', 2, 'POINT') + ' Br') : '—'}">—</strong></td>
               <td class="td-actions text-end pe-4">
+                <button type="button" class="btn btn-sm btn-outline-secondary me-1" th:attr="data-rental-id=${r.id}" onclick="openDocumentModal(this)" title="Сформировать документ"><i class="bi bi-file-earmark-text"></i></button>
                 <a th:href="@{/rentals/{id}(id=${r.id})}" class="btn btn-sm btn-outline-primary me-1"><i class="bi bi-eye"></i></a>
                 <form th:action="@{/rentals/complete}" method="post" class="d-inline"><input type="hidden" name="id" th:value="${r.id}"><button type="submit" class="btn btn-sm btn-outline-success">Завершить</button></form>
             </td>
@@ -205,6 +209,7 @@
               <td class="td-ellipsis"><div th:text="${r.equipmentDisplayString}">—</div></td>
               <td><strong th:text="${r.totalAmount != null ? (#numbers.formatDecimal(r.totalAmount, 0, 'NONE', 2, 'POINT') + ' Br') : '—'}">—</strong></td>
             <td class="td-actions text-end pe-4">
+                <button type="button" class="btn btn-sm btn-outline-secondary me-1" th:attr="data-rental-id=${r.id}" onclick="openDocumentModal(this)" title="Сформировать документ"><i class="bi bi-file-earmark-text"></i></button>
                 <a th:href="@{/rentals/{id}(id=${r.id})}" class="btn btn-sm btn-outline-primary me-1"><i class="bi bi-eye"></i></a>
                 <form th:action="@{/rentals/complete}" method="post" class="d-inline"><input type="hidden" name="id" th:value="${r.id}"><button type="submit" class="btn btn-sm btn-outline-success">Завершить</button></form>
             </td>
@@ -227,7 +232,9 @@
               <td th:text="${#temporals.format(r.dateTo, 'dd.MM.yyyy HH:mm')}">—</td>
               <td class="td-ellipsis"><div th:text="${r.equipmentDisplayString}">—</div></td>
               <td><strong th:text="${r.totalAmount != null ? (#numbers.formatDecimal(r.totalAmount, 0, 'NONE', 2, 'POINT') + ' Br') : '—'}">—</strong></td>
-              <td class="td-actions text-end pe-4"><a th:href="@{/rentals/{id}(id=${r.id})}" class="btn btn-sm btn-outline-primary"><i class="bi bi-eye"></i></a></td>
+              <td class="td-actions text-end pe-4">
+                <button type="button" class="btn btn-sm btn-outline-secondary me-1" th:attr="data-rental-id=${r.id}" onclick="openDocumentModal(this)" title="Сформировать документ"><i class="bi bi-file-earmark-text"></i></button>
+                <a th:href="@{/rentals/{id}(id=${r.id})}" class="btn btn-sm btn-outline-primary"><i class="bi bi-eye"></i></a></td>
           </tr>
             <tr th:if="${#lists.isEmpty(cancelledRentals)}"><td colspan="6" class="text-center py-5 text-muted">Нет отменённых прокатов</td></tr>
         </tbody>
@@ -390,6 +397,22 @@
               </div>
               <input type="hidden" name="deliveryAmount" id="rental-delivery-hidden" value="0">
             </div>
+            <div id="rental-delivery-address-wrap" class="mt-2" style="display: none;">
+              <label class="form-label small text-muted">Адрес доставки</label>
+              <input type="text" name="deliveryAddress" id="rental-delivery-address" class="form-control" placeholder="Улица, дом, квартира, подъезд..." maxlength="500" autocomplete="off">
+            </div>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Кто оформил прокат</label>
+            <p class="form-control-plaintext mb-0 small" th:if="${currentUser != null}" th:text="'Вы: ' + currentUser.surname + ' ' + currentUser.name + (currentUser.patronymic != null ? ' ' + currentUser.patronymic : '')">Вы: ФИО</p>
+            <p class="form-control-plaintext mb-0 small text-muted" th:if="${currentUser == null}">Текущий пользователь</p>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Кто отдал оборудование</label>
+            <select name="handedOverByStaffId" class="form-select">
+              <option value="">— Не указано —</option>
+              <option th:each="s : ${staffList}" th:value="${s.id}" th:text="${s.surname + ' ' + s.name + (s.patronymic != null ? ' ' + s.patronymic : '')}">Сотрудник</option>
+            </select>
           </div>
         </div>
       </div>
@@ -399,6 +422,33 @@
         </button>
       </div>
     </form>
+  </div>
+</div>
+
+<div class="modal fade" id="documentModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5><i class="bi bi-file-earmark-text me-2"></i>Сформировать документ по прокату</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <p class="text-muted small mb-3">Выберите шаблон. В него подставятся данные клиента и проката. Скачайте готовый документ .docx.</p>
+        <label class="form-label">Шаблон</label>
+        <select id="documentTemplateSelect" class="form-select">
+          <option value="">— Выберите шаблон —</option>
+          <option th:each="t : ${documentTemplates}" th:value="${t.id}" th:text="${t.name}">Шаблон</option>
+        </select>
+        <div id="documentTemplateDownloadWrap" class="mt-2" style="display: none;">
+          <a id="documentTemplateDownloadLink" href="#" class="btn btn-sm btn-outline-secondary" target="_blank" rel="noopener"><i class="bi bi-file-earmark-arrow-down me-1"></i>Скачать шаблон (.docx)</a>
+        </div>
+        <p class="form-text text-muted mt-2 mb-0">В шаблоне должны быть переменные {{CLIENT_FIO}}, {{RENTAL_DATE_FROM}} и т.д. — создайте шаблон в Word и загрузите в разделе «Документы».</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+        <a id="documentDownloadDocxLink" href="#" class="btn btn-primary" style="display: none;"><i class="bi bi-file-earmark-word me-1"></i>Скачать документ (.docx)</a>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -442,6 +492,44 @@
       if (dateFrom.value) dateTo.setAttribute('min', dateFrom.value);
     });
   }
+})();
+
+// Документ по прокату: открыть модалку, выбрать шаблон — скачать документ (Word) или шаблон (Word)
+(function() {
+  var documentModal = document.getElementById('documentModal');
+  var documentTemplateSelect = document.getElementById('documentTemplateSelect');
+  if (!documentModal || !documentTemplateSelect) return;
+
+  var documentTemplateDownloadWrap = document.getElementById('documentTemplateDownloadWrap');
+  var documentTemplateDownloadLink = document.getElementById('documentTemplateDownloadLink');
+  var documentDownloadDocxLink = document.getElementById('documentDownloadDocxLink');
+
+  documentTemplateSelect.addEventListener('change', function() {
+    var templateId = documentTemplateSelect.value;
+    var rentalId = documentModal.getAttribute('data-rental-id');
+    if (templateId) {
+      documentTemplateDownloadLink.href = '/documents/' + templateId + '/file';
+      documentTemplateDownloadWrap.style.display = 'block';
+      if (documentDownloadDocxLink) {
+        documentDownloadDocxLink.href = '/rentals/' + rentalId + '/document/docx?templateId=' + encodeURIComponent(templateId);
+        documentDownloadDocxLink.style.display = 'inline-flex';
+      }
+    } else {
+      documentTemplateDownloadWrap.style.display = 'none';
+      if (documentDownloadDocxLink) documentDownloadDocxLink.style.display = 'none';
+    }
+  });
+
+  window.openDocumentModal = function(btn) {
+    var rentalId = btn && btn.getAttribute ? btn.getAttribute('data-rental-id') : null;
+    if (!rentalId) return;
+    documentModal.setAttribute('data-rental-id', rentalId);
+    documentTemplateSelect.selectedIndex = 0;
+    if (documentTemplateDownloadWrap) documentTemplateDownloadWrap.style.display = 'none';
+    if (documentDownloadDocxLink) documentDownloadDocxLink.style.display = 'none';
+    var bsModal = new bootstrap.Modal(documentModal);
+    bsModal.show();
+  };
 })();
 
 // Поиск клиента по фамилии, телефону, идентификационному номеру
@@ -717,9 +805,13 @@
   var deliveryAmountInput = document.getElementById('rental-delivery-amount');
   var totalAmountInput = document.getElementById('rental-total-amount');
   if (additionalAmountInput) { additionalAmountInput.addEventListener('input', updateRentalTotalFromExtras); additionalAmountInput.addEventListener('change', updateRentalTotalFromExtras); }
+  var deliveryAddressWrap = document.getElementById('rental-delivery-address-wrap');
+  var deliveryAddressInput = document.getElementById('rental-delivery-address');
   if (deliveryCheck) {
     deliveryCheck.addEventListener('change', function() {
       if (deliveryAmountInput) { deliveryAmountInput.disabled = !deliveryCheck.checked; if (!deliveryCheck.checked) deliveryAmountInput.value = '0'; }
+      if (deliveryAddressWrap) deliveryAddressWrap.style.display = deliveryCheck.checked ? 'block' : 'none';
+      if (!deliveryCheck.checked && deliveryAddressInput) deliveryAddressInput.value = '';
       updateRentalTotalFromExtras();
     });
   }
@@ -734,6 +826,8 @@
       if (deliveryCheck) deliveryCheck.checked = false;
       if (deliveryAmountInput) { deliveryAmountInput.value = '0'; deliveryAmountInput.disabled = true; }
       if (document.getElementById('rental-delivery-hidden')) document.getElementById('rental-delivery-hidden').value = '0';
+      if (deliveryAddressWrap) deliveryAddressWrap.style.display = 'none';
+      if (deliveryAddressInput) deliveryAddressInput.value = '';
       if (additionalAmountInput) additionalAmountInput.value = '';
       if (document.getElementById('rental-additional-description')) document.getElementById('rental-additional-description').value = '';
       render();

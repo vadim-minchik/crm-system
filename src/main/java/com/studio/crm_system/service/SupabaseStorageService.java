@@ -54,6 +54,65 @@ public class SupabaseStorageService {
         throw new RuntimeException("Ошибка загрузки в Supabase Storage: " + response.getStatusCode());
     }
 
+    /**
+     * Загружает шаблон документа (Word .doc/.docx) в отдельную папку bucket: documents/templates/{id}_{filename}.
+     * Без сжатия — файл передаётся как есть.
+     */
+    public String uploadTemplate(MultipartFile file, Long templateId) throws IOException {
+        String bucket = props.getStorage().getBucket();
+        String safeName = file.getOriginalFilename() != null ? file.getOriginalFilename().replaceAll("[^a-zA-Z0-9._-]", "_") : "document.docx";
+        String path = "documents/templates/" + templateId + "_" + safeName;
+        String uploadUrl = props.getUrl() + "/storage/v1/object/" + bucket + "/" + path;
+
+        String contentType = file.getContentType();
+        if (contentType == null || contentType.isBlank()) {
+            if (safeName.toLowerCase().endsWith(".docx")) contentType = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+            else if (safeName.toLowerCase().endsWith(".doc")) contentType = "application/msword";
+            else contentType = "application/octet-stream";
+        }
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("Authorization", "Bearer " + props.getServiceRoleKey());
+        headers.setContentType(MediaType.parseMediaType(contentType));
+        headers.set("x-upsert", "true");
+
+        byte[] bytes = file.getBytes();
+        HttpEntity<byte[]> entity = new HttpEntity<>(bytes, headers);
+        ResponseEntity<String> response = restTemplate.exchange(
+                uploadUrl, HttpMethod.POST, entity, String.class
+        );
+
+        if (response.getStatusCode().is2xxSuccessful()) {
+            return props.getUrl() + "/storage/v1/object/public/" + bucket + "/" + path;
+        }
+        throw new RuntimeException("Ошибка загрузки шаблона в Supabase Storage: " + response.getStatusCode());
+    }
+
+    /**
+     * Скачивает файл из Storage по сохранённому public URL, используя служебный ключ.
+     * Нужно, если бакет приватный и публичный URL отдаёт 403.
+     */
+    public byte[] downloadByStoredUrl(String publicUrl) {
+        if (publicUrl == null || publicUrl.isBlank()) return null;
+
+        String bucket = props.getStorage().getBucket();
+        String prefix = props.getUrl() + "/storage/v1/object/public/" + bucket + "/";
+        if (!publicUrl.startsWith(prefix)) return null;
+
+        String path = publicUrl.substring(prefix.length());
+        String downloadUrl = props.getUrl() + "/storage/v1/object/" + bucket + "/" + path;
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("Authorization", "Bearer " + props.getServiceRoleKey());
+        headers.set("Accept", "application/octet-stream,*/*");
+
+        ResponseEntity<byte[]> resp = restTemplate.exchange(
+                downloadUrl, HttpMethod.GET, new HttpEntity<>(headers), byte[].class);
+        if (!resp.getStatusCode().is2xxSuccessful() || resp.getBody() == null)
+            return null;
+        return resp.getBody();
+    }
+
     public void deleteByUrl(String publicUrl) {
         if (publicUrl == null || publicUrl.isBlank()) return;
 

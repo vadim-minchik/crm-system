@@ -26,6 +26,10 @@ public interface RentalRepository extends JpaRepository<Rental, Long> {
 	@Query("SELECT r FROM Rental r LEFT JOIN FETCH r.equipmentList WHERE r.id = :id")
 	Optional<Rental> findByIdWithEquipment(@Param("id") Long id);
 
+	/** Прокат с клиентом и оборудованием для формирования документа (подстановки {{CLIENT_FIO}} и т.д.). */
+	@Query("SELECT DISTINCT r FROM Rental r LEFT JOIN FETCH r.client LEFT JOIN FETCH r.equipmentList LEFT JOIN FETCH r.point LEFT JOIN FETCH r.createdByStaff LEFT JOIN FETCH r.handedOverByStaff WHERE r.id = :id")
+	Optional<Rental> findByIdForDocument(@Param("id") Long id);
+
 	@Query("SELECT r FROM Rental r JOIN r.equipmentList e WHERE e.id = :equipmentId ORDER BY r.dateFrom DESC")
 	List<Rental> findByEquipmentIdOrderByDateFromDesc(@Param("equipmentId") Long equipmentId);
 

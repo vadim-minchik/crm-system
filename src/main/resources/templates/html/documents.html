@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+<meta charset="UTF-8">
+<title>Документы | STUDIO.CRM</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+<link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+<body>
+
+<div th:replace="~{html/fragments :: sidebar('documents')}"></div>
+
+<div class="main-content">
+	<div class="page-header">
+		<div class="page-title">
+			<h2><i class="bi bi-folder2-open me-2 text-primary"></i>Документы</h2>
+			<p class="text-muted mb-0">Раздел для шаблонов и формирования документов по прокатам.</p>
+		</div>
+	</div>
+
+	<div th:if="${param.error}" class="alert alert-danger alert-dismissible fade show" role="alert">
+		<i class="bi bi-exclamation-triangle-fill me-2"></i><strong>Ошибка: </strong>
+		<span th:if="${param.error[0] == 'name_required'}">Укажите название шаблона.</span>
+		<span th:if="${param.error[0] == 'file_required'}">Выберите файл Word (.doc или .docx).</span>
+		<span th:if="${param.error[0] == 'invalid_format'}">Разрешены только файлы .docx (создайте шаблон в Word и сохраните как «Документ Word (.docx)»).</span>
+		<span th:if="${param.error[0] == 'upload_failed'}">Не удалось загрузить файл в хранилище.</span>
+		<span th:if="${param.error[0] == 'not_docx'}">Загружен не файл .docx. Используйте исходный шаблон из Word (сохраните как «Документ Word (.docx)»). Не загружайте сформированный системой документ.</span>
+		<span th:if="${param.error[0] == 'not_found'}">Шаблон не найден.</span>
+		<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+	</div>
+	<div th:if="${param.success}" class="alert alert-success alert-dismissible fade show" role="alert">
+		<i class="bi bi-check-circle-fill me-2"></i><strong>Готово! </strong>
+		<span th:if="${param.success[0] == 'template_added'}">Шаблон загружен.</span>
+		<span th:if="${param.success[0] == 'template_deleted'}">Шаблон удалён.</span>
+		<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+	</div>
+
+	<!-- Раздел: Шаблоны (всё отдельно) -->
+	<section class="mb-4">
+		<div class="d-flex align-items-center justify-content-between mb-3">
+			<div>
+				<h3 class="h5 mb-1"><i class="bi bi-file-earmark-word me-2 text-primary"></i>Шаблоны</h3>
+				<p class="text-muted small mb-0">Файлы .docx из Word с переменными в двойных скобках. Полный список переменных — в блоке ниже «Все переменные для шаблонов».</p>
+			</div>
+			<button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#uploadModal">
+				<i class="bi bi-upload"></i> Загрузить шаблон
+			</button>
+		</div>
+		<div class="card-table">
+			<div class="table-responsive">
+				<table class="table table-hover mb-0">
+					<thead>
+						<tr>
+							<th class="ps-4">Название</th>
+							<th>Файл</th>
+							<th>Размер</th>
+							<th>Дата</th>
+							<th class="text-end pe-4">Действия</th>
+						</tr>
+					</thead>
+					<tbody>
+						<tr th:each="t : ${templates}">
+							<td class="ps-4"><strong th:text="${t.name}">—</strong></td>
+							<td><span class="text-muted" th:text="${t.originalFileName}">—</span></td>
+							<td th:text="${t.fileSize != null ? (#numbers.formatInteger(t.fileSize / 1024, 1, 'POINT') + ' КБ') : '—'}">—</td>
+							<td th:text="${#temporals.format(t.createdAt, 'dd.MM.yyyy HH:mm')}">—</td>
+							<td class="text-end pe-4">
+								<a th:href="@{/documents/{id}/file(id=${t.id})}" class="btn btn-sm btn-outline-primary me-1" download><i class="bi bi-download"></i> Скачать</a>
+								<form th:action="@{/documents/{id}/delete(id=${t.id})}" method="post" class="d-inline" onsubmit="return confirm('Удалить этот шаблон? Файл будет удалён из хранилища.');">
+									<button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+								</form>
+							</td>
+						</tr>
+						<tr th:if="${#lists.isEmpty(templates)}">
+							<td colspan="5" class="text-center py-5 text-muted">
+								<i class="bi bi-file-earmark-word" style="font-size: 2.5rem; opacity: 0.5;"></i>
+								<p class="mt-2 mb-0">Нет шаблонов. Загрузите первый файл .docx из Word.</p>
+							</td>
+						</tr>
+					</tbody>
+				</table>
+			</div>
+		</div>
+	</section>
+
+	<!-- Все примеры переменных для подстановки в шаблонах -->
+	<section class="mb-4">
+		<h3 class="h5 mb-3"><i class="bi bi-code-slash me-2 text-primary"></i>Все переменные для шаблонов</h3>
+		<p class="text-muted small mb-3">Вставляйте в Word именно в двойных фигурных скобках. При скачивании документа по прокату подставятся данные клиента и проката.</p>
+		<div class="card-table">
+			<div class="table-responsive" style="max-height: 420px;">
+				<table class="table table-sm table-hover mb-0">
+					<thead class="table-light sticky-top">
+						<tr>
+							<th class="ps-4">Переменная</th>
+							<th>Описание</th>
+						</tr>
+					</thead>
+					<tbody>
+						<tr th:each="row : ${placeholdersHelp}">
+							<td class="ps-4"><code class="small" th:text="${row[0]}">—</code></td>
+							<td class="text-muted small" th:text="${row[1]}">—</td>
+						</tr>
+					</tbody>
+				</table>
+			</div>
+		</div>
+	</section>
+
+	<!-- В конце — всё вместе: как пользоваться -->
+	<section class="card-table p-4 bg-light rounded">
+		<h3 class="h6 mb-3"><i class="bi bi-link-45deg me-2"></i>Как это работает вместе</h3>
+		<ol class="mb-0 ps-3 small text-muted">
+			<li class="mb-2"><strong>Шаблоны</strong> — выше: загружаете .docx из Word. Переменные — в блоке «Все переменные для шаблонов» (все примеры с описанием).</li>
+			<li class="mb-2"><strong>Журнал прокатов</strong> — у проката нажимаете иконку документа, выбираете шаблон.</li>
+			<li><strong>Скачать документ (.docx)</strong> — в модалке скачиваете заполненный документ. Всё вместе в конце цепочки.</li>
+		</ol>
+	</section>
+</div>
+
+<div class="modal fade" id="uploadModal" tabindex="-1">
+	<div class="modal-dialog modal-dialog-centered">
+		<form th:action="@{/documents/upload}" method="post" enctype="multipart/form-data" class="modal-content">
+			<div class="modal-header">
+				<h5><i class="bi bi-file-earmark-arrow-up me-2"></i>Загрузить шаблон</h5>
+				<button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+			</div>
+			<div class="modal-body">
+				<div class="mb-3">
+					<label class="form-label">Название шаблона *</label>
+					<input type="text" name="name" class="form-control" required placeholder="Например: Договор аренды">
+				</div>
+				<div class="mb-0">
+					<label class="form-label">Файл шаблона *</label>
+					<input type="file" name="file" class="form-control" accept=".docx" required>
+					<small class="text-muted">Только .docx (сохраните в Word как «Документ Word (.docx)»)</small>
+				</div>
+			</div>
+			<div class="modal-footer">
+				<button type="submit" class="btn btn-primary">Загрузить</button>
+			</div>
+		</form>
+	</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

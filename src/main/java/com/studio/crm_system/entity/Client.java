@@ -59,6 +59,7 @@ public class Client {
 	@Column(nullable = false, unique = true)
 	private String phoneNumber;
 
+	/** Рейтинг 1–10: считается как среднее по отзывам. Вручную не редактируется. */
 	@Column(nullable = false)
 	private Integer rating = 10;
 
@@ -71,6 +72,10 @@ public class Client {
 
 	@Column(nullable = false)
 	private Boolean isDeleted = false;
+
+	/** Чёрный список: true — клиент в чёрном списке. */
+	@Column(nullable = false)
+	private Boolean blacklisted = false;
 
 	public Long getId() { return id; }
 	public void setId(Long id) { this.id = id; }
@@ -134,6 +139,9 @@ public class Client {
 
 	public Boolean getIsDeleted() { return isDeleted; }
 	public void setIsDeleted(Boolean isDeleted) { this.isDeleted = isDeleted; }
+
+	public Boolean getBlacklisted() { return blacklisted; }
+	public void setBlacklisted(Boolean blacklisted) { this.blacklisted = blacklisted; }
 
 	public String getFullAddress() {
 		return addressStreet + ", " + addressHouse + ", пд." + addressEntrance + ", корп." + addressBuilding + ", кв." + addressApartment;

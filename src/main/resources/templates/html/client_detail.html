@@ -34,6 +34,12 @@
   }
   .expiry-warn { color: #dc2626; font-weight: 600; }
   .expiry-ok   { color: #16a34a; }
+  .reviews-block .reviews-hint { font-size: 0.875rem; line-height: 1.4; }
+  .reviews-add-card { background: #f1f5f9; border: 1px solid #e2e8f0; }
+  .reviews-empty { background: #f8fafc; border-radius: 12px; }
+  .review-card { background: #f8fafc; border: 1px solid #e2e8f0; }
+  .review-score { font-size: 0.9rem; }
+  .review-comment { line-height: 1.45; }
 </style>
 </head>
 <body>
@@ -54,12 +60,19 @@
     <span th:if="${param.error[0] == 'no_file'}">Выберите файл для загрузки.</span>
     <span th:if="${param.error[0] == 'not_image'}">Разрешены только изображения (jpg, png).</span>
     <span th:if="${param.error[0] == 'upload_failed'}">Ошибка загрузки. Проверьте настройки Supabase Storage.</span>
+    <span th:if="${param.error[0] == 'invalid_score'}">Оценка должна быть от 1 до 10.</span>
+    <span th:if="${param.error[0] == 'review_not_found'}">Отзыв не найден.</span>
+    <span th:if="${param.error[0] == 'review_delete_denied'}">Удалить можно только свой отзыв.</span>
     <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
   </div>
   <div th:if="${param.success}" class="alert alert-success alert-dismissible fade show">
     <i class="bi bi-check-circle-fill me-2"></i>
     <span th:if="${param.success[0] == 'photo_uploaded'}">Фото паспорта успешно загружено.</span>
     <span th:if="${param.success[0] == 'photo_deleted'}">Фото удалено.</span>
+    <span th:if="${param.success[0] == 'blacklisted'}">Клиент добавлен в чёрный список.</span>
+    <span th:if="${param.success[0] == 'removed_from_blacklist'}">Клиент убран из чёрного списка.</span>
+    <span th:if="${param.success[0] == 'review_added'}">Отзыв добавлен. Рейтинг пересчитан.</span>
+    <span th:if="${param.success[0] == 'review_deleted'}">Отзыв удалён.</span>
     <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
   </div>
 
@@ -67,19 +80,27 @@
 
     <div class="col-lg-8">
 
-      <div class="d-flex align-items-center gap-3 mb-4">
+      <div class="d-flex align-items-center gap-3 mb-4 flex-wrap">
         <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center"
              style="width:56px;height:56px;font-size:1.4rem;flex-shrink:0;">
           <span th:text="${client.name.charAt(0)}">И</span>
         </div>
-        <div>
-          <h2 class="mb-0 fw-bold" th:text="${client.surname + ' ' + client.name + ' ' + client.patronymic}">ФИО</h2>
-          <div class="d-flex align-items-center gap-3 mt-1">
+        <div class="flex-grow-1">
+          <h2 class="mb-0 fw-bold d-inline" th:text="${client.surname + ' ' + client.name + ' ' + client.patronymic}">ФИО</h2>
+          <span th:if="${client.blacklisted}" class="badge bg-dark ms-2">Чёрный список</span>
+          <div class="d-flex align-items-center gap-3 mt-1 flex-wrap">
             <span class="text-muted small" th:text="${client.gender == 'М' ? '♂ Мужской' : '♀ Женский'}">Пол</span>
-            <span class="rating-badge">
+            <span class="rating-badge" title="Среднее по отзывам">
               <i class="bi bi-star-fill"></i>
               <span th:text="${client.rating + ' / 10'}">10 / 10</span>
             </span>
+            <form th:action="@{/clients/{id}/toggle-blacklist(id=${client.id})}" method="post" class="d-inline">
+              <button type="submit" class="btn btn-sm ms-2"
+                      th:classappend="${client.blacklisted} ? 'btn-outline-secondary' : 'btn-outline-danger'">
+                <span th:if="${client.blacklisted}"><i class="bi bi-slash-circle me-1"></i>Убрать из ЧС</span>
+                <span th:unless="${client.blacklisted}"><i class="bi bi-slash-circle me-1"></i>В чёрный список</span>
+              </button>
+            </form>
           </div>
         </div>
       </div>
@@ -149,6 +170,95 @@
             корп. <span th:text="${client.addressBuilding}">—</span> &nbsp;
             кв. <span th:text="${client.addressApartment}">—</span>
           </span>
+        </div>
+      </div>
+
+      <div class="info-block reviews-block">
+        <div class="section-title"><i class="bi bi-chat-quote me-1"></i>Отзывы о клиенте</div>
+        <p class="reviews-hint text-muted mb-3">Рейтинг в шапке — среднее по оценкам отзывов. Вручную не меняется.</p>
+        <div class="reviews-add-card rounded-3 p-3 mb-4">
+          <form th:action="@{/clients/{id}/reviews/add(id=${client.id})}" method="post">
+            <div class="row g-3 align-items-end">
+              <div class="col-md-2">
+                <label class="form-label small text-muted mb-1">Оценка (1–10)</label>
+                <select name="score" class="form-select" required>
+                  <option value="10">10</option>
+                  <option value="9">9</option>
+                  <option value="8" selected>8</option>
+                  <option value="7">7</option>
+                  <option value="6">6</option>
+                  <option value="5">5</option>
+                  <option value="4">4</option>
+                  <option value="3">3</option>
+                  <option value="2">2</option>
+                  <option value="1">1</option>
+                </select>
+              </div>
+              <div class="col-md">
+                <label class="form-label small text-muted mb-1">Текст отзыва <span class="fw-normal">(необязательно)</span></label>
+                <input type="text" name="comment" class="form-control" placeholder="Краткий комментарий" maxlength="500">
+              </div>
+              <div class="col-md-auto">
+                <button type="submit" class="btn btn-primary">
+                  <i class="bi bi-plus-lg me-1"></i>Добавить отзыв
+                </button>
+              </div>
+            </div>
+          </form>
+        </div>
+        <div th:if="${#lists.isEmpty(reviews)}" class="reviews-empty text-muted py-3 text-center">
+          <i class="bi bi-chat-dots d-block fs-4 mb-2 opacity-50"></i>
+          Отзывов пока нет.
+        </div>
+        <div th:unless="${#lists.isEmpty(reviews)}" class="reviews-list">
+          <div th:each="r : ${reviews}" class="review-card rounded-3 p-3 mb-3">
+            <div class="d-flex justify-content-between align-items-start gap-2">
+              <div class="d-flex flex-wrap align-items-center gap-2">
+                <span class="review-score badge bg-primary bg-opacity-10 text-primary fw-bold" th:text="${r.score + ' / 10'}">8 / 10</span>
+                <span class="review-author text-body" th:text="${r.author != null ? (r.author.surname + ' ' + r.author.name) : '—'}">Иванов Иван</span>
+                <span class="review-date text-muted small" th:text="${#temporals.format(r.createdAt, 'dd.MM.yyyy HH:mm')}">13.03.2026 04:16</span>
+              </div>
+              <form th:action="@{/clients/{id}/reviews/delete(id=${client.id})}" method="post" class="d-inline"
+                    th:if="${currentUser.role.name() != 'WORKER' or (r.author != null and currentUser.login == r.author.login)}"
+                    onsubmit="return confirm('Удалить отзыв?')">
+                <input type="hidden" name="reviewId" th:value="${r.id}">
+                <button type="submit" class="btn btn-sm btn-outline-danger border-0" title="Удалить отзыв">
+                  <i class="bi bi-trash"></i>
+                </button>
+              </form>
+            </div>
+            <p th:if="${r.comment != null && !#strings.isEmpty(r.comment)}" class="review-comment small mb-0 mt-2 text-secondary" th:text="${r.comment}">комментарий</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="info-block">
+        <div class="section-title"><i class="bi bi-clock-history me-1"></i>История прокатов</div>
+        <div th:if="${#lists.isEmpty(rentals)}" class="text-muted small">Прокатов пока нет.</div>
+        <div th:if="${!#lists.isEmpty(rentals)}" class="table-responsive">
+          <table class="table table-sm table-hover mb-0">
+            <thead>
+              <tr>
+                <th>Период</th>
+                <th>Оборудование</th>
+                <th>Точка</th>
+                <th>Сумма</th>
+                <th>Статус</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr th:each="rental : ${rentals}">
+                <td class="small">
+                  <span th:text="${#temporals.format(rental.dateFrom, 'dd.MM.yy HH:mm')}">—</span>
+                  – <span th:text="${#temporals.format(rental.dateTo, 'dd.MM.yy HH:mm')}">—</span>
+                </td>
+                <td class="small" th:text="${rental.equipmentDisplayString}">—</td>
+                <td class="small" th:text="${rental.point != null ? rental.point.name : '—'}">—</td>
+                <td class="small" th:text="${rental.totalAmount != null ? rental.totalAmount + ' Br' : '—'}">—</td>
+                <td><span class="badge" th:classappend="${rental.status.name() == 'ACTIVE' ? 'bg-success' : (rental.status.name() == 'COMPLETED' ? 'bg-secondary' : 'bg-warning text-dark')}" th:text="${rental.status.name()}">—</span></td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
 

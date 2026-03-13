@@ -3,7 +3,9 @@ package com.studio.crm_system.controller;
 import com.studio.crm_system.entity.Client;
 import com.studio.crm_system.entity.User;
 import com.studio.crm_system.repository.ClientRepository;
+import com.studio.crm_system.repository.RentalRepository;
 import com.studio.crm_system.repository.UserRepository;
+import com.studio.crm_system.service.ClientReviewService;
 import com.studio.crm_system.enums.Role;
 import com.studio.crm_system.security.InputValidator;
 import com.studio.crm_system.service.SupabaseStorageService;
@@ -34,6 +36,12 @@ public class ClientController {
 
 	@Autowired
 	private SupabaseStorageService storageService;
+
+	@Autowired
+	private RentalRepository rentalRepository;
+
+	@Autowired
+	private ClientReviewService clientReviewService;
 
 	private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("dd.MM.yyyy");
 
@@ -73,12 +81,23 @@ public class ClientController {
 	}
 
 	@GetMapping
-	public String listClients(Model model) {
+	public String listClients(Model model,
+			@RequestParam(required = false) Boolean blacklist,
+			@RequestParam(required = false) String q) {
 		User user = getCurrentUser();
 		if (user == null) return "redirect:/login";
 
 		try {
-			model.addAttribute("clients", clientRepository.findByIsDeletedFalse());
+			boolean showBlacklistOnly = Boolean.TRUE.equals(blacklist);
+			String searchQ = q != null ? q.trim() : "";
+			var clients = !searchQ.isEmpty()
+				? clientRepository.searchClients(searchQ, showBlacklistOnly ? true : null)
+				: (showBlacklistOnly
+					? clientRepository.findByIsDeletedFalseAndBlacklistedOrderBySurnameAscNameAsc(true)
+					: clientRepository.findByIsDeletedFalse());
+			model.addAttribute("clients", clients);
+			model.addAttribute("blacklistFilter", showBlacklistOnly);
+			model.addAttribute("searchQuery", searchQ);
 			model.addAttribute("currentUser", user);
 			model.addAttribute("username", user.getLogin());
 			model.addAttribute("currentUserRole", user.getRole());
@@ -191,7 +210,7 @@ public class ClientController {
 			@RequestParam(defaultValue = "-") String addressBuilding,
 			@RequestParam(defaultValue = "-") String addressApartment,
 			@RequestParam String phoneNumber,
-			@RequestParam(required = false) Integer rating) {
+			@RequestParam(required = false) Boolean blacklisted) {
 
 		User user = getCurrentUser();
 		if (user == null) return "redirect:/login";
@@ -236,7 +255,8 @@ public class ClientController {
 		dbClient.setAddressBuilding(addr(addressBuilding));
 		dbClient.setAddressApartment(addr(addressApartment));
 		dbClient.setPhoneNumber(phoneNumber.trim());
-		if (rating != null) dbClient.setRating(rating);
+		dbClient.setBlacklisted(Boolean.TRUE.equals(blacklisted));
+		// Рейтинг не редактируется вручную — считается по отзывам
 
 		try {
 			clientRepository.save(dbClient);
@@ -256,9 +276,69 @@ public class ClientController {
 		if (client == null || client.getIsDeleted()) return "redirect:/clients?error=client_not_found";
 
 		model.addAttribute("client", client);
+		model.addAttribute("rentals", rentalRepository.findByClientIdOrderByDateFromDesc(id));
+		model.addAttribute("reviews", clientReviewService.findByClientIdOrderByCreatedAtDesc(id));
 		model.addAttribute("currentUser", user);
 		model.addAttribute("currentUserRole", user.getRole());
 		return "html/client_detail";
+	}
+
+	@PostMapping("/{id}/toggle-blacklist")
+	public String toggleBlacklist(@PathVariable Long id) {
+		User user = getCurrentUser();
+		if (user == null) return "redirect:/login";
+
+		Client client = clientRepository.findById(id).orElse(null);
+		if (client == null || client.getIsDeleted()) return "redirect:/clients?error=client_not_found";
+
+		if (user.getRole() == Role.WORKER && !user.getLogin().equals(client.getCreatedBy())) {
+			return "redirect:/clients?error=access_denied";
+		}
+
+		client.setBlacklisted(Boolean.FALSE.equals(client.getBlacklisted()));
+		clientRepository.save(client);
+		return "redirect:/clients/" + id + "?success=" + (client.getBlacklisted() ? "blacklisted" : "removed_from_blacklist");
+	}
+
+	@PostMapping("/{id}/reviews/add")
+	public String addReview(@PathVariable Long id,
+			@RequestParam int score,
+			@RequestParam(required = false, defaultValue = "") String comment) {
+		User user = getCurrentUser();
+		if (user == null) return "redirect:/login";
+
+		Client client = clientRepository.findById(id).orElse(null);
+		if (client == null || client.getIsDeleted()) {
+			return "redirect:/clients?error=client_not_found";
+		}
+
+		try {
+			clientReviewService.addReview(id, user, score, comment);
+		} catch (IllegalArgumentException e) {
+			return "redirect:/clients/" + id + "?error=invalid_score";
+		}
+		return "redirect:/clients/" + id + "?success=review_added";
+	}
+
+	@PostMapping("/{id}/reviews/delete")
+	public String deleteReview(@PathVariable Long id, @RequestParam Long reviewId) {
+		User user = getCurrentUser();
+		if (user == null) return "redirect:/login";
+
+		var review = clientReviewService.findById(reviewId).orElse(null);
+		if (review == null || !review.getClient().getId().equals(id)) {
+			return "redirect:/clients/" + id + "?error=review_not_found";
+		}
+
+		// Работник может удалять только свои отзывы; админ — любые
+		if (user.getRole() == Role.WORKER) {
+			if (review.getAuthor() == null || !review.getAuthor().getId().equals(user.getId())) {
+				return "redirect:/clients/" + id + "?error=review_delete_denied";
+			}
+		}
+
+		clientReviewService.deleteReview(reviewId);
+		return "redirect:/clients/" + id + "?success=review_deleted";
 	}
 
 	@PostMapping("/{id}/upload-photo")

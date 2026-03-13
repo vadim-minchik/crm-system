@@ -18,9 +18,30 @@
       <h2>База клиентов</h2>
       <p>Паспортные данные и контакты клиентов</p>
     </div>
-    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addClientModal">
-      <i class="bi bi-person-plus-fill"></i> Новый клиент
-    </button>
+    <div class="d-flex align-items-center gap-2 flex-wrap">
+      <div class="btn-group" role="group">
+        <a th:href="@{/clients}" class="btn"
+           th:classappend="${!blacklistFilter} ? 'btn-primary' : 'btn-outline-secondary'">
+          Все клиенты
+        </a>
+        <a th:href="@{/clients(blacklist=true)}" class="btn"
+           th:classappend="${blacklistFilter} ? 'btn-dark' : 'btn-outline-secondary'">
+          <i class="bi bi-slash-circle me-1"></i>Чёрный список
+        </a>
+      </div>
+      <form th:action="@{/clients}" method="get" class="d-flex align-items-center gap-2 ms-2">
+        <input type="hidden" name="blacklist" value="true" th:if="${blacklistFilter}">
+        <div class="input-group" style="min-width: 260px;">
+          <span class="input-group-text text-muted"><i class="bi bi-search"></i></span>
+          <input type="search" name="q" th:value="${searchQuery}" class="form-control"
+                 placeholder="Фамилия, имя, телефон, паспорт, прописка..." autocomplete="off">
+        </div>
+        <button type="submit" class="btn btn-outline-primary">Найти</button>
+      </form>
+      <button class="btn btn-primary ms-auto" data-bs-toggle="modal" data-bs-target="#addClientModal">
+        <i class="bi bi-person-plus-fill"></i> Новый клиент
+      </button>
+    </div>
   </div>
 
   <div th:if="${param.error}" class="alert alert-danger alert-dismissible fade show" role="alert">
@@ -63,7 +84,7 @@
           <th>Паспорт / Идент. номер</th>
           <th>Прописка</th>
           <th>Телефон</th>
-          <th>Рейтинг</th>
+          <th>Рейтинг <span class="text-muted fw-normal small">(по отзывам)</span></th>
           <th>Добавил</th>
           <th class="text-end pe-4 th-actions">Действия</th>
         </tr>
@@ -72,6 +93,7 @@
         <tr th:each="c : ${clients}">
           <td class="ps-4 td-ellipsis">
             <div class="fw-bold" th:text="${c.surname + ' ' + c.name + ' ' + c.patronymic}">ФИО</div>
+            <span th:if="${c.blacklisted}" class="badge bg-dark ms-1" title="В чёрном списке">ЧС</span>
             <small class="text-muted">
               <span th:text="${c.gender}">М</span> &bull;
               <span th:text="${#temporals.format(c.birthDate, 'dd.MM.yyyy')}">01.01.2000</span>
@@ -121,6 +143,7 @@
                       th:data-entrance="${c.addressEntrance}" th:data-building="${c.addressBuilding}"
                       th:data-apt="${c.addressApartment}"
                       th:data-phone="${c.phoneNumber}" th:data-rating="${c.rating}"
+                      th:data-blacklisted="${c.blacklisted}"
                       th:data-photo="${c.passportPhotoUrl}"
                       onclick="prepareEdit(this)" title="Редактировать">
                 <i class="bi bi-pencil"></i>
@@ -398,18 +421,21 @@
           </div>
         </div>
 
-        <div class="mb-1">
+        <div class="mb-3">
           <div class="fw-semibold text-uppercase text-muted small mb-2"><i class="bi bi-telephone me-1"></i>Контакт</div>
           <div class="row g-2">
-            <div class="col-md-4">
+            <div class="col-md-5">
               <label class="form-label">Телефон *</label>
               <input type="text" name="phoneNumber" id="e-phone" class="form-control" required maxlength="20">
             </div>
-            <div class="col-md-3">
-              <label class="form-label">Рейтинг (1-10)</label>
-              <input type="number" name="rating" id="e-rating" class="form-control" min="1" max="10">
-            </div>
           </div>
+        </div>
+        <div class="mb-1">
+          <div class="form-check">
+            <input type="checkbox" name="blacklisted" id="e-blacklisted" class="form-check-input" value="true">
+            <label class="form-check-label" for="e-blacklisted">В чёрном списке</label>
+          </div>
+          <div class="form-text text-muted">Рейтинг считается по отзывам и не редактируется вручную.</div>
         </div>
 
       </div>
@@ -441,7 +467,8 @@
     document.getElementById('e-building').value = btn.getAttribute('data-building');
     document.getElementById('e-apt').value = btn.getAttribute('data-apt');
     document.getElementById('e-phone').value = btn.getAttribute('data-phone');
-    document.getElementById('e-rating').value = btn.getAttribute('data-rating');
+    const isBlacklisted = btn.getAttribute('data-blacklisted') === 'true';
+    document.getElementById('e-blacklisted').checked = isBlacklisted;
 
     // Разбиваем "MP 4362782" → серия + номер
     const passport = btn.getAttribute('data-passport') || '';

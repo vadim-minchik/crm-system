@@ -142,6 +142,22 @@
           <span class="info-label">Доставка</span>
           <span class="info-value" th:text="${#numbers.formatDecimal(rental.deliveryAmount, 0, 'NONE', 2, 'POINT') + ' Br'}">—</span>
         </div>
+        <div class="info-row" th:if="${rental.deliveryAddress != null && !rental.deliveryAddress.isBlank()}">
+          <span class="info-label">Адрес доставки</span>
+          <span class="info-value" th:text="${rental.deliveryAddress}">—</span>
+        </div>
+      </div>
+
+      <div class="info-block" th:if="${rental.createdByStaff != null || rental.handedOverByStaff != null}">
+        <div class="section-title"><i class="bi bi-person-badge me-1"></i>Сотрудники</div>
+        <div class="info-row" th:if="${rental.createdByStaff != null}">
+          <span class="info-label">Кто оформил</span>
+          <span class="info-value" th:text="${rental.createdByStaff.surname + ' ' + rental.createdByStaff.name + (rental.createdByStaff.patronymic != null ? ' ' + rental.createdByStaff.patronymic : '')}">—</span>
+        </div>
+        <div class="info-row" th:if="${rental.handedOverByStaff != null}">
+          <span class="info-label">Кто отдал</span>
+          <span class="info-value" th:text="${rental.handedOverByStaff.surname + ' ' + rental.handedOverByStaff.name + (rental.handedOverByStaff.patronymic != null ? ' ' + rental.handedOverByStaff.patronymic : '')}">—</span>
+        </div>
       </div>
     </div>
   </div>
@@ -191,6 +207,25 @@
             <label class="form-label">Доставка (Br)</label>
             <input type="text" name="deliveryAmount" class="form-control" pattern="[0-9]+([.,][0-9]{1,2})?"
                    th:value="${rental.deliveryAmount != null ? #numbers.formatDecimal(rental.deliveryAmount, 0, 'NONE', 2, 'POINT') : ''}" placeholder="0">
+          </div>
+          <div class="col-12">
+            <label class="form-label">Адрес доставки</label>
+            <input type="text" name="deliveryAddress" class="form-control" maxlength="500" placeholder="Улица, дом, квартира..."
+                   th:value="${rental.deliveryAddress}">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Кто оформил прокат</label>
+            <select name="createdByStaffId" class="form-select">
+              <option value="">— Не указано —</option>
+              <option th:each="s : ${staffList}" th:value="${s.id}" th:selected="${rental.createdByStaff != null && rental.createdByStaff.id == s.id}" th:text="${s.surname + ' ' + s.name + (s.patronymic != null ? ' ' + s.patronymic : '')}">Сотрудник</option>
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Кто отдал оборудование</label>
+            <select name="handedOverByStaffId" class="form-select">
+              <option value="">— Не указано —</option>
+              <option th:each="s : ${staffList}" th:value="${s.id}" th:selected="${rental.handedOverByStaff != null && rental.handedOverByStaff.id == s.id}" th:text="${s.surname + ' ' + s.name + (s.patronymic != null ? ' ' + s.patronymic : '')}">Сотрудник</option>
+            </select>
           </div>
         </div>
       </div>

@@ -9,6 +9,7 @@ import com.studio.crm_system.enums.RentalStatus;
 import com.studio.crm_system.repository.ClientRepository;
 import com.studio.crm_system.repository.EquipmentRepository;
 import com.studio.crm_system.repository.RentalRepository;
+import com.studio.crm_system.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,6 +30,7 @@ public class RentalService {
 	@Autowired private RentalRepository rentalRepository;
 	@Autowired private ClientRepository clientRepository;
 	@Autowired private EquipmentRepository equipmentRepository;
+	@Autowired private UserRepository userRepository;
 	@Autowired private BookingService bookingService;
 
 	public List<Rental> findAll() {
@@ -57,6 +59,11 @@ public class RentalService {
 
 	public Optional<Rental> findById(Long id) {
 		return rentalRepository.findByIdWithEquipment(id);
+	}
+
+	/** Прокат с клиентом и связями для формирования документа (подстановки в шаблоне). */
+	public Optional<Rental> findByIdForDocument(Long id) {
+		return rentalRepository.findByIdForDocument(id);
 	}
 
 	/** Все прокаты по оборудованию для истории экземпляра. */
@@ -147,7 +154,8 @@ public class RentalService {
 
 	@Transactional
 	public String createRentals(Long clientId, List<Long> equipmentIds, LocalDateTime dateFrom, LocalDateTime dateTo, BigDecimal manualTotal,
-			BigDecimal additionalServicesAmount, String additionalServicesDescription, BigDecimal deliveryAmount) {
+			BigDecimal additionalServicesAmount, String additionalServicesDescription, BigDecimal deliveryAmount, String deliveryAddress,
+			Long createdByStaffId, Long handedOverByStaffId) {
 		if (clientId == null) return "client_required";
 		if (equipmentIds == null || equipmentIds.isEmpty()) return "equipment_required";
 		if (equipmentIds.size() > MAX_EQUIPMENT_PER_RENTAL) return "too_many_equipment";
@@ -193,7 +201,10 @@ public class RentalService {
 		rental.setAdditionalServicesAmount(addServ.compareTo(BigDecimal.ZERO) > 0 ? addServ : null);
 		rental.setAdditionalServicesDescription(additionalServicesDescription != null && !additionalServicesDescription.isBlank() ? additionalServicesDescription.trim() : null);
 		rental.setDeliveryAmount(delAmt.compareTo(BigDecimal.ZERO) > 0 ? delAmt : null);
+		rental.setDeliveryAddress(deliveryAddress != null && !deliveryAddress.isBlank() ? deliveryAddress.trim() : null);
 		rental.setStatus(RentalStatus.ACTIVE);
+		if (createdByStaffId != null) userRepository.findById(createdByStaffId).ifPresent(rental::setCreatedByStaff);
+		if (handedOverByStaffId != null) userRepository.findById(handedOverByStaffId).ifPresent(rental::setHandedOverByStaff);
 		rentalRepository.save(rental);
 
 		for (Equipment equipment : toRent) {
@@ -205,7 +216,8 @@ public class RentalService {
 
 	@Transactional
 	public String updateRental(Long id, LocalDateTime dateFrom, LocalDateTime dateTo, BigDecimal totalAmount,
-			BigDecimal additionalServicesAmount, String additionalServicesDescription, BigDecimal deliveryAmount) {
+			BigDecimal additionalServicesAmount, String additionalServicesDescription, BigDecimal deliveryAmount, String deliveryAddress,
+			Long createdByStaffId, Long handedOverByStaffId) {
 		Rental rental = rentalRepository.findByIdWithEquipment(id).orElse(null);
 		if (rental == null) return "not_found";
 		if (dateFrom == null) return "date_from_required";
@@ -226,6 +238,11 @@ public class RentalService {
 		rental.setAdditionalServicesAmount(additionalServicesAmount != null && additionalServicesAmount.compareTo(BigDecimal.ZERO) > 0 ? additionalServicesAmount.setScale(2, RoundingMode.HALF_UP) : null);
 		rental.setAdditionalServicesDescription(additionalServicesDescription != null && !additionalServicesDescription.isBlank() ? additionalServicesDescription.trim() : null);
 		rental.setDeliveryAmount(deliveryAmount != null && deliveryAmount.compareTo(BigDecimal.ZERO) > 0 ? deliveryAmount.setScale(2, RoundingMode.HALF_UP) : null);
+		rental.setDeliveryAddress(deliveryAddress != null && !deliveryAddress.isBlank() ? deliveryAddress.trim() : null);
+		if (createdByStaffId != null) userRepository.findById(createdByStaffId).ifPresent(rental::setCreatedByStaff);
+		else rental.setCreatedByStaff(null);
+		if (handedOverByStaffId != null) userRepository.findById(handedOverByStaffId).ifPresent(rental::setHandedOverByStaff);
+		else rental.setHandedOverByStaff(null);
 		rentalRepository.save(rental);
 		return null;
 	}

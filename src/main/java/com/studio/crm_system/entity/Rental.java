@@ -36,6 +36,16 @@ public class Rental {
 	@JoinColumn(name = "point_id")
 	private Point point;
 
+	/** Сотрудник, который оформил прокат (из базы пользователей). */
+	@ManyToOne(fetch = FetchType.EAGER)
+	@JoinColumn(name = "created_by_staff_id")
+	private User createdByStaff;
+
+	/** Сотрудник, который отдал оборудование (из базы пользователей). */
+	@ManyToOne(fetch = FetchType.EAGER)
+	@JoinColumn(name = "handed_over_by_staff_id")
+	private User handedOverByStaff;
+
 	@Column(nullable = false, precision = 12, scale = 2)
 	private BigDecimal totalAmount;
 
@@ -50,6 +60,10 @@ public class Rental {
 	/** Доставка: стоимость (Br), null или 0 — без доставки. */
 	@Column(name = "delivery_amount", precision = 12, scale = 2)
 	private BigDecimal deliveryAmount;
+
+	/** Адрес доставки (улица, дом, кв. и т.д.), если есть доставка. */
+	@Column(name = "delivery_address", length = 500)
+	private String deliveryAddress;
 
 	@Column(nullable = false)
 	@Enumerated(EnumType.STRING)
@@ -89,6 +103,12 @@ public class Rental {
 	public Point getPoint() { return point; }
 	public void setPoint(Point point) { this.point = point; }
 
+	public User getCreatedByStaff() { return createdByStaff; }
+	public void setCreatedByStaff(User createdByStaff) { this.createdByStaff = createdByStaff; }
+
+	public User getHandedOverByStaff() { return handedOverByStaff; }
+	public void setHandedOverByStaff(User handedOverByStaff) { this.handedOverByStaff = handedOverByStaff; }
+
 	public BigDecimal getTotalAmount() { return totalAmount; }
 	public void setTotalAmount(BigDecimal totalAmount) { this.totalAmount = totalAmount; }
 
@@ -100,6 +120,9 @@ public class Rental {
 
 	public BigDecimal getDeliveryAmount() { return deliveryAmount; }
 	public void setDeliveryAmount(BigDecimal deliveryAmount) { this.deliveryAmount = deliveryAmount; }
+
+	public String getDeliveryAddress() { return deliveryAddress; }
+	public void setDeliveryAddress(String deliveryAddress) { this.deliveryAddress = deliveryAddress; }
 
 	public RentalStatus getStatus() { return status; }
 	public void setStatus(RentalStatus status) { this.status = status; }
