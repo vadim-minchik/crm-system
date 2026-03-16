@@ -16,7 +16,8 @@ public class Equipment {
 	@JoinColumn(name = "tool_name_id", nullable = false)
 	private ToolName toolName;
 
-	@Column(nullable = false, unique = true)
+	/** Уникальность только среди неудалённых — проверяется в контроллере. */
+	@Column(nullable = false)
 	private String serialNumber;
 
 	@Column(nullable = false)

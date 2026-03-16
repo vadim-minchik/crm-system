@@ -6,7 +6,7 @@ import com.studio.crm_system.repository.UserRepository;
 import com.studio.crm_system.service.BookingService;
 import com.studio.crm_system.service.RentalDocumentService;
 import com.studio.crm_system.service.RentalService;
-import com.studio.crm_system.service.SupabaseStorageService;
+import com.studio.crm_system.service.TemplateStorageService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -33,7 +33,7 @@ public class RentalController {
 	@Autowired private UserRepository userRepository;
 	@Autowired private DocumentTemplateRepository documentTemplateRepository;
 	@Autowired private RentalDocumentService rentalDocumentService;
-	@Autowired private SupabaseStorageService supabaseStorageService;
+	@Autowired private TemplateStorageService templateStorageService;
 
 	private User getCurrentUser() {
 		Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
@@ -81,7 +81,7 @@ public class RentalController {
 		if (template == null || template.getFileUrl() == null || template.getFileUrl().isBlank())
 			return ResponseEntity.notFound().build();
 
-		byte[] templateBytes = supabaseStorageService.downloadByStoredUrl(template.getFileUrl());
+		byte[] templateBytes = templateStorageService.downloadByStoredUrl(template.getFileUrl());
 		if (templateBytes == null || templateBytes.length < 22)
 			return ResponseEntity.notFound().build();
 

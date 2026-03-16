@@ -26,6 +26,9 @@ public interface EquipmentRepository extends JpaRepository<Equipment, Long> {
 
 	Optional<Equipment> findByIdAndIsDeletedFalse(Long id);
 
+	boolean existsBySerialNumberAndIsDeletedFalse(String serialNumber);
+	boolean existsBySerialNumberAndIsDeletedFalseAndIdNot(String serialNumber, Long id);
+
 	long countByToolNameAndIsDeletedFalse(ToolName toolName);
 
 	long countByToolNameAndStatusAndIsDeletedFalse(ToolName toolName, EquipmentStatus status);

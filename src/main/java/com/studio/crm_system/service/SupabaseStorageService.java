@@ -19,7 +19,7 @@ import java.io.IOException;
 import java.util.UUID;
 
 @Service
-public class SupabaseStorageService {
+public class SupabaseStorageService implements FileStorageService, TemplateStorageService {
 
     private static final int MAX_DIMENSION = 1600;
     private static final float JPEG_QUALITY = 0.82f;

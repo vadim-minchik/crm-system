@@ -31,7 +31,13 @@ public interface ClientRepository extends JpaRepository<Client, Long> {
 			"ORDER BY c.surname, c.name")
 	List<Client> searchClients(@Param("q") String q, @Param("blacklistedOnly") Boolean blacklistedOnly);
 
-	boolean existsByPhoneNumber(String phoneNumber);
-	boolean existsByPassportNumber(String passportNumber);
-	boolean existsByIdentificationNumber(String identificationNumber);
+	/** Есть ли активный (не удалённый) клиент с таким телефоном. */
+	boolean existsByPhoneNumberAndIsDeletedFalse(String phoneNumber);
+	boolean existsByPassportNumberAndIsDeletedFalse(String passportNumber);
+	boolean existsByIdentificationNumberAndIsDeletedFalse(String identificationNumber);
+
+	/** Для редактирования: другой активный клиент с таким полем (кроме текущего id). */
+	boolean existsByPhoneNumberAndIsDeletedFalseAndIdNot(String phoneNumber, Long id);
+	boolean existsByPassportNumberAndIsDeletedFalseAndIdNot(String passportNumber, Long id);
+	boolean existsByIdentificationNumberAndIsDeletedFalseAndIdNot(String identificationNumber, Long id);
 }

@@ -20,10 +20,12 @@ public class Client {
 	@Column(nullable = false)
 	private String patronymic;
 
-	@Column(nullable = false, unique = true, length = 20)
+	/** Уникальность только среди неудалённых (isDeleted = false) — проверяется в сервисе. */
+	@Column(nullable = false, length = 20)
 	private String passportNumber;
 
-	@Column(nullable = false, unique = true, length = 20)
+	/** Уникальность только среди неудалённых — проверяется в сервисе. */
+	@Column(nullable = false, length = 20)
 	private String identificationNumber;
 
 	@Column(nullable = false, length = 1)
@@ -56,7 +58,8 @@ public class Client {
 	@Column(length = 500)
 	private String passportPhotoUrl;
 
-	@Column(nullable = false, unique = true)
+	/** Уникальность только среди неудалённых — проверяется в сервисе. */
+	@Column(nullable = false)
 	private String phoneNumber;
 
 	/** Рейтинг 1–10: считается как среднее по отзывам. Вручную не редактируется. */

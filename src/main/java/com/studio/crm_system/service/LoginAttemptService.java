@@ -19,7 +19,7 @@ public class LoginAttemptService {
 
     @Transactional
     public void loginFailed(String login) {
-        userRepository.findByLogin(login).ifPresent(user -> {
+        userRepository.findByLoginAndIsDeletedFalse(login).ifPresent(user -> {
             int attempts = user.getFailedLoginAttempts() + 1;
             user.setFailedLoginAttempts(attempts);
 
@@ -34,7 +34,7 @@ public class LoginAttemptService {
 
     @Transactional
     public void loginSucceeded(String login) {
-        userRepository.findByLogin(login).ifPresent(user -> {
+        userRepository.findByLoginAndIsDeletedFalse(login).ifPresent(user -> {
             if (user.getFailedLoginAttempts() > 0 || user.getLockUntil() != null) {
                 user.setFailedLoginAttempts(0);
                 user.setLockUntil(null);
@@ -44,13 +44,13 @@ public class LoginAttemptService {
     }
 
     public boolean isLocked(String login) {
-        return userRepository.findByLogin(login)
+        return userRepository.findByLoginAndIsDeletedFalse(login)
                 .map(User::isLocked)
                 .orElse(false);
     }
 
     public long minutesUntilUnlock(String login) {
-        return userRepository.findByLogin(login)
+        return userRepository.findByLoginAndIsDeletedFalse(login)
                 .filter(User::isLocked)
                 .map(user -> java.time.Duration.between(LocalDateTime.now(), user.getLockUntil()).toMinutes() + 1)
                 .orElse(0L);

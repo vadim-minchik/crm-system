@@ -5,7 +5,7 @@ import com.studio.crm_system.entity.User;
 import com.studio.crm_system.repository.DocumentTemplateRepository;
 import com.studio.crm_system.repository.UserRepository;
 import com.studio.crm_system.service.RentalDocumentService;
-import com.studio.crm_system.service.SupabaseStorageService;
+import com.studio.crm_system.service.TemplateStorageService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -33,7 +33,7 @@ public class DocumentController {
 	private DocumentTemplateRepository documentTemplateRepository;
 
 	@Autowired
-	private SupabaseStorageService storageService;
+	private TemplateStorageService storageService;
 
 	private User getCurrentUser() {
 		Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();

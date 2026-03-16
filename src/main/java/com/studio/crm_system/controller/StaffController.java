@@ -145,11 +145,11 @@ public class StaffController {
 			return "redirect:/staff?error=invalid_login";
 		}
 		
-		if (userRepository.findByLogin(login).isPresent()) {
+		// Уникальность только среди неудалённых — удалённые не мешают завести такого же снова
+		if (userRepository.findByLoginAndIsDeletedFalse(login).isPresent()) {
 			return "redirect:/staff?error=login_exists";
 		}
-		
-		if (userRepository.findByEmail(email).isPresent()) {
+		if (userRepository.findByEmailAndIsDeletedFalse(email).isPresent()) {
 			return "redirect:/staff?error=email_exists";
 		}
 		
@@ -216,7 +216,7 @@ public class StaffController {
 		String cEmail = cleanStrict(details.getEmail());
 		String cPhone = cleanStrict(details.getPhoneNumber());
 		if (!cEmail.equals(dbUser.getEmail())) {
-			if (userRepository.findByEmail(cEmail).isPresent()) {
+			if (userRepository.findByEmailAndIsDeletedFalseAndIdNot(cEmail, dbUser.getId()).isPresent()) {
 				return "redirect:/staff?error=email_exists";
 			}
 			dbUser.setEmail(cEmail);
@@ -233,7 +233,7 @@ public class StaffController {
 				if (!isValidLogin(cLogin)) {
 					return "redirect:/staff?error=invalid_login";
 				}
-				if (userRepository.findByLogin(cLogin).isPresent()) {
+				if (userRepository.findByLoginAndIsDeletedFalseAndIdNot(cLogin, dbUser.getId()).isPresent()) {
 					return "redirect:/staff?error=login_exists";
 				}
 				dbUser.setLogin(cLogin);

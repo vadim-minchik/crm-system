@@ -575,6 +575,9 @@ public class EquipmentController {
 
 		if (serialNumber == null || serialNumber.trim().isEmpty())
 			return "redirect:/inventory/" + toolNameId + "?error=serial_required";
+		// Уникальность только среди неудалённых — удалённые не мешают завести такой же серийник снова
+		if (equipmentRepository.existsBySerialNumberAndIsDeletedFalse(serialNumber.trim()))
+			return "redirect:/inventory/" + toolNameId + "?error=serial_exists";
 		if (priceFirstDay == null || priceFirstDay.compareTo(BigDecimal.ZERO) <= 0)
 			return "redirect:/inventory/" + toolNameId + "?error=price_required";
 		if (priceFirstMonth == null || priceFirstMonth.compareTo(BigDecimal.ZERO) <= 0)
@@ -614,6 +617,9 @@ public class EquipmentController {
 		if (eq == null) return "redirect:/inventory?error=not_found";
 
 		Long toolNameId = eq.getToolName().getId();
+		// Уникальность только среди неудалённых; при редактировании — кроме текущего юнита
+		if (equipmentRepository.existsBySerialNumberAndIsDeletedFalseAndIdNot(serialNumber.trim(), eq.getId()))
+			return "redirect:/inventory/" + toolNameId + "?error=serial_exists";
 		eq.setSerialNumber(serialNumber.trim());
 		eq.setBaseValue(baseValue);
 		eq.setCondition(condition != null ? condition : eq.getCondition());

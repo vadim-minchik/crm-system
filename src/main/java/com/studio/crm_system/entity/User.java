@@ -38,10 +38,12 @@ public class User {
 	@Column(nullable = false)
 	private String patronymic;
 
-	@Column(nullable = false, unique = true)
+	/** Уникальность только среди неудалённых — проверяется в сервисе. */
+	@Column(nullable = false)
 	private String email;
 
-	@Column(nullable = false, unique = true)
+	/** Уникальность только среди неудалённых — проверяется в сервисе. */
+	@Column(nullable = false)
 	private String login;
 
 	@Column(nullable = false)

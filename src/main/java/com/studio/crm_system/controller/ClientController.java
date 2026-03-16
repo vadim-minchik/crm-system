@@ -8,7 +8,7 @@ import com.studio.crm_system.repository.UserRepository;
 import com.studio.crm_system.service.ClientReviewService;
 import com.studio.crm_system.enums.Role;
 import com.studio.crm_system.security.InputValidator;
-import com.studio.crm_system.service.SupabaseStorageService;
+import com.studio.crm_system.service.FileStorageService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -35,7 +35,7 @@ public class ClientController {
 	private InputValidator inputValidator;
 
 	@Autowired
-	private SupabaseStorageService storageService;
+	private FileStorageService storageService;
 
 	@Autowired
 	private RentalRepository rentalRepository;
@@ -150,14 +150,17 @@ public class ClientController {
 		if (expiry.isAfter(today.plusYears(15))) return "redirect:/clients?error=expiry_too_far";
 
 		String fullPassport = (passportSeries.trim() + " " + passportNum.trim()).toUpperCase();
+		String cleanPhone = inputValidator.cleanPhone(phoneNumber.trim());
+		String identUpper = identificationNumber.trim().toUpperCase();
 
-		if (clientRepository.existsByPhoneNumber(phoneNumber.trim())) {
+		// Уникальность только среди неудалённых — удалённые не мешают завести такого же снова
+		if (clientRepository.existsByPhoneNumberAndIsDeletedFalse(cleanPhone)) {
 			return "redirect:/clients?error=phone_exists";
 		}
-		if (clientRepository.existsByPassportNumber(fullPassport)) {
+		if (clientRepository.existsByPassportNumberAndIsDeletedFalse(fullPassport)) {
 			return "redirect:/clients?error=passport_exists";
 		}
-		if (clientRepository.existsByIdentificationNumber(identificationNumber.trim().toUpperCase())) {
+		if (clientRepository.existsByIdentificationNumberAndIsDeletedFalse(identUpper)) {
 			return "redirect:/clients?error=ident_exists";
 		}
 
@@ -166,7 +169,7 @@ public class ClientController {
 		client.setName(capitalize(name));
 		client.setPatronymic(capitalize(patronymic));
 		client.setPassportNumber(fullPassport);
-		client.setIdentificationNumber(identificationNumber.trim().toUpperCase());
+		client.setIdentificationNumber(identUpper);
 		client.setGender(gender);
 		client.setBirthDate(birth);
 		client.setPassportIssueDate(issue);
@@ -176,7 +179,7 @@ public class ClientController {
 		client.setAddressEntrance(addr(addressEntrance));
 		client.setAddressBuilding(addr(addressBuilding));
 		client.setAddressApartment(addr(addressApartment));
-		client.setPhoneNumber(inputValidator.cleanPhone(phoneNumber.trim()));
+		client.setPhoneNumber(cleanPhone);
 		client.setRating(10);
 		client.setCreatedBy(user.getLogin());
 		client.setAddedBy(user);
@@ -239,12 +242,25 @@ public class ClientController {
 		if (expiry.isAfter(today.plusYears(15))) return "redirect:/clients?error=expiry_too_far";
 
 		String fullPassport = (passportSeries.trim() + " " + passportNum.trim()).toUpperCase();
+		String cleanPhone = inputValidator.cleanPhone(phoneNumber.trim());
+		String identUpper = identificationNumber.trim().toUpperCase();
+
+		// Уникальность только среди неудалённых; при редактировании — кроме текущего клиента
+		if (clientRepository.existsByPhoneNumberAndIsDeletedFalseAndIdNot(cleanPhone, dbClient.getId())) {
+			return "redirect:/clients?error=phone_exists";
+		}
+		if (clientRepository.existsByPassportNumberAndIsDeletedFalseAndIdNot(fullPassport, dbClient.getId())) {
+			return "redirect:/clients?error=passport_exists";
+		}
+		if (clientRepository.existsByIdentificationNumberAndIsDeletedFalseAndIdNot(identUpper, dbClient.getId())) {
+			return "redirect:/clients?error=ident_exists";
+		}
 
 		dbClient.setSurname(capitalize(surname));
 		dbClient.setName(capitalize(name));
 		dbClient.setPatronymic(capitalize(patronymic));
 		dbClient.setPassportNumber(fullPassport);
-		dbClient.setIdentificationNumber(identificationNumber.trim().toUpperCase());
+		dbClient.setIdentificationNumber(identUpper);
 		dbClient.setGender(gender);
 		dbClient.setBirthDate(birth);
 		dbClient.setPassportIssueDate(issue);
@@ -254,7 +270,7 @@ public class ClientController {
 		dbClient.setAddressEntrance(addr(addressEntrance));
 		dbClient.setAddressBuilding(addr(addressBuilding));
 		dbClient.setAddressApartment(addr(addressApartment));
-		dbClient.setPhoneNumber(phoneNumber.trim());
+		dbClient.setPhoneNumber(cleanPhone);
 		dbClient.setBlacklisted(Boolean.TRUE.equals(blacklisted));
 		// Рейтинг не редактируется вручную — считается по отзывам
 
