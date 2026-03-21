@@ -16,6 +16,11 @@ public class Equipment {
 	@JoinColumn(name = "tool_name_id", nullable = false)
 	private ToolName toolName;
 
+	/** Точка (локация) — обязательна при создании/редактировании (проверка в контроллере). */
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "point_id")
+	private Point point;
+
 	/** Уникальность только среди неудалённых — проверяется в контроллере. */
 	@Column(nullable = false)
 	private String serialNumber;
@@ -70,6 +75,9 @@ public class Equipment {
 
 	public ToolName getToolName() { return toolName; }
 	public void setToolName(ToolName toolName) { this.toolName = toolName; }
+
+	public Point getPoint() { return point; }
+	public void setPoint(Point point) { this.point = point; }
 
 	public String getSerialNumber() { return serialNumber; }
 	public void setSerialNumber(String serialNumber) { this.serialNumber = serialNumber; }

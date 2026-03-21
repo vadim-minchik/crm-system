@@ -20,11 +20,14 @@
 				<h2>Управление персоналом</h2>
 				<p>Список сотрудников и права доступа</p>
 			</div>
-			<button th:if="${currentUserRole.name() != 'WORKER'}"
+			<button th:if="${currentUserRole.name() != 'WORKER' and !#lists.isEmpty(points)}"
 				class="btn btn-primary" data-bs-toggle="modal"
 				data-bs-target="#addModal">
 				<i class="bi bi-person-plus-fill"></i> Добавить
 			</button>
+		</div>
+		<div th:if="${currentUserRole.name() != 'WORKER' and #lists.isEmpty(points)}" class="alert alert-warning mt-2">
+			<i class="bi bi-geo-alt me-1"></i>Сначала создайте хотя бы одну <a th:href="@{/points}" class="alert-link">точку</a>, без неё нельзя добавить сотрудника.
 		</div>
 
 		<div th:if="${param.error}" class="alert alert-danger alert-dismissible fade show" role="alert">
@@ -38,6 +41,8 @@
 			<span th:if="${param.error[0] == 'password_too_short'}">Пароль должен содержать минимум 6 символов.</span>
 			<span th:if="${param.error[0] == 'save_failed'}">Не удалось сохранить данные. Попробуйте еще раз.</span>
 			<span th:if="${param.error[0] == 'access_denied'}">Недостаточно прав для выполнения операции.</span>
+			<span th:if="${param.error[0] == 'point_required'}">Выберите точку (локацию).</span>
+			<span th:if="${param.error[0] == 'point_invalid'}">Указана неверная точка.</span>
 			<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
 		</div>
 
@@ -55,6 +60,7 @@
 					<thead>
 						<tr>
 							<th class="ps-4">Сотрудник</th>
+							<th>Точка</th>
 							<th>Логин</th>
 							<th>Роль</th>
 							<th>Контакты</th>
@@ -67,6 +73,10 @@
 							<td class="ps-4">
 								<div class="fw-bold" th:text="${u.surname + ' ' + u.name}">ФИО</div>
 								<small class="text-muted" th:text="${u.email}">email</small>
+							</td>
+							<td>
+								<span th:if="${u.point != null}" th:text="${u.point.name}" class="badge bg-light text-dark border">Точка</span>
+								<span th:if="${u.point == null}" class="text-muted small">—</span>
 							</td>
 							<td><code th:text="${u.login}">login</code></td>
 							<td><span class="role-badge"
@@ -95,6 +105,7 @@
 										th:data-entrance="${u.addressEntrance}" th:data-building="${u.addressBuilding}"
 										th:data-apt="${u.addressApartment}"
 										th:data-social="${u.socialNetwork}"
+										th:data-point-id="${u.point != null ? u.point.id : ''}"
 										onclick="fillEdit(this)" data-bs-toggle="modal"
 										data-bs-target="#editModal">
 										<i class="bi bi-pencil"></i>
@@ -173,6 +184,13 @@
 								<option value="WORKER">WORKER</option>
 								<option th:if="${currentUserRole.name() == 'SUPER_ADMIN'}"
 									value="ADMIN">ADMIN</option>
+							</select>
+						</div>
+						<div class="col-12">
+							<label class="form-label">Точка (локация) *</label>
+							<select name="pointId" class="form-select" required>
+								<option value="" disabled selected>— выберите точку —</option>
+								<option th:each="p : ${points}" th:value="${p.id}" th:text="${p.name}">Точка</option>
 							</select>
 						</div>
 						<div class="col-12 mt-2">
@@ -306,6 +324,12 @@
 								<option value="SUPER_ADMIN">SUPER_ADMIN</option>
 							</select>
 						</div>
+						<div class="col-12">
+							<label class="form-label">Точка (локация) *</label>
+							<select name="pointId" id="e-point-id" class="form-select" required>
+								<option th:each="p : ${points}" th:value="${p.id}" th:text="${p.name}">Точка</option>
+							</select>
+						</div>
 						<div class="col-12 mt-2">
 							<div class="fw-semibold text-uppercase text-muted small mb-2">
 								<i class="bi bi-passport me-1"></i>Паспортные данные <span class="fw-normal">(не обязательно)</span>
@@ -399,6 +423,9 @@
         document.getElementById('e-building').value = btn.getAttribute('data-building') || '';
         document.getElementById('e-apt').value = btn.getAttribute('data-apt') || '';
         document.getElementById('e-social').value = btn.getAttribute('data-social') || '';
+        var pid = btn.getAttribute('data-point-id');
+        var sel = document.getElementById('e-point-id');
+        if (sel && pid) sel.value = pid;
     }
 
     // Валидация кириллицы для ФИО (авто-капитализация первой буквы)

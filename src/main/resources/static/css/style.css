@@ -739,3 +739,14 @@ textarea.form-control {
 .alert {
 	animation: fadeIn 0.3s ease;
 }
+
+/* Длинное название точки на складе — обрезка с многоточием */
+.point-cell-ellipsis {
+	max-width: 10rem;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	display: inline-block;
+	vertical-align: middle;
+}

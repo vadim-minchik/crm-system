@@ -102,6 +102,7 @@ public class User {
     @JoinColumn(name = "created_by_id")
     private User createdBy;
 
+	/** Точка (локация) — обязательна при создании/редактировании (проверка в контроллере). */
 	@ManyToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name = "point_id")
 	private Point point;

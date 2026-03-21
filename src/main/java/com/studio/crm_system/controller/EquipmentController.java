@@ -4,6 +4,7 @@ import com.studio.crm_system.dto.UnitHistoryEntry;
 import com.studio.crm_system.dto.InventoryUnitRowDto;
 import com.studio.crm_system.entity.Category;
 import com.studio.crm_system.entity.Equipment;
+import com.studio.crm_system.entity.Point;
 import com.studio.crm_system.entity.PreCategory;
 import com.studio.crm_system.entity.Booking;
 import com.studio.crm_system.entity.Rental;
@@ -11,6 +12,7 @@ import com.studio.crm_system.entity.ToolName;
 import com.studio.crm_system.entity.User;
 import com.studio.crm_system.repository.CategoryRepository;
 import com.studio.crm_system.repository.EquipmentRepository;
+import com.studio.crm_system.repository.PointRepository;
 import com.studio.crm_system.repository.PreCategoryRepository;
 import com.studio.crm_system.repository.ToolNameRepository;
 import com.studio.crm_system.repository.UserRepository;
@@ -25,6 +27,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Controller;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
@@ -48,11 +51,14 @@ public class EquipmentController {
 	@Autowired private ToolNameRepository toolNameRepository;
 	@Autowired private CategoryRepository categoryRepository;
 	@Autowired private PreCategoryRepository preCategoryRepository;
+	@Autowired private PointRepository pointRepository;
 	@Autowired private UserRepository userRepository;
 	@Autowired private BookingService bookingService;
 	@Autowired private RentalService rentalService;
 
 	private static final int INVENTORY_UNITS_PAGE_SIZE = 25;
+	private static final BigDecimal COEF_08 = new BigDecimal("0.8");
+	private static final BigDecimal COEF_06 = new BigDecimal("0.6");
 
 	private User getCurrentUser() {
 		Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
@@ -493,6 +499,11 @@ public class EquipmentController {
 		model.addAttribute("totalUnits", totalUnits);
 		model.addAttribute("hasMoreUnits", hasMoreUnits);
 		model.addAttribute("toolNameId", toolNameId);
+		List<Point> points = pointRepository.findByIsDeletedFalseOrderByNameAsc();
+		model.addAttribute("points", points);
+		if (!points.isEmpty()) {
+			model.addAttribute("firstPointId", points.get(0).getId());
+		}
 		addCommonAttrs(model, currentUser);
 		return "html/inventory_detail";
 	}
@@ -502,6 +513,7 @@ public class EquipmentController {
 	 */
 	@GetMapping(value = "/{toolNameId}/units/page", produces = "application/json")
 	@ResponseBody
+	@Transactional(readOnly = true)
 	public Map<String, Object> getUnitsPage(@PathVariable Long toolNameId,
 	                                        @RequestParam(defaultValue = "0") int page,
 	                                        @RequestParam(defaultValue = "25") int size) {
@@ -532,6 +544,8 @@ public class EquipmentController {
 			dto.setStatusLabel(u.getStatus() == EquipmentStatus.FREE ? "Свободно"
 				: (u.getStatus() == EquipmentStatus.BUSY ? "Занят" : "Забронирован"));
 			dto.setInBooking(bookingService.hasActiveOrFutureBooking(u.getId()));
+			dto.setPointId(u.getPoint() != null ? u.getPoint().getId() : null);
+			dto.setPointName(u.getPoint() != null ? u.getPoint().getName() : null);
 			rows.add(dto);
 		}
 		result.put("content", rows);
@@ -539,9 +553,6 @@ public class EquipmentController {
 		result.put("hasNext", unitsPage.hasNext());
 		return result;
 	}
-
-	private static final BigDecimal COEF_08 = new BigDecimal("0.8");
-	private static final BigDecimal COEF_06 = new BigDecimal("0.6");
 
 	private void applyPriceFormula(Equipment eq, BigDecimal firstDay, BigDecimal firstMonth,
 	                               BigDecimal secondDay, BigDecimal subsequentDays,
@@ -560,6 +571,7 @@ public class EquipmentController {
 
 	@PostMapping("/{toolNameId}/add")
 	public String addUnit(@PathVariable Long toolNameId,
+	                      @RequestParam(value = "pointId", required = false) Long pointId,
 	                      @RequestParam String serialNumber,
 	                      @RequestParam BigDecimal priceFirstDay,
 	                      @RequestParam BigDecimal priceFirstMonth,
@@ -572,6 +584,12 @@ public class EquipmentController {
 
 		ToolName toolName = toolNameRepository.findById(toolNameId).orElse(null);
 		if (toolName == null) return "redirect:/inventory?error=not_found";
+
+		if (pointId == null)
+			return "redirect:/inventory/" + toolNameId + "?error=point_required";
+		Point point = pointRepository.findById(pointId).orElse(null);
+		if (point == null || Boolean.TRUE.equals(point.getIsDeleted()))
+			return "redirect:/inventory/" + toolNameId + "?error=point_invalid";
 
 		if (serialNumber == null || serialNumber.trim().isEmpty())
 			return "redirect:/inventory/" + toolNameId + "?error=serial_required";
@@ -587,6 +605,7 @@ public class EquipmentController {
 
 		Equipment eq = new Equipment();
 		eq.setToolName(toolName);
+		eq.setPoint(point);
 		eq.setSerialNumber(serialNumber.trim());
 		eq.setBaseValue(baseValue);
 		eq.setCondition(condition != null ? condition : 10);
@@ -603,6 +622,7 @@ public class EquipmentController {
 
 	@PostMapping("/edit")
 	public String editUnit(@RequestParam Long id,
+	                       @RequestParam(value = "pointId", required = false) Long pointId,
 	                       @RequestParam String serialNumber,
 	                       @RequestParam BigDecimal priceFirstDay,
 	                       @RequestParam BigDecimal priceFirstMonth,
@@ -616,11 +636,18 @@ public class EquipmentController {
 		Equipment eq = equipmentRepository.findById(id).orElse(null);
 		if (eq == null) return "redirect:/inventory?error=not_found";
 
+		if (pointId == null)
+			return "redirect:/inventory/" + eq.getToolName().getId() + "?error=point_required";
+		Point point = pointRepository.findById(pointId).orElse(null);
+		if (point == null || Boolean.TRUE.equals(point.getIsDeleted()))
+			return "redirect:/inventory/" + eq.getToolName().getId() + "?error=point_invalid";
+
 		Long toolNameId = eq.getToolName().getId();
 		// Уникальность только среди неудалённых; при редактировании — кроме текущего юнита
 		if (equipmentRepository.existsBySerialNumberAndIsDeletedFalseAndIdNot(serialNumber.trim(), eq.getId()))
 			return "redirect:/inventory/" + toolNameId + "?error=serial_exists";
 		eq.setSerialNumber(serialNumber.trim());
+		eq.setPoint(point);
 		eq.setBaseValue(baseValue);
 		eq.setCondition(condition != null ? condition : eq.getCondition());
 		applyPriceFormula(eq, priceFirstDay, priceFirstMonth, priceSecondDay, priceSubsequentDays, priceSecondMonth, priceSubsequentMonths);

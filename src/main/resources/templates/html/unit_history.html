@@ -62,6 +62,11 @@
       <span class="info-value" th:text="${toolName.name}">—</span>
     </div>
     <div class="info-row">
+      <span class="info-label">Точка</span>
+      <span class="info-value" th:if="${unit.point != null}" th:text="${unit.point.name}">—</span>
+      <span class="info-value text-muted" th:if="${unit.point == null}">—</span>
+    </div>
+    <div class="info-row">
       <span class="info-label">Состояние</span>
       <span class="info-value" th:text="${unit.condition + '/10'}">—</span>
     </div>

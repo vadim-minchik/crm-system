@@ -20,6 +20,8 @@ public class InventoryUnitRowDto {
 	private String status;       // FREE, BUSY, RESERVED
 	private String statusLabel;  // Свободно, Занят, Забронирован
 	private boolean inBooking;
+	private Long pointId;
+	private String pointName;
 
 	public Long getId() { return id; }
 	public void setId(Long id) { this.id = id; }
@@ -47,4 +49,8 @@ public class InventoryUnitRowDto {
 	public void setStatusLabel(String statusLabel) { this.statusLabel = statusLabel; }
 	public boolean isInBooking() { return inBooking; }
 	public void setInBooking(boolean inBooking) { this.inBooking = inBooking; }
+	public Long getPointId() { return pointId; }
+	public void setPointId(Long pointId) { this.pointId = pointId; }
+	public String getPointName() { return pointName; }
+	public void setPointName(String pointName) { this.pointName = pointName; }
 }

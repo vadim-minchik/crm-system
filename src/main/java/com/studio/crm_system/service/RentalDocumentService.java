@@ -10,6 +10,7 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -20,6 +21,8 @@ import org.apache.poi.xwpf.usermodel.XWPFRun;
 import org.apache.poi.xwpf.usermodel.XWPFTable;
 import org.apache.poi.xwpf.usermodel.XWPFTableCell;
 import org.apache.poi.xwpf.usermodel.XWPFTableRow;
+
+import com.studio.crm_system.util.RussianNumberWords;
 
 /**
  * Подставляет данные проката и клиента в шаблон (переменные {{NAME}}) для формирования документа Word.
@@ -51,6 +54,8 @@ public class RentalDocumentService {
 		{ "{{CLIENT_BIRTH_DATE}}", "Дата рождения клиента" },
 		{ "{{RENTAL_DATE_FROM}}", "Дата и время начала проката" },
 		{ "{{RENTAL_DATE_TO}}", "Дата и время окончания проката" },
+		{ "{{RENTAL_DURATION_DAYS}}", "Срок проката в сутках (число): от даты начала до даты окончания включительно по календарным дням" },
+		{ "{{RENTAL_DURATION_DAYS_WORDS}}", "Тот же срок проката прописью (например «три»)" },
 		{ "{{RENTAL_TOTAL}}", "Сумма проката (Br)" },
 		{ "{{RENTAL_EQUIPMENT_LIST}}", "Список оборудования в одну строку" },
 		{ "{{EQUIPMENT_COUNT}}", "Количество единиц оборудования" },
@@ -78,7 +83,7 @@ public class RentalDocumentService {
 	};
 
 	/** Количество полей на одну позицию оборудования (1..50). */
-	private static final int EQUIPMENT_FIELDS_PER_SLOT = 7;
+	private static final int EQUIPMENT_FIELDS_PER_SLOT = 8;
 
 	/** Возвращает справку по подстановкам: базовые + все поля по каждой позиции оборудования (1..50). */
 	public static String[][] getPlaceholdersHelpWithEquipmentSlots() {
@@ -96,6 +101,9 @@ public class RentalDocumentService {
 			idx++;
 			out[idx][0] = "{{EQUIPMENT_" + n + "_BASE_VALUE}}";
 			out[idx][1] = "Позиция " + n + ": оценочная стоимость (Br)";
+			idx++;
+			out[idx][0] = "{{EQUIPMENT_" + n + "_BASE_VALUE_WORDS}}";
+			out[idx][1] = "Позиция " + n + ": оценочная стоимость целым числом прописью (например «пятьсот»)";
 			idx++;
 			out[idx][0] = "{{EQUIPMENT_" + n + "_CONDITION}}";
 			out[idx][1] = "Позиция " + n + ": состояние (1–10)";
@@ -240,6 +248,11 @@ public class RentalDocumentService {
 
 		m.put("{{RENTAL_DATE_FROM}}", rental != null && rental.getDateFrom() != null ? rental.getDateFrom().format(DATE_TIME_FMT) : "—");
 		m.put("{{RENTAL_DATE_TO}}", rental != null && rental.getDateTo() != null ? rental.getDateTo().format(DATE_TIME_FMT) : "—");
+		long rentalDays = rentalInclusiveCalendarDays(rental != null ? rental.getDateFrom() : null, rental != null ? rental.getDateTo() : null);
+		m.put("{{RENTAL_DURATION_DAYS}}", rental != null && rental.getDateFrom() != null && rental.getDateTo() != null
+				? String.valueOf(rentalDays) : "—");
+		m.put("{{RENTAL_DURATION_DAYS_WORDS}}", rental != null && rental.getDateFrom() != null && rental.getDateTo() != null
+				? RussianNumberWords.daysCountWords(rentalDays) : "—");
 		m.put("{{RENTAL_TOTAL}}", emptyToDash(rental != null && rental.getTotalAmount() != null ? rental.getTotalAmount().toString() : ""));
 		m.put("{{RENTAL_EQUIPMENT_LIST}}", emptyToDash(rental != null ? rental.getEquipmentDisplayString() : ""));
 		List<Equipment> eqList = rental != null ? rental.getEquipmentList() : List.of();
@@ -249,6 +262,7 @@ public class RentalDocumentService {
 			String title = "";
 			String serial = "";
 			String baseValue = "";
+			String baseValueWords = "";
 			String condition = "";
 			String priceFirstDay = "";
 			String priceSubsequentDays = "";
@@ -259,6 +273,7 @@ public class RentalDocumentService {
 					title = nullToEmpty(eq.getTitle());
 					serial = nullToEmpty(eq.getSerialNumber());
 					baseValue = eq.getBaseValue() != null ? eq.getBaseValue().toString() : "";
+					baseValueWords = RussianNumberWords.amountIntegerPartWords(eq.getBaseValue());
 					condition = eq.getCondition() != null ? eq.getCondition().toString() : "";
 					priceFirstDay = eq.getPriceFirstDay() != null ? eq.getPriceFirstDay().toString() : "";
 					priceSubsequentDays = eq.getPriceSubsequentDays() != null ? eq.getPriceSubsequentDays().toString() : "";
@@ -268,6 +283,7 @@ public class RentalDocumentService {
 			m.put("{{EQUIPMENT_" + n + "_TITLE}}", emptyToDash(title));
 			m.put("{{EQUIPMENT_" + n + "_SERIAL}}", emptyToDash(serial));
 			m.put("{{EQUIPMENT_" + n + "_BASE_VALUE}}", emptyToDash(baseValue));
+			m.put("{{EQUIPMENT_" + n + "_BASE_VALUE_WORDS}}", emptyToDash(baseValueWords));
 			m.put("{{EQUIPMENT_" + n + "_CONDITION}}", emptyToDash(condition));
 			m.put("{{EQUIPMENT_" + n + "_PRICE_FIRST_DAY}}", emptyToDash(priceFirstDay));
 			m.put("{{EQUIPMENT_" + n + "_PRICE_SUBSEQUENT_DAYS}}", emptyToDash(priceSubsequentDays));
@@ -320,5 +336,15 @@ public class RentalDocumentService {
 		m.put("{{" + prefix + "_LOGIN}}", emptyToDash(nullToEmpty(u.getLogin())));
 		m.put("{{" + prefix + "_EMAIL}}", emptyToDash(nullToEmpty(u.getEmail())));
 		m.put("{{" + prefix + "_ROLE}}", emptyToDash(u.getRole() != null ? u.getRole().name() : ""));
+	}
+
+	/**
+	 * Срок в календарных сутках включительно: от даты начала до даты окончания (по локальным датам).
+	 * Например 01.01 10:00 — 03.01 18:00 → 3 суток.
+	 */
+	private static long rentalInclusiveCalendarDays(java.time.LocalDateTime from, java.time.LocalDateTime to) {
+		if (from == null || to == null) return 0;
+		if (to.isBefore(from)) return 0;
+		return ChronoUnit.DAYS.between(from.toLocalDate(), to.toLocalDate()) + 1;
 	}
 }

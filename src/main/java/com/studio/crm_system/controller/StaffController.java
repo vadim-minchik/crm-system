@@ -1,6 +1,8 @@
 package com.studio.crm_system.controller;
 
+import com.studio.crm_system.entity.Point;
 import com.studio.crm_system.entity.User;
+import com.studio.crm_system.repository.PointRepository;
 import com.studio.crm_system.repository.UserRepository;
 import com.studio.crm_system.enums.Role;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,6 +24,9 @@ public class StaffController {
 
 	@Autowired
 	private UserRepository userRepository;
+
+	@Autowired
+	private PointRepository pointRepository;
 
 	@Autowired
 	private PasswordEncoder passwordEncoder;
@@ -112,17 +117,25 @@ public class StaffController {
 		model.addAttribute("currentUserRole", actor.getRole());
 		model.addAttribute("currentUserId", actor.getId());
 		model.addAttribute("allUsers", filteredUsers);
+		model.addAttribute("points", pointRepository.findByIsDeletedFalseOrderByNameAsc());
 
 		return "html/staff";
 	}
 
 	@PostMapping("/add")
 	public String addStaff(@ModelAttribute User newUser,
+			@RequestParam(value = "pointId", required = false) Long pointId,
 			@RequestParam(value = "passportIssueDate", required = false) String passportIssueDate,
 			@RequestParam(value = "passportExpiryDate", required = false) String passportExpiryDate) {
 		User actor = getCurrentUser();
 		if (actor == null || actor.getRole() == Role.WORKER)
 			return "redirect:/staff";
+
+		if (pointId == null)
+			return "redirect:/staff?error=point_required";
+		Point point = pointRepository.findById(pointId).orElse(null);
+		if (point == null || Boolean.TRUE.equals(point.getIsDeleted()))
+			return "redirect:/staff?error=point_invalid";
 
 		String name = cleanCyrillic(newUser.getName());
 		String surname = cleanCyrillic(newUser.getSurname());
@@ -162,6 +175,7 @@ public class StaffController {
 			return "redirect:/staff?error=password_too_short";
 		}
 		newUser.setPassword(passwordEncoder.encode(password));
+		newUser.setPoint(point);
 
 		newUser.setPassportIssueDate(parseOptionalDate(passportIssueDate));
 		newUser.setPassportExpiryDate(parseOptionalDate(passportExpiryDate));
@@ -178,6 +192,7 @@ public class StaffController {
 
 	@PostMapping("/edit")
 	public String editStaff(@ModelAttribute User details,
+			@RequestParam(value = "pointId", required = false) Long pointId,
 			@RequestParam(value = "newPassword", required = false) String newPassword,
 			@RequestParam(value = "passportIssueDate", required = false) String passportIssueDate,
 			@RequestParam(value = "passportExpiryDate", required = false) String passportExpiryDate) {
@@ -188,7 +203,18 @@ public class StaffController {
 			if (actor.getRole() == Role.ADMIN && dbUser.getRole() != Role.WORKER)
 				return "redirect:/staff";
 
+			if (pointId == null)
+				return "redirect:/staff?error=point_required";
+			Point point = pointRepository.findById(pointId).orElse(null);
+			if (point == null || Boolean.TRUE.equals(point.getIsDeleted()))
+				return "redirect:/staff?error=point_invalid";
+
 			boolean changed = false;
+
+			if (dbUser.getPoint() == null || !point.getId().equals(dbUser.getPoint().getId())) {
+				dbUser.setPoint(point);
+				changed = true;
+			}
 
 			String cName = cleanCyrillic(details.getName());
 			String cSurname = cleanCyrillic(details.getSurname());

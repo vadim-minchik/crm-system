@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 
 import com.studio.crm_system.entity.User;
 
@@ -11,6 +12,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
     Optional<User> findByLogin(String login);
     Optional<User> findByEmail(String email);
 
+    @Query("SELECT DISTINCT u FROM User u LEFT JOIN FETCH u.point WHERE u.isDeleted = false")
     List<User> findByIsDeletedFalse();
     Optional<User> findByLoginAndIsDeletedFalse(String login);
     Optional<User> findByEmailAndIsDeletedFalse(String email);

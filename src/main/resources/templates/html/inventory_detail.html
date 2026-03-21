@@ -36,9 +36,10 @@
       <h2><i class="bi bi-box-seam me-2 text-primary"></i><span th:text="${toolName.name}">Модель</span></h2>
       <p th:text="${toolName.description != null ? toolName.description : 'Единицы оборудования этой модели'}">Описание</p>
     </div>
-    <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#modalAddUnit">
+    <button th:if="${!#lists.isEmpty(points)}" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#modalAddUnit">
       <i class="bi bi-plus-circle"></i> Добавить экземпляр
     </button>
+    <span th:if="${#lists.isEmpty(points)}" class="text-warning small"><i class="bi bi-exclamation-triangle me-1"></i>Создайте <a th:href="@{/points}">точку</a>, без неё нельзя добавить экземпляр.</span>
   </div>
 
   <div th:if="${param.error}" class="alert alert-danger alert-dismissible fade show" role="alert">
@@ -50,6 +51,8 @@
     <span th:if="${param.error[0] == 'save_failed'}">Не удалось сохранить. Проверьте данные.</span>
     <span th:if="${param.error[0] == 'unit_in_use'}">Нельзя удалить: оборудование в прокате или в брони.</span>
     <span th:if="${param.error[0] == 'unit_not_found'}">Экземпляр не найден.</span>
+    <span th:if="${param.error[0] == 'point_required'}">Выберите точку (локацию).</span>
+    <span th:if="${param.error[0] == 'point_invalid'}">Указана неверная точка.</span>
     <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
   </div>
   <div th:if="${param.success}" class="alert alert-success alert-dismissible fade show" role="alert">
@@ -66,6 +69,7 @@
       <thead>
         <tr>
           <th class="ps-4">Серийный №</th>
+          <th>Точка</th>
           <th>Состояние</th>
           <th>1-й день (Br)</th>
           <th>Оценочная стоимость</th>
@@ -77,6 +81,10 @@
         <tr th:each="u : ${units}">
           <td class="ps-4">
             <code class="text-muted" th:text="${u.serialNumber}">SN-12345</code>
+          </td>
+          <td class="align-middle" style="max-width: 12rem;">
+            <span th:if="${u.point != null}" th:text="${u.point.name}" class="small point-cell-ellipsis" th:title="${u.point.name}">Точка</span>
+            <span th:if="${u.point == null}" class="text-muted small">—</span>
           </td>
           <td>
             <span th:text="${u.condition} + '/10'"
@@ -99,6 +107,7 @@
               </a>
               <button type="button" class="btn-icon"
                       th:data-id="${u.id}"
+                      th:data-point-id="${u.point != null ? u.point.id : firstPointId}"
                       th:data-serial="${u.serialNumber}"
                       th:data-price-first-day="${u.priceFirstDay}"
                       th:data-price-second-day="${u.priceSecondDay}"
@@ -130,7 +139,7 @@
           </td>
         </tr>
         <tr th:if="${totalUnits == 0}">
-          <td colspan="6" class="text-center py-5 text-muted">
+          <td colspan="7" class="text-center py-5 text-muted">
             <i class="bi bi-inbox fs-3 d-block mb-2"></i>
             В этом разделе пока нет экземпляров
           </td>
@@ -156,6 +165,13 @@
       </div>
       <div class="modal-body">
         <div class="row g-3">
+          <div class="col-12">
+            <label class="form-label fw-semibold">Точка (локация) *</label>
+            <select name="pointId" class="form-select" required>
+              <option value="" disabled selected>— выберите точку —</option>
+              <option th:each="p : ${points}" th:value="${p.id}" th:text="${p.name}">Точка</option>
+            </select>
+          </div>
           <div class="col-12">
             <label class="form-label fw-semibold">Серийный номер *</label>
             <input type="text" name="serialNumber" class="form-control"
@@ -239,6 +255,12 @@
       <div class="modal-body">
         <input type="hidden" name="id" id="edit-unit-id">
         <div class="row g-3">
+          <div class="col-12">
+            <label class="form-label fw-semibold">Точка (локация) *</label>
+            <select name="pointId" id="edit-unit-point" class="form-select" required>
+              <option th:each="p : ${points}" th:value="${p.id}" th:text="${p.name}">Точка</option>
+            </select>
+          </div>
           <div class="col-12">
             <label class="form-label fw-semibold">Серийный номер</label>
             <input type="text" name="serialNumber" id="edit-unit-serial"
@@ -349,6 +371,9 @@
   }
   function openEditModal(btn) {
     document.getElementById('edit-unit-id').value = btn.getAttribute('data-id');
+    var pid = btn.getAttribute('data-point-id');
+    var ptSel = document.getElementById('edit-unit-point');
+    if (ptSel && pid) ptSel.value = pid;
     document.getElementById('edit-unit-serial').value = btn.getAttribute('data-serial');
     setEditPrice('edit-unit-price-first-day', btn.getAttribute('data-price-first-day'));
     setEditPrice('edit-unit-price-second-day', btn.getAttribute('data-price-second-day'));
@@ -399,9 +424,10 @@
     }
     function buildRow(u) {
       var canDelete = u.status === 'FREE' && !u.inBooking;
+      var fp = /*[[${firstPointId}]]*/ null;
       var actions = '<div class="d-flex justify-content-center gap-1">' +
         '<a href="/inventory/unit/' + u.id + '" class="btn-icon text-primary" title="Информация и история"><i class="bi bi-eye"></i></a>' +
-        '<button type="button" class="btn-icon" data-id="' + u.id + '" data-serial="' + (u.serialNumber || '') + '"' +
+        '<button type="button" class="btn-icon" data-id="' + u.id + '" data-point-id="' + (u.pointId != null ? u.pointId : (fp != null ? fp : '')) + '" data-serial="' + (u.serialNumber || '') + '"' +
         ' data-price-first-day="' + fmtNum(u.priceFirstDay) + '" data-price-second-day="' + fmtNum(u.priceSecondDay) + '"' +
         ' data-price-subsequent-days="' + fmtNum(u.priceSubsequentDays) + '" data-price-first-month="' + fmtNum(u.priceFirstMonth) + '"' +
         ' data-price-second-month="' + fmtNum(u.priceSecondMonth) + '" data-price-subsequent-months="' + fmtNum(u.priceSubsequentMonths) + '"' +
@@ -415,7 +441,9 @@
       actions += '</div>';
       var cond = u.condition != null ? u.condition : 10;
       var condCl = cond >= 8 ? 'text-success' : (cond >= 5 ? 'text-warning' : 'text-danger');
+      var pn = u.pointName != null ? u.pointName : '—';
       return '<tr><td class="ps-4"><code class="text-muted">' + (u.serialNumber || '') + '</code></td>' +
+        '<td class="align-middle" style="max-width:12rem;"><span class="small point-cell-ellipsis" title="' + (u.pointName != null ? u.pointName.replace(/"/g, '&quot;') : '') + '">' + pn + '</span></td>' +
         '<td><span class="fw-semibold ' + condCl + '">' + cond + '/10</span></td>' +
         '<td><strong class="text-primary">' + fmtNum(u.priceFirstDay) + ' Br</strong></td>' +
         '<td class="small text-muted">' + fmtNum(u.baseValue) + ' Br</td>' +
