@@ -109,6 +109,13 @@ body {
 			После 5 неудачных попыток аккаунт будет заблокирован на 15 минут.
 			<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
 		</div>
+		<div th:if="${param.error != null and param.error[0] == 'session_busy'}"
+			 class="alert alert-warning alert-dismissible fade show" role="alert">
+			<i class="bi bi-person-lines-fill me-2"></i>
+			<strong>Уже выполнен вход с этим логином.</strong>
+			Сначала должен выйти другой пользователь (или закройте ту сессию). Пока активна первая сессия, повторный вход недоступен.
+			<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+		</div>
 		
 		<div th:if="${param.logout}" class="alert alert-success alert-dismissible fade show" role="alert">
 			<i class="bi bi-check-circle-fill me-2"></i>

@@ -13,9 +13,11 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.core.session.SessionRegistry;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.AuthenticationFailureHandler;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
+import org.springframework.security.web.authentication.session.SessionAuthenticationException;
 
 @Configuration
 @EnableWebSecurity
@@ -26,6 +28,9 @@ public class SecurityConfig {
 
     @Autowired
     private CustomUserDetailsService userDetailsService;
+
+    @Autowired
+    private SessionRegistry sessionRegistry;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -45,7 +50,12 @@ public class SecurityConfig {
                         .logoutSuccessUrl("/login?logout")
                         .invalidateHttpSession(true)
                         .deleteCookies("JSESSIONID")
-                        .permitAll());
+                        .permitAll())
+                .sessionManagement(session -> session
+                        .sessionConcurrency(concurrency -> concurrency
+                                .maximumSessions(1)
+                                .maxSessionsPreventsLogin(true)
+                                .sessionRegistry(sessionRegistry)));
 
         return http.build();
     }
@@ -61,6 +71,10 @@ public class SecurityConfig {
     @Bean
     public AuthenticationFailureHandler authenticationFailureHandler() {
         return (HttpServletRequest request, HttpServletResponse response, AuthenticationException exception) -> {
+            if (exception instanceof SessionAuthenticationException) {
+                response.sendRedirect("/login?error=session_busy");
+                return;
+            }
             String login = request.getParameter("username");
             if (login != null && !login.isBlank()) {
                 loginAttemptService.loginFailed(login);
