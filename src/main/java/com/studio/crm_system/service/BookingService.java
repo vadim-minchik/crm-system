@@ -101,12 +101,23 @@ public class BookingService {
 			// Разрешаем бронировать свободное, в прокате и уже забронированное (бронь на бронь — цепочка)
 			if (equipment.getStatus() != EquipmentStatus.FREE && equipment.getStatus() != EquipmentStatus.BUSY && equipment.getStatus() != EquipmentStatus.RESERVED)
 				return "equipment_not_free";
-			// Если оборудование в прокате — начало брони не раньше окончания проката
-			if (equipment.getStatus() == EquipmentStatus.BUSY) {
-				Optional<Rental> activeRental = rentalRepository.findFirstByEquipmentIdAndStatusInOrderByDateToDesc(
-						equipment.getId(), List.of(RentalStatus.ACTIVE, RentalStatus.SOON_DEBTOR, RentalStatus.DEBTOR));
-				if (activeRental.isPresent() && !bookingStart.isAfter(activeRental.get().getDateTo())) {
-					return "booking_start_before_rental_end";
+			// Активный прокат (в т.ч. если статус единицы в БД отстаёт): бронь не должна пересекаться по времени
+			List<Rental> overlapActiveRental = rentalRepository.findActiveRentalsOverlappingInterval(
+					equipment.getId(),
+					List.of(RentalStatus.ACTIVE, RentalStatus.SOON_DEBTOR, RentalStatus.DEBTOR),
+					bookingStart,
+					dateTo);
+			if (!overlapActiveRental.isEmpty()) {
+				return "booking_overlaps_active_rental";
+			}
+			// Прокат «ожидает доставки» — период занят в резерве, бронь не должна пересекаться
+			Optional<Rental> awaitingRental = rentalRepository.findFirstByEquipmentIdAndStatusOrderByDateToDesc(
+					equipment.getId(), RentalStatus.AWAITING_DELIVERY);
+			if (awaitingRental.isPresent()) {
+				Rental ar = awaitingRental.get();
+				boolean overlapAwaiting = bookingStart.isBefore(ar.getDateTo()) && dateTo.isAfter(ar.getDateFrom());
+				if (overlapAwaiting) {
+					return "booking_overlap_awaiting";
 				}
 			}
 			// Новая бронь не должна пересекаться ни с одной существующей (можно ставить и до, и после)

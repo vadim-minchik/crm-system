@@ -45,13 +45,19 @@
     <span th:if="${param.error[0] == 'date_to_in_past'}">Дата «по какое» должна быть в будущем.</span>
     <span th:if="${param.error[0] == 'equipment_not_free'}">Это оборудование уже занято или забронировано.</span>
     <span th:if="${param.error[0] == 'too_many_equipment'}">Можно выбрать не более 50 инструментов за раз.</span>
+    <span th:if="${param.error[0] == 'client_passport_expired'}">Срок действия паспорта клиента истёк или не покрывает дату начала проката. Обновите данные клиента в базе, затем оформите прокат снова.</span>
     <span th:if="${param.error[0] == 'booking_start_before_rental_end'}">Дата начала брони должна быть после окончания текущего проката этого оборудования.</span>
+    <span th:if="${param.error[0] == 'booking_overlaps_active_rental'}">Период брони пересекается с текущим прокатом этого оборудования. Укажите даты после окончания проката или без пересечения.</span>
     <span th:if="${param.error[0] == 'booking_overlap'}">Период брони пересекается с уже существующей бронью этого оборудования. Можно ставить бронь до или после — без пересечения по датам.</span>
+    <span th:if="${param.error[0] == 'booking_overlap_awaiting'}">Период пересекается с прокатом, который ожидает доставки. Дождитесь выдачи или отмените тот прокат.</span>
+    <span th:if="${param.error[0] == 'not_awaiting_delivery'}">Этот прокат не в статусе «ожидает доставки».</span>
     <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
   </div>
   <div th:if="${param.success}" class="alert alert-success alert-dismissible fade show" role="alert">
     <i class="bi bi-check-circle-fill me-2"></i><strong>Готово! </strong>
     <span th:if="${param.success[0] == 'rental_added'}">Прокат оформлен. Оборудование отмечено как занятое.</span>
+    <span th:if="${param.success[0] == 'rental_awaiting_delivery'}">Прокат оформлен. Оборудование в резерве до доставки — после выдачи клиенту нажмите «Доставлено» на вкладке «Доставка».</span>
+    <span th:if="${param.success[0] == 'delivered'}">Доставка отмечена, прокат начался (оборудование в прокате).</span>
     <span th:if="${param.success[0] == 'rental_completed'}">Прокат завершён. Оборудование снова свободно.</span>
     <span th:if="${param.success[0] == 'rental_cancelled'}">Прокат отменён. Оборудование снова свободно.</span>
     <span th:if="${param.success[0] == 'booking_added'}">Бронь создана. Оборудование забронировано.</span>
@@ -64,6 +70,12 @@
       <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-active" type="button">
         <i class="bi bi-play-circle me-1"></i> Активные
         <span id="badge-active" class="badge bg-primary ms-1" th:text="${#lists.size(activeRentals)}">0</span>
+      </button>
+    </li>
+    <li class="nav-item">
+      <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-delivery" type="button">
+        <i class="bi bi-truck me-1"></i> Доставка
+        <span id="badge-delivery" class="badge bg-dark ms-1" th:text="${#lists.size(awaitingDeliveryRentals)}">0</span>
       </button>
     </li>
     <li class="nav-item">
@@ -118,6 +130,41 @@
             </td>
           </tr>
             <tr th:if="${#lists.isEmpty(activeRentals)}"><td colspan="6" class="text-center py-5 text-muted">Нет активных прокатов</td></tr>
+          </tbody>
+        </table>
+      </div>
+      </div>
+    </div>
+    <div class="tab-pane fade" id="tab-delivery">
+    <div class="card-table">
+      <div class="table-responsive-rentals">
+      <table class="table table-hover mb-0 table-rentals">
+          <thead><tr><th class="ps-4 td-ellipsis">Кто берёт</th><th>С</th><th>По</th><th class="td-ellipsis">Инструмент</th><th class="td-ellipsis">Адрес / доставка</th><th>Итог (Br)</th><th class="th-actions text-end pe-4">Действия</th></tr></thead>
+          <tbody id="tbody-delivery">
+            <tr th:each="r : ${awaitingDeliveryRentals}">
+              <td class="ps-4 td-ellipsis"><div th:text="${r.client != null ? (r.client.surname + ' ' + r.client.name + (r.client.patronymic != null ? ' ' + r.client.patronymic : '')) : '—'}">—</div></td>
+              <td th:text="${#temporals.format(r.dateFrom, 'dd.MM.yyyy HH:mm')}">—</td>
+              <td th:text="${#temporals.format(r.dateTo, 'dd.MM.yyyy HH:mm')}">—</td>
+              <td class="td-ellipsis"><div th:text="${r.equipmentDisplayString}">—</div></td>
+              <td class="td-ellipsis small text-muted">
+                <div th:text="${r.deliveryAddress != null && !r.deliveryAddress.isBlank() ? r.deliveryAddress : '—'}">—</div>
+                <div th:if="${r.deliveryAmount != null}" th:text="${'Доставка: ' + #numbers.formatDecimal(r.deliveryAmount, 0, 'NONE', 2, 'POINT') + ' Br'}">—</div>
+              </td>
+              <td><strong th:text="${r.totalAmount != null ? (#numbers.formatDecimal(r.totalAmount, 0, 'NONE', 2, 'POINT') + ' Br') : '—'}">—</strong></td>
+              <td class="td-actions text-end pe-4">
+                <button type="button" class="btn btn-sm btn-outline-secondary me-1" th:attr="data-rental-id=${r.id}" onclick="openDocumentModal(this)" title="Сформировать документ"><i class="bi bi-file-earmark-text"></i></button>
+                <a th:href="@{/rentals/{id}(id=${r.id})}" class="btn btn-sm btn-outline-primary me-1"><i class="bi bi-eye"></i></a>
+                <form th:action="@{/rentals/delivered}" method="post" class="d-inline me-1">
+                  <input type="hidden" name="id" th:value="${r.id}">
+                  <button type="submit" class="btn btn-sm btn-success" title="Оборудование у клиента — начать прокат"><i class="bi bi-truck me-1"></i>Доставлено</button>
+                </form>
+                <form th:action="@{/rentals/cancel}" method="post" class="d-inline" onsubmit="return confirm('Отменить прокат? Оборудование снова станет свободным.');">
+                  <input type="hidden" name="id" th:value="${r.id}">
+                  <button type="submit" class="btn btn-sm btn-outline-secondary">Отменить</button>
+                </form>
+            </td>
+          </tr>
+            <tr th:if="${#lists.isEmpty(awaitingDeliveryRentals)}"><td colspan="7" class="text-center py-5 text-muted">Нет прокатов в ожидании доставки. Если при оформлении указать стоимость или адрес доставки, прокат попадёт сюда до отметки «Доставлено».</td></tr>
           </tbody>
         </table>
       </div>
@@ -277,7 +324,7 @@
             </div>
             <div id="booking-equipment-ids" class="equipment-tags-row mb-2 d-flex flex-wrap gap-2 align-items-center"></div>
             <div id="booking-equipment-hidden"></div>
-            <div id="booking-equipment-placeholder" class="form-text text-muted mt-1">Можно выбирать свободное, в прокате и уже забронированное — можно ставить бронь на бронь (следующая с даты окончания предыдущей). В списке указан конец брони.</div>
+            <div id="booking-equipment-placeholder" class="form-text text-muted mt-1">Можно выбирать свободное, в прокате и забронированное. С текущим прокатом пересекаться нельзя — бронь только после его окончания. Между бронями — без пересечения, «встык» после окончания предыдущей. В списке для проката показан период.</div>
             <div th:if="${#lists.isEmpty(equipmentOptionsForBooking)}" class="form-text text-warning">Нет доступного оборудования для брони.</div>
             <div id="booking-equipment-list-source" style="display: none;" aria-hidden="true">
               <div th:each="e : ${equipmentOptionsForBooking}" class="booking-equipment-option list-group-item list-group-item-action py-2"
@@ -396,23 +443,28 @@
                 <span class="input-group-text">Br</span>
               </div>
               <input type="hidden" name="deliveryAmount" id="rental-delivery-hidden" value="0">
+              <input type="hidden" name="deliveryRequested" id="rental-delivery-requested" value="false">
             </div>
             <div id="rental-delivery-address-wrap" class="mt-2" style="display: none;">
               <label class="form-label small text-muted">Адрес доставки</label>
               <input type="text" name="deliveryAddress" id="rental-delivery-address" class="form-control" placeholder="Улица, дом, квартира, подъезд..." maxlength="500" autocomplete="off">
             </div>
+            <div class="form-text text-muted small mt-1">Если отмечено «Есть доставка» (или сумма &gt; 0, или адрес), прокат попадает во вкладку «Доставка»: оборудование в резерве до «Доставлено».</div>
           </div>
-          <div class="col-md-6">
-            <label class="form-label">Кто оформил прокат</label>
-            <p class="form-control-plaintext mb-0 small" th:if="${currentUser != null}" th:text="'Вы: ' + currentUser.surname + ' ' + currentUser.name + (currentUser.patronymic != null ? ' ' + currentUser.patronymic : '')">Вы: ФИО</p>
+          <div class="col-12">
+            <label class="form-label">Оформляет прокат</label>
+            <p class="form-control-plaintext mb-0 fw-semibold" th:if="${currentUser != null}"
+               th:text="${'Вы: ' + currentUser.surname + ' ' + currentUser.name + (currentUser.patronymic != null ? ' ' + currentUser.patronymic : '')}">Вы: Иванов Иван</p>
             <p class="form-control-plaintext mb-0 small text-muted" th:if="${currentUser == null}">Текущий пользователь</p>
+            <div class="form-text text-muted small">В системе так и сохранится «кто оформил». Выдача в пункте без доставки — тот же человек.</div>
           </div>
-          <div class="col-md-6">
-            <label class="form-label">Кто отдал оборудование</label>
-            <select name="handedOverByStaffId" class="form-select">
-              <option value="">— Не указано —</option>
+          <div class="col-12" id="rental-handed-over-wrap" style="display: none;">
+            <label class="form-label">Кто отдаст / доставит <span class="text-muted fw-normal">(необязательно)</span></label>
+            <select name="handedOverByStaffId" id="rental-handed-over-select" class="form-select">
+              <option value="">— Потом тот, кто нажмёт «Доставлено» —</option>
               <option th:each="s : ${staffList}" th:value="${s.id}" th:text="${s.surname + ' ' + s.name + (s.patronymic != null ? ' ' + s.patronymic : '')}">Сотрудник</option>
             </select>
+            <div class="form-text text-muted small">Только для проката с доставкой: можно заранее указать курьера; если пусто — в прокате запишется тот, кто отметит «Доставлено».</div>
           </div>
         </div>
       </div>
@@ -511,7 +563,7 @@
       documentTemplateDownloadLink.href = '/documents/' + templateId + '/file';
       documentTemplateDownloadWrap.style.display = 'block';
       if (documentDownloadDocxLink) {
-        documentDownloadDocxLink.href = '/rentals/' + rentalId + '/document/docx?templateId=' + encodeURIComponent(templateId);
+        documentDownloadDocxLink.setAttribute('data-download-url', '/rentals/' + rentalId + '/document/docx?templateId=' + encodeURIComponent(templateId));
         documentDownloadDocxLink.style.display = 'inline-flex';
       }
     } else {
@@ -530,6 +582,47 @@
     var bsModal = new bootstrap.Modal(documentModal);
     bsModal.show();
   };
+
+  if (documentDownloadDocxLink) {
+    documentDownloadDocxLink.addEventListener('click', function(e) {
+      e.preventDefault();
+      var url = documentDownloadDocxLink.getAttribute('data-download-url');
+      if (!url) return;
+      documentDownloadDocxLink.classList.add('disabled');
+      fetch(url, { credentials: 'same-origin' }).then(function(r) {
+        if (r.status === 409) {
+          return r.text().then(function(t) { alert(t || 'Паспорт клиента просрочен. Обновите данные клиента.'); });
+        }
+        if (!r.ok) {
+          alert('Не удалось сформировать документ (код ' + r.status + ').');
+          return;
+        }
+        var disp = r.headers.get('Content-Disposition');
+        var fname = 'document.docx';
+        if (disp) {
+          var mStar = /filename\*=UTF-8''([^;\s]+)/i.exec(disp);
+          var mQ = /filename="([^"]+)"/i.exec(disp);
+          var mPlain = /filename=([^;\s]+)/i.exec(disp);
+          if (mStar) try { fname = decodeURIComponent(mStar[1]); } catch (x) { fname = mStar[1]; }
+          else if (mQ) fname = mQ[1];
+          else if (mPlain) fname = mPlain[1].replace(/^"|"$/g, '');
+        }
+        return r.blob().then(function(blob) {
+          var a = document.createElement('a');
+          a.href = URL.createObjectURL(blob);
+          a.download = fname;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          URL.revokeObjectURL(a.href);
+        });
+      }).catch(function() {
+        alert('Ошибка сети при загрузке документа.');
+      }).finally(function() {
+        documentDownloadDocxLink.classList.remove('disabled');
+      });
+    });
+  }
 })();
 
 // Поиск клиента по фамилии, телефону, идентификационному номеру
@@ -807,11 +900,22 @@
   if (additionalAmountInput) { additionalAmountInput.addEventListener('input', updateRentalTotalFromExtras); additionalAmountInput.addEventListener('change', updateRentalTotalFromExtras); }
   var deliveryAddressWrap = document.getElementById('rental-delivery-address-wrap');
   var deliveryAddressInput = document.getElementById('rental-delivery-address');
+  var handedOverWrap = document.getElementById('rental-handed-over-wrap');
+  var handedOverSelect = document.getElementById('rental-handed-over-select');
+  function syncRentalHandedOverRow() {
+    if (handedOverWrap && deliveryCheck) {
+      handedOverWrap.style.display = deliveryCheck.checked ? 'block' : 'none';
+    }
+    if (deliveryCheck && !deliveryCheck.checked && handedOverSelect) {
+      handedOverSelect.selectedIndex = 0;
+    }
+  }
   if (deliveryCheck) {
     deliveryCheck.addEventListener('change', function() {
       if (deliveryAmountInput) { deliveryAmountInput.disabled = !deliveryCheck.checked; if (!deliveryCheck.checked) deliveryAmountInput.value = '0'; }
       if (deliveryAddressWrap) deliveryAddressWrap.style.display = deliveryCheck.checked ? 'block' : 'none';
       if (!deliveryCheck.checked && deliveryAddressInput) deliveryAddressInput.value = '';
+      syncRentalHandedOverRow();
       updateRentalTotalFromExtras();
     });
   }
@@ -826,10 +930,13 @@
       if (deliveryCheck) deliveryCheck.checked = false;
       if (deliveryAmountInput) { deliveryAmountInput.value = '0'; deliveryAmountInput.disabled = true; }
       if (document.getElementById('rental-delivery-hidden')) document.getElementById('rental-delivery-hidden').value = '0';
+      if (document.getElementById('rental-delivery-requested')) document.getElementById('rental-delivery-requested').value = 'false';
       if (deliveryAddressWrap) deliveryAddressWrap.style.display = 'none';
       if (deliveryAddressInput) deliveryAddressInput.value = '';
       if (additionalAmountInput) additionalAmountInput.value = '';
       if (document.getElementById('rental-additional-description')) document.getElementById('rental-additional-description').value = '';
+      if (handedOverWrap) handedOverWrap.style.display = 'none';
+      if (handedOverSelect) handedOverSelect.selectedIndex = 0;
       render();
       dropdown.style.display = 'none';
     });
@@ -848,7 +955,9 @@
       var h = document.getElementById('rental-delivery-hidden');
       var ch = document.getElementById('rental-delivery-check');
       var delInp = document.getElementById('rental-delivery-amount');
+      var reqH = document.getElementById('rental-delivery-requested');
       if (h) h.value = (ch && ch.checked && delInp) ? (parseNum('rental-delivery-amount') || 0) : 0;
+      if (reqH) reqH.value = (ch && ch.checked) ? 'true' : 'false';
     });
   }
   searchInput.addEventListener('input', function() { searchInput.classList.remove('is-invalid'); });

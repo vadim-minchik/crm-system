@@ -41,7 +41,7 @@
 		<div class="d-flex align-items-center justify-content-between mb-3">
 			<div>
 				<h3 class="h5 mb-1"><i class="bi bi-file-earmark-word me-2 text-primary"></i>Шаблоны</h3>
-				<p class="text-muted small mb-0">Файлы .docx из Word с переменными в двойных скобках. Полный список переменных — в блоке ниже «Все переменные для шаблонов».</p>
+				<p class="text-muted small mb-0">Файлы .docx из Word с переменными в двойных скобках. Список переменных — ниже; для оборудования удобнее одна переменная на весь список (например <code>{{EQUIPMENT_LINES}}</code>), а не отдельно по каждой позиции.</p>
 			</div>
 			<button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#uploadModal">
 				<i class="bi bi-upload"></i> Загрузить шаблон
@@ -87,9 +87,24 @@
 	<!-- Все примеры переменных для подстановки в шаблонах -->
 	<section class="mb-4">
 		<h3 class="h5 mb-3"><i class="bi bi-code-slash me-2 text-primary"></i>Все переменные для шаблонов</h3>
+		<div class="alert alert-info py-3 mb-3 small alert-rich" role="note">
+			<p class="mb-2 fw-bold text-dark-emphasis"><i class="bi bi-lightbulb me-1"></i>Оборудование в прокате</p>
+			<p class="mb-2 mb-md-3">Не нужно дублировать блоки для 2-го, 3-го экземпляра — в шаблон Word вставьте одну переменную:</p>
+			<ul class="small mb-3 ps-3">
+				<li class="mb-1"><code>{{EQUIPMENT_LINES}}</code> — каждая позиция с новой строки</li>
+				<li class="mb-1"><code>{{EQUIPMENT_INLINE_PLUS}}</code> — всё в одну строку</li>
+				<li class="mb-1"><code>{{EQUIPMENT_NUMBERED}}</code> — нумерованный список</li>
+				<li class="mb-0"><code>{{EQUIPMENT_LINES_SHORT}}</code> — коротко (название и S/N)</li>
+			</ul>
+			<p class="mb-0">
+				<strong>Формат текста по оборудованию</strong> уже зашит в CRM: в <code>{{EQUIPMENT_LINES}}</code> подставляется полный блок
+				(оценка, состояние, все тарифы суток и месяцев, точка). Для таблицы по слотам остаются переменные <code>{{EQUIPMENT_1_TITLE}}</code> … <code>{{EQUIPMENT_50_…}}</code>.
+			</p>
+		</div>
 		<p class="text-muted small mb-3">Вставляйте в Word именно в двойных фигурных скобках. При скачивании документа по прокату подставятся данные клиента и проката.</p>
+		<p class="small text-muted mb-2">Ниже перечислены переменные для каждой из до <strong>50</strong> позиций оборудования в прокате (<code>{{EQUIPMENT_1_TITLE}}</code> … <code>{{EQUIPMENT_50_PRICE_SUBSEQUENT_MONTHS}}</code>). Для короткого варианта используйте <code>{{EQUIPMENT_LINES}}</code>.</p>
 		<div class="card-table">
-			<div class="table-responsive" style="max-height: 420px;">
+			<div class="table-responsive" style="max-height: min(70vh, 720px);">
 				<table class="table table-sm table-hover mb-0">
 					<thead class="table-light sticky-top">
 						<tr>

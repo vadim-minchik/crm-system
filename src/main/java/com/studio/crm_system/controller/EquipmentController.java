@@ -4,6 +4,7 @@ import com.studio.crm_system.dto.UnitHistoryEntry;
 import com.studio.crm_system.dto.InventoryUnitRowDto;
 import com.studio.crm_system.entity.Category;
 import com.studio.crm_system.entity.Equipment;
+import com.studio.crm_system.entity.EquipmentOwner;
 import com.studio.crm_system.entity.Point;
 import com.studio.crm_system.entity.PreCategory;
 import com.studio.crm_system.entity.Booking;
@@ -16,7 +17,9 @@ import com.studio.crm_system.repository.PointRepository;
 import com.studio.crm_system.repository.PreCategoryRepository;
 import com.studio.crm_system.repository.ToolNameRepository;
 import com.studio.crm_system.repository.UserRepository;
+import com.studio.crm_system.dto.OwnerAccrualLineDto;
 import com.studio.crm_system.service.BookingService;
+import com.studio.crm_system.service.OwnerShareService;
 import com.studio.crm_system.service.RentalService;
 import com.studio.crm_system.enums.EquipmentStatus;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -38,6 +41,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -55,10 +59,113 @@ public class EquipmentController {
 	@Autowired private UserRepository userRepository;
 	@Autowired private BookingService bookingService;
 	@Autowired private RentalService rentalService;
+	@Autowired private OwnerShareService ownerShareService;
 
 	private static final int INVENTORY_UNITS_PAGE_SIZE = 25;
+	private static final BigDecimal HUNDRED = new BigDecimal("100");
+	private static final BigDecimal OWNERS_SUM_TOLERANCE = new BigDecimal("0.02");
 	private static final BigDecimal COEF_08 = new BigDecimal("0.8");
 	private static final BigDecimal COEF_06 = new BigDecimal("0.6");
+
+	/** @return null если ок, иначе код ошибки для ?error= */
+	private String validateAndBuildOwners(String ownerMode, String singleOwnerName,
+	                                      List<String> ownerNames, List<String> ownerPercents,
+	                                      List<EquipmentOwner> out) {
+		out.clear();
+		boolean multiple = ownerMode != null && "multiple".equalsIgnoreCase(ownerMode.trim());
+		if (multiple) {
+			if (ownerNames == null || ownerPercents == null)
+				return "owners_multiple_min";
+			if (ownerNames.size() != ownerPercents.size())
+				return "owners_mismatch";
+			BigDecimal sum = BigDecimal.ZERO;
+			int order = 0;
+			for (int i = 0; i < ownerNames.size(); i++) {
+				String n = ownerNames.get(i) != null ? ownerNames.get(i).trim() : "";
+				String pRaw = ownerPercents.get(i) != null ? ownerPercents.get(i).trim().replace(',', '.') : "";
+				if (n.isEmpty() && pRaw.isEmpty())
+					continue;
+				if (n.isEmpty() || pRaw.isEmpty())
+					return "owner_name_required";
+				BigDecimal p;
+				try {
+					p = new BigDecimal(pRaw).setScale(2, RoundingMode.HALF_UP);
+				} catch (Exception e) {
+					return "owners_percent_invalid";
+				}
+				if (p.compareTo(BigDecimal.ZERO) <= 0 || p.compareTo(HUNDRED) > 0)
+					return "owners_percent_invalid";
+				sum = sum.add(p);
+				EquipmentOwner o = new EquipmentOwner();
+				o.setOwnerName(n);
+				o.setRentalSharePercent(p);
+				o.setSortOrder(order++);
+				out.add(o);
+			}
+			if (out.size() < 2)
+				return "owners_multiple_min";
+			if (sum.subtract(HUNDRED).abs().compareTo(OWNERS_SUM_TOLERANCE) > 0)
+				return "owners_percent_sum";
+			return null;
+		}
+		String n = singleOwnerName != null ? singleOwnerName.trim() : "";
+		if (n.isEmpty())
+			return "owner_name_required";
+		EquipmentOwner o = new EquipmentOwner();
+		o.setOwnerName(n);
+		o.setRentalSharePercent(HUNDRED);
+		o.setSortOrder(0);
+		out.add(o);
+		return null;
+	}
+
+	private void applyOwnersToEquipment(Equipment eq, List<EquipmentOwner> newOwners) {
+		eq.getOwners().clear();
+		for (int i = 0; i < newOwners.size(); i++) {
+			EquipmentOwner o = newOwners.get(i);
+			o.setEquipment(eq);
+			o.setSortOrder(i);
+			eq.getOwners().add(o);
+		}
+	}
+
+	/** JSON без Jackson — чтобы Eclipse/Maven не зависели от явного classpath для com.fasterxml. */
+	private static String jsonEscape(String s) {
+		if (s == null)
+			return "";
+		return s.replace("\\", "\\\\")
+				.replace("\"", "\\\"")
+				.replace("\n", "\\n")
+				.replace("\r", "\\r");
+	}
+
+	private static String ownersToJson(Equipment e) {
+		StringBuilder sb = new StringBuilder("[");
+		boolean first = true;
+		if (e.getOwners() != null) {
+			for (EquipmentOwner o : e.getOwners()) {
+				if (!first)
+					sb.append(',');
+				first = false;
+				sb.append("{\"name\":\"").append(jsonEscape(o.getOwnerName())).append("\",\"percent\":");
+				if (o.getRentalSharePercent() != null)
+					sb.append(o.getRentalSharePercent().stripTrailingZeros().toPlainString());
+				else
+					sb.append('0');
+				sb.append('}');
+			}
+		}
+		sb.append(']');
+		return sb.toString();
+	}
+
+	private static String ownersSummaryLine(Equipment e) {
+		if (e.getOwners() == null || e.getOwners().isEmpty())
+			return "—";
+		return e.getOwners().stream()
+				.map(o -> o.getOwnerName() + " " + o.getRentalSharePercent().stripTrailingZeros().toPlainString() + "%")
+				.collect(Collectors.joining(" · "));
+	}
 
 	private User getCurrentUser() {
 		Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
@@ -467,6 +574,13 @@ public class EquipmentController {
 		model.addAttribute("category", category);
 		model.addAttribute("preCategory", preCategory);
 		model.addAttribute("history", sortedHistory);
+		model.addAttribute("ownerBalanceRows", ownerShareService.buildOwnerBalanceRowsForEquipment(id));
+		model.addAttribute("equipmentPayouts", ownerShareService.payoutsForEquipment(id));
+		Map<Long, List<OwnerAccrualLineDto>> accrualByOwner = new LinkedHashMap<>();
+		for (EquipmentOwner o : unit.getOwners()) {
+			accrualByOwner.put(o.getId(), ownerShareService.accrualLinesForOwner(o));
+		}
+		model.addAttribute("ownerAccrualLinesByOwnerId", accrualByOwner);
 		addCommonAttrs(model, currentUser);
 		return "html/unit_history";
 	}
@@ -495,6 +609,14 @@ public class EquipmentController {
 		model.addAttribute("category", category);
 		model.addAttribute("toolName", toolName);
 		model.addAttribute("units", units);
+		Map<Long, String> ownersJsonByUnitId = new HashMap<>();
+		Map<Long, String> ownersSummaryByUnitId = new HashMap<>();
+		for (Equipment u : units) {
+			ownersJsonByUnitId.put(u.getId(), ownersToJson(u));
+			ownersSummaryByUnitId.put(u.getId(), ownersSummaryLine(u));
+		}
+		model.addAttribute("ownersJsonByUnitId", ownersJsonByUnitId);
+		model.addAttribute("ownersSummaryByUnitId", ownersSummaryByUnitId);
 		model.addAttribute("equipmentIdsWithBooking", equipmentIdsWithBooking);
 		model.addAttribute("totalUnits", totalUnits);
 		model.addAttribute("hasMoreUnits", hasMoreUnits);
@@ -546,6 +668,8 @@ public class EquipmentController {
 			dto.setInBooking(bookingService.hasActiveOrFutureBooking(u.getId()));
 			dto.setPointId(u.getPoint() != null ? u.getPoint().getId() : null);
 			dto.setPointName(u.getPoint() != null ? u.getPoint().getName() : null);
+			dto.setOwnersSummary(ownersSummaryLine(u));
+			dto.setOwnersJson(ownersToJson(u));
 			rows.add(dto);
 		}
 		result.put("content", rows);
@@ -580,7 +704,11 @@ public class EquipmentController {
 	                      @RequestParam(required = false) BigDecimal priceSecondMonth,
 	                      @RequestParam(required = false) BigDecimal priceSubsequentMonths,
 	                      @RequestParam BigDecimal baseValue,
-	                      @RequestParam(required = false) Integer condition) {
+	                      @RequestParam(required = false) Integer condition,
+	                      @RequestParam(required = false, defaultValue = "single") String ownerMode,
+	                      @RequestParam(required = false) String singleOwnerName,
+	                      @RequestParam(required = false) List<String> ownerNames,
+	                      @RequestParam(required = false) List<String> ownerPercents) {
 
 		ToolName toolName = toolNameRepository.findById(toolNameId).orElse(null);
 		if (toolName == null) return "redirect:/inventory?error=not_found";
@@ -603,6 +731,11 @@ public class EquipmentController {
 		if (baseValue == null || baseValue.compareTo(BigDecimal.ZERO) <= 0)
 			return "redirect:/inventory/" + toolNameId + "?error=base_value_required";
 
+		List<EquipmentOwner> builtOwners = new ArrayList<>();
+		String ownerErr = validateAndBuildOwners(ownerMode, singleOwnerName, ownerNames, ownerPercents, builtOwners);
+		if (ownerErr != null)
+			return "redirect:/inventory/" + toolNameId + "?error=" + ownerErr;
+
 		Equipment eq = new Equipment();
 		eq.setToolName(toolName);
 		eq.setPoint(point);
@@ -611,6 +744,7 @@ public class EquipmentController {
 		eq.setCondition(condition != null ? condition : 10);
 		eq.setStatus(EquipmentStatus.FREE);
 		applyPriceFormula(eq, priceFirstDay, priceFirstMonth, priceSecondDay, priceSubsequentDays, priceSecondMonth, priceSubsequentMonths);
+		applyOwnersToEquipment(eq, builtOwners);
 
 		try {
 			equipmentRepository.save(eq);
@@ -631,9 +765,13 @@ public class EquipmentController {
 	                       @RequestParam(required = false) BigDecimal priceSecondMonth,
 	                       @RequestParam(required = false) BigDecimal priceSubsequentMonths,
 	                       @RequestParam BigDecimal baseValue,
-	                       @RequestParam(required = false) Integer condition) {
+	                       @RequestParam(required = false) Integer condition,
+	                       @RequestParam(required = false, defaultValue = "single") String ownerMode,
+	                       @RequestParam(required = false) String singleOwnerName,
+	                       @RequestParam(required = false) List<String> ownerNames,
+	                       @RequestParam(required = false) List<String> ownerPercents) {
 
-		Equipment eq = equipmentRepository.findById(id).orElse(null);
+		Equipment eq = equipmentRepository.findByIdAndIsDeletedFalse(id).orElse(null);
 		if (eq == null) return "redirect:/inventory?error=not_found";
 
 		if (pointId == null)
@@ -646,11 +784,17 @@ public class EquipmentController {
 		// Уникальность только среди неудалённых; при редактировании — кроме текущего юнита
 		if (equipmentRepository.existsBySerialNumberAndIsDeletedFalseAndIdNot(serialNumber.trim(), eq.getId()))
 			return "redirect:/inventory/" + toolNameId + "?error=serial_exists";
+		List<EquipmentOwner> builtOwners = new ArrayList<>();
+		String ownerErr = validateAndBuildOwners(ownerMode, singleOwnerName, ownerNames, ownerPercents, builtOwners);
+		if (ownerErr != null)
+			return "redirect:/inventory/" + toolNameId + "?error=" + ownerErr;
+
 		eq.setSerialNumber(serialNumber.trim());
 		eq.setPoint(point);
 		eq.setBaseValue(baseValue);
 		eq.setCondition(condition != null ? condition : eq.getCondition());
 		applyPriceFormula(eq, priceFirstDay, priceFirstMonth, priceSecondDay, priceSubsequentDays, priceSecondMonth, priceSubsequentMonths);
+		applyOwnersToEquipment(eq, builtOwners);
 
 		try {
 			equipmentRepository.save(eq);
@@ -662,7 +806,7 @@ public class EquipmentController {
 
 	@PostMapping("/delete")
 	public String deleteUnit(@RequestParam Long id) {
-		Equipment eq = equipmentRepository.findById(id).orElse(null);
+		Equipment eq = equipmentRepository.findByIdAndIsDeletedFalse(id).orElse(null);
 		if (eq == null) return "redirect:/inventory?error=not_found";
 
 		Long toolNameId = eq.getToolName().getId();

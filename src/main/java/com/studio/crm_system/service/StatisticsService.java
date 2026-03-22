@@ -79,6 +79,11 @@ public class StatisticsService {
 		return rentalRepository.findByStatusOrderByDateFromDesc(RentalStatus.ACTIVE).size();
 	}
 
+	/** Оформлены с доставкой, ждут выдачи клиенту. */
+	public long getAwaitingDeliveryRentalsCount() {
+		return rentalRepository.findByStatusOrderByDateFromDesc(RentalStatus.AWAITING_DELIVERY).size();
+	}
+
 	/** Количество завершённых прокатов. */
 	public long getCompletedRentalsCount() {
 		return rentalRepository.findByStatusOrderByDateFromDesc(RentalStatus.COMPLETED).size();
@@ -330,13 +335,14 @@ public class StatisticsService {
 
 	/** Подписи для графика «Прокаты по статусам». */
 	public List<String> getChartRentalLabels() {
-		return List.of("Активные", "Завершённые", "Должники", "Отменённые", "Бронь", "Скоро должник");
+		return List.of("Активные", "Ожидают доставки", "Завершённые", "Должники", "Отменённые", "Бронь", "Скоро должник");
 	}
 
 	/** Значения для графика «Прокаты по статусам». */
 	public List<Long> getChartRentalValues() {
 		return List.of(
 			getActiveRentalsCount(),
+			getAwaitingDeliveryRentalsCount(),
 			getCompletedRentalsCount(),
 			getDebtorsCount(),
 			(long) rentalRepository.findByStatusOrderByDateFromDesc(RentalStatus.CANCELLED).size(),

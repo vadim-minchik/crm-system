@@ -580,6 +580,17 @@ body {
 	color: #664d03;
 }
 
+/* Многострочные подсказки: не flex в ряд — иначе текст и <code> наезжают друг на друга */
+.alert.alert-rich {
+	display: block;
+	align-items: stretch;
+}
+
+.alert.alert-rich code {
+	word-break: break-word;
+	overflow-wrap: anywhere;
+}
+
 .modal-content {
 	border: none;
 	border-radius: var(--radius-lg);
@@ -749,4 +760,19 @@ textarea.form-control {
 	white-space: nowrap;
 	display: inline-block;
 	vertical-align: middle;
+}
+
+/* Таблица сотрудников: колонка «Точка» не раздувает таблицу */
+.card-table .table.staff-table {
+	table-layout: fixed;
+	width: 100%;
+}
+.card-table .table.staff-table th:nth-child(2),
+.card-table .table.staff-table td:nth-child(2) {
+	max-width: 12rem;
+	width: 14%;
+	overflow: hidden;
+}
+.card-table .table.staff-table td:nth-child(2) .point-cell-ellipsis {
+	max-width: 100%;
 }

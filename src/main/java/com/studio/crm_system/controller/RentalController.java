@@ -1,5 +1,6 @@
 package com.studio.crm_system.controller;
 
+import com.studio.crm_system.entity.Rental;
 import com.studio.crm_system.entity.User;
 import com.studio.crm_system.repository.DocumentTemplateRepository;
 import com.studio.crm_system.repository.UserRepository;
@@ -7,8 +8,11 @@ import com.studio.crm_system.service.BookingService;
 import com.studio.crm_system.service.RentalDocumentService;
 import com.studio.crm_system.service.RentalService;
 import com.studio.crm_system.service.TemplateStorageService;
+import com.studio.crm_system.util.ClientPassportChecks;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -18,6 +22,7 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
@@ -35,6 +40,44 @@ public class RentalController {
 	@Autowired private RentalDocumentService rentalDocumentService;
 	@Autowired private TemplateStorageService templateStorageService;
 
+	/** Убирает символы, недопустимые в имени файла Windows; кириллицу сохраняет. */
+	private static String filenameSafeSegment(String s) {
+		if (s == null || s.isBlank()) {
+			return "";
+		}
+		String t = s.trim().replaceAll("[<>:\"/\\\\|?*\\x00-\\x1f]+", "_");
+		t = t.replaceAll("_{2,}", "_").replaceAll("^_+|_+$", "");
+		return t;
+	}
+
+	/**
+	 * Имя файла: номер проката, дата начала, фамилия клиента, краткое имя шаблона (латиница/цифры).
+	 */
+	private static String buildRentalDocxDownloadFilename(Rental rental, String templateName) {
+		String datePart = rental.getDateFrom() != null
+				? rental.getDateFrom().format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))
+				: "unknown";
+		String surnamePart = "";
+		if (rental.getClient() != null && rental.getClient().getSurname() != null) {
+			surnamePart = filenameSafeSegment(rental.getClient().getSurname());
+		}
+		if (surnamePart.isBlank()) {
+			surnamePart = "client";
+		}
+		if (surnamePart.length() > 40) {
+			surnamePart = surnamePart.substring(0, 40);
+		}
+		String slug = templateName != null ? templateName : "document";
+		slug = slug.replaceAll("[^a-zA-Z0-9_-]+", "_").replaceAll("^_+|_+$", "");
+		if (slug.isBlank()) {
+			slug = "document";
+		}
+		if (slug.length() > 45) {
+			slug = slug.substring(0, 45);
+		}
+		return "prokat-" + rental.getId() + "-ot-" + datePart + "-" + surnamePart + "-" + slug + ".docx";
+	}
+
 	private User getCurrentUser() {
 		Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
 		String username = (principal instanceof UserDetails)
@@ -49,6 +92,7 @@ public class RentalController {
 		if (user == null) return "redirect:/login";
 
 		model.addAttribute("activeRentals", nullToEmpty(rentalService.findActive()));
+		model.addAttribute("awaitingDeliveryRentals", nullToEmpty(rentalService.findAwaitingDelivery()));
 		model.addAttribute("completedRentals", nullToEmpty(rentalService.findCompleted()));
 		model.addAttribute("debtorRentals", nullToEmpty(rentalService.findDebtors()));
 		model.addAttribute("soonDebtorRentals", nullToEmpty(rentalService.findSoonDebtors()));
@@ -77,6 +121,13 @@ public class RentalController {
 		if (rental == null)
 			return ResponseEntity.notFound().build();
 
+		if (rental.getClient() != null && !ClientPassportChecks.isPassportValidToday(rental.getClient())) {
+			String msg = "Паспорт клиента просрочен. Обновите данные клиента в базе (срок действия паспорта), затем сформируйте документ снова.";
+			return ResponseEntity.status(HttpStatus.CONFLICT)
+					.contentType(new MediaType("text", "plain", StandardCharsets.UTF_8))
+					.body(msg.getBytes(StandardCharsets.UTF_8));
+		}
+
 		var template = documentTemplateRepository.findById(templateId).orElse(null);
 		if (template == null || template.getFileUrl() == null || template.getFileUrl().isBlank())
 			return ResponseEntity.notFound().build();
@@ -89,11 +140,14 @@ public class RentalController {
 			byte[] docx = rentalDocumentService.fillTemplateDocx(templateBytes, rental);
 			if (docx == null)
 				return ResponseEntity.notFound().build();
-			String fileName = "document-" + id + "-" + template.getName().replaceAll("[^a-zA-Z0-9_-]", "_") + ".docx";
-			return ResponseEntity.ok()
-					.header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + fileName + "\"")
-					.contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.wordprocessingml.document"))
-					.body(docx);
+			String fileName = buildRentalDocxDownloadFilename(rental, template.getName());
+			ContentDisposition disposition = ContentDisposition.attachment()
+					.filename(fileName, StandardCharsets.UTF_8)
+					.build();
+			HttpHeaders headers = new HttpHeaders();
+			headers.setContentDisposition(disposition);
+			headers.setContentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.wordprocessingml.document"));
+			return new ResponseEntity<>(docx, headers, HttpStatus.OK);
 		} catch (Exception e) {
 			e.printStackTrace();
 			return ResponseEntity.internalServerError().build();
@@ -111,6 +165,7 @@ public class RentalController {
 		model.addAttribute("rental", rental);
 		model.addAttribute("rentalDateFromInput", rental.getDateFrom().format(DATETIME_FMT));
 		model.addAttribute("rentalDateToInput", rental.getDateTo().format(DATETIME_FMT));
+		model.addAttribute("deliveryLeadDescription", rentalDocumentService.buildDeliveryLeadDescriptionForUi(rental));
 		model.addAttribute("staffList", nullToEmpty(userRepository.findByIsDeletedFalse()));
 		model.addAttribute("currentUser", user);
 		model.addAttribute("username", user.getLogin());
@@ -128,6 +183,7 @@ public class RentalController {
 	                  @RequestParam(required = false) String additionalServicesDescription,
 	                  @RequestParam(required = false) String deliveryAmount,
 	                  @RequestParam(required = false) String deliveryAddress,
+	                  @RequestParam(required = false, defaultValue = "false") boolean deliveryRequested,
 	                  @RequestParam(required = false) Long handedOverByStaffId) {
 		User currentUser = getCurrentUser();
 		LocalDateTime from = parseDateTime(dateFrom);
@@ -140,7 +196,8 @@ public class RentalController {
 		BigDecimal delAmt = parseDecimal(deliveryAmount);
 		Long createdByStaffId = currentUser != null ? currentUser.getId() : null;
 		String error = rentalService.createRentals(clientId, equipmentId, from, to, manualTotal,
-				addServ, additionalServicesDescription, delAmt, deliveryAddress, createdByStaffId, handedOverByStaffId);
+				addServ, additionalServicesDescription, delAmt, deliveryAddress, deliveryRequested, createdByStaffId, handedOverByStaffId);
+		if ("awaiting_delivery".equals(error)) return "redirect:/rentals?success=rental_awaiting_delivery";
 		if (error != null) return "redirect:/rentals?error=" + error;
 		return "redirect:/rentals?success=rental_added";
 	}
@@ -177,6 +234,19 @@ public class RentalController {
 		String error = rentalService.cancelRental(id);
 		if (error != null) return "redirect:/rentals?error=" + error;
 		return "redirect:/rentals?success=rental_cancelled";
+	}
+
+	@PostMapping("/delivered")
+	public String markDelivered(@RequestParam Long id, @RequestParam(required = false) String redirectTo) {
+		User current = getCurrentUser();
+		if (current == null) return "redirect:/login";
+		String error = rentalService.markDelivered(id, current.getId());
+		if (error != null) {
+			if ("detail".equals(redirectTo)) return "redirect:/rentals/" + id + "?error=" + error;
+			return "redirect:/rentals?error=" + error;
+		}
+		if ("detail".equals(redirectTo)) return "redirect:/rentals/" + id + "?success=delivered";
+		return "redirect:/rentals?success=delivered";
 	}
 
 	@PostMapping("/booking/add")

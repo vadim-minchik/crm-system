@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -19,6 +20,10 @@ public interface RentalRepository extends JpaRepository<Rental, Long> {
 	@Query("SELECT r FROM Rental r WHERE r.id = :id")
 	Optional<Rental> findByIdForUpdate(@Param("id") Long id);
 
+	@Lock(LockModeType.PESSIMISTIC_WRITE)
+	@Query("SELECT DISTINCT r FROM Rental r LEFT JOIN FETCH r.equipmentList WHERE r.id = :id")
+	Optional<Rental> findByIdForUpdateWithEquipment(@Param("id") Long id);
+
 	List<Rental> findByStatusOrderByDateFromDesc(RentalStatus status);
 
 	List<Rental> findByClientIdOrderByDateFromDesc(Long clientId);
@@ -27,7 +32,7 @@ public interface RentalRepository extends JpaRepository<Rental, Long> {
 	Optional<Rental> findByIdWithEquipment(@Param("id") Long id);
 
 	/** Прокат с клиентом и оборудованием для формирования документа (подстановки {{CLIENT_FIO}} и т.д.). */
-	@Query("SELECT DISTINCT r FROM Rental r LEFT JOIN FETCH r.client LEFT JOIN FETCH r.equipmentList LEFT JOIN FETCH r.point LEFT JOIN FETCH r.createdByStaff LEFT JOIN FETCH r.handedOverByStaff WHERE r.id = :id")
+	@Query("SELECT DISTINCT r FROM Rental r LEFT JOIN FETCH r.client LEFT JOIN FETCH r.equipmentList e LEFT JOIN FETCH e.point LEFT JOIN FETCH r.point LEFT JOIN FETCH r.createdByStaff LEFT JOIN FETCH r.handedOverByStaff WHERE r.id = :id")
 	Optional<Rental> findByIdForDocument(@Param("id") Long id);
 
 	@Query("SELECT r FROM Rental r JOIN r.equipmentList e WHERE e.id = :equipmentId ORDER BY r.dateFrom DESC")
@@ -40,4 +45,11 @@ public interface RentalRepository extends JpaRepository<Rental, Long> {
 
 	@Query("SELECT r FROM Rental r JOIN r.equipmentList e WHERE e.id = :equipmentId AND r.status IN :statuses ORDER BY r.dateTo DESC")
 	Optional<Rental> findFirstByEquipmentIdAndStatusInOrderByDateToDesc(@Param("equipmentId") Long equipmentId, @Param("statuses") List<RentalStatus> statuses);
+
+	/** Активные прокаты по единице, пересекающиеся с интервалом [rangeStart, rangeEnd) по правилам как у броней. */
+	@Query("SELECT r FROM Rental r JOIN r.equipmentList e WHERE e.id = :equipmentId AND r.status IN :statuses AND r.dateFrom < :rangeEnd AND r.dateTo > :rangeStart")
+	List<Rental> findActiveRentalsOverlappingInterval(@Param("equipmentId") Long equipmentId,
+			@Param("statuses") List<RentalStatus> statuses,
+			@Param("rangeStart") LocalDateTime rangeStart,
+			@Param("rangeEnd") LocalDateTime rangeEnd);
 }

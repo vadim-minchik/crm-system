@@ -53,6 +53,11 @@
     <span th:if="${param.error[0] == 'unit_not_found'}">Экземпляр не найден.</span>
     <span th:if="${param.error[0] == 'point_required'}">Выберите точку (локацию).</span>
     <span th:if="${param.error[0] == 'point_invalid'}">Указана неверная точка.</span>
+    <span th:if="${param.error[0] == 'owner_name_required'}">Укажите имя владельца и долю (или заполните все строки).</span>
+    <span th:if="${param.error[0] == 'owners_multiple_min'}">При нескольких владельцах нужно минимум 2 с ненулевыми долями.</span>
+    <span th:if="${param.error[0] == 'owners_mismatch'}">Несовпадение списков имён и процентов.</span>
+    <span th:if="${param.error[0] == 'owners_percent_invalid'}">Проверьте проценты: число от 0 до 100 для каждого владельца.</span>
+    <span th:if="${param.error[0] == 'owners_percent_sum'}">Сумма долей от сдачи должна быть 100% (допуск ±0,02).</span>
     <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
   </div>
   <div th:if="${param.success}" class="alert alert-success alert-dismissible fade show" role="alert">
@@ -70,6 +75,7 @@
         <tr>
           <th class="ps-4">Серийный №</th>
           <th>Точка</th>
+          <th>Владельцы</th>
           <th>Состояние</th>
           <th>1-й день (Br)</th>
           <th>Оценочная стоимость</th>
@@ -85,6 +91,10 @@
           <td class="align-middle" style="max-width: 12rem;">
             <span th:if="${u.point != null}" th:text="${u.point.name}" class="small point-cell-ellipsis" th:title="${u.point.name}">Точка</span>
             <span th:if="${u.point == null}" class="text-muted small">—</span>
+          </td>
+          <td class="small" style="max-width: 14rem;">
+            <span th:text="${ownersSummaryByUnitId != null and ownersSummaryByUnitId.containsKey(u.id) ? ownersSummaryByUnitId[u.id] : '—'}"
+                  class="point-cell-ellipsis" th:title="${ownersSummaryByUnitId != null and ownersSummaryByUnitId.containsKey(u.id) ? ownersSummaryByUnitId[u.id] : ''}">—</span>
           </td>
           <td>
             <span th:text="${u.condition} + '/10'"
@@ -117,6 +127,7 @@
                       th:data-price-subsequent-months="${u.priceSubsequentMonths}"
                       th:data-base-value="${u.baseValue}"
                       th:data-condition="${u.condition}"
+                      th:data-owners-json="${ownersJsonByUnitId != null and ownersJsonByUnitId.containsKey(u.id) ? ownersJsonByUnitId[u.id] : '[]'}"
                       onclick="openEditModal(this)"
                       title="Редактировать">
                 <i class="bi bi-pencil"></i>
@@ -139,7 +150,7 @@
           </td>
         </tr>
         <tr th:if="${totalUnits == 0}">
-          <td colspan="7" class="text-center py-5 text-muted">
+          <td colspan="8" class="text-center py-5 text-muted">
             <i class="bi bi-inbox fs-3 d-block mb-2"></i>
             В этом разделе пока нет экземпляров
           </td>
@@ -153,7 +164,7 @@
 </div>
 
 <div class="modal fade" id="modalAddUnit" tabindex="-1">
-  <div class="modal-dialog modal-dialog-centered">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
     <form th:action="@{/inventory/{id}/add(id=${toolName.id})}" method="post" class="modal-content">
       <div class="modal-header">
         <h5>
@@ -234,6 +245,32 @@
                    min="1" max="10" value="10">
             <div class="form-text">от 1 (плохое) до 10 (отличное)</div>
           </div>
+          <div class="col-12 border-top pt-3 mt-1">
+            <label class="form-label fw-semibold">Владелец(и) и доля от выручки с проката *</label>
+            <div class="btn-group mb-2" role="group" aria-label="Режим владельцев">
+              <input type="radio" class="btn-check" name="ownerMode" id="add-owner-single" value="single" checked autocomplete="off">
+              <label class="btn btn-outline-secondary btn-sm" for="add-owner-single">Один владелец (100%)</label>
+              <input type="radio" class="btn-check" name="ownerMode" id="add-owner-multiple" value="multiple" autocomplete="off">
+              <label class="btn btn-outline-secondary btn-sm" for="add-owner-multiple">Несколько владельцев</label>
+            </div>
+            <div id="addOwnerSingleBlock">
+              <input type="text" name="singleOwnerName" id="add-single-owner-name" class="form-control" placeholder="ФИО или название владельца">
+            </div>
+            <div id="addOwnerMultipleBlock" style="display:none;">
+              <p class="small text-muted mb-2">Минимум 2 владельца. Сумма долей должна быть 100%.</p>
+              <div id="addOwnerRows">
+                <div class="row g-2 mb-2 align-items-end">
+                  <div class="col-md-7"><input type="text" name="ownerNames" class="form-control form-control-sm" placeholder="Владелец"></div>
+                  <div class="col-md-5"><div class="input-group input-group-sm"><input type="text" name="ownerPercents" class="form-control" placeholder="50"><span class="input-group-text">%</span></div></div>
+                </div>
+                <div class="row g-2 mb-2 align-items-end">
+                  <div class="col-md-7"><input type="text" name="ownerNames" class="form-control form-control-sm" placeholder="Владелец"></div>
+                  <div class="col-md-5"><div class="input-group input-group-sm"><input type="text" name="ownerPercents" class="form-control" placeholder="50"><span class="input-group-text">%</span></div></div>
+                </div>
+              </div>
+              <button type="button" class="btn btn-sm btn-outline-primary" id="btnAddOwnerRowAdd">+ Ещё владелец</button>
+            </div>
+          </div>
         </div>
       </div>
       <div class="modal-footer">
@@ -246,7 +283,7 @@
 </div>
 
 <div class="modal fade" id="modalEditUnit" tabindex="-1">
-  <div class="modal-dialog modal-dialog-centered">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
     <form th:action="@{/inventory/edit}" method="post" class="modal-content">
       <div class="modal-header">
         <h5><i class="bi bi-pencil me-2"></i>Редактировать экземпляр</h5>
@@ -321,6 +358,23 @@
             <input type="number" name="condition" id="edit-unit-condition"
                    class="form-control" min="1" max="10">
           </div>
+          <div class="col-12 border-top pt-3 mt-1">
+            <label class="form-label fw-semibold">Владелец(и) и доля от выручки с проката *</label>
+            <div class="btn-group mb-2" role="group">
+              <input type="radio" class="btn-check" name="ownerMode" id="edit-owner-single" value="single" checked autocomplete="off">
+              <label class="btn btn-outline-secondary btn-sm" for="edit-owner-single">Один владелец (100%)</label>
+              <input type="radio" class="btn-check" name="ownerMode" id="edit-owner-multiple" value="multiple" autocomplete="off">
+              <label class="btn btn-outline-secondary btn-sm" for="edit-owner-multiple">Несколько владельцев</label>
+            </div>
+            <div id="editOwnerSingleBlock">
+              <input type="text" name="singleOwnerName" id="edit-single-owner-name" class="form-control" placeholder="ФИО или название владельца">
+            </div>
+            <div id="editOwnerMultipleBlock" style="display:none;">
+              <p class="small text-muted mb-2">Минимум 2 владельца. Сумма долей должна быть 100%.</p>
+              <div id="editOwnerRows"></div>
+              <button type="button" class="btn btn-sm btn-outline-primary" id="btnAddOwnerRowEdit">+ Ещё владелец</button>
+            </div>
+          </div>
         </div>
       </div>
       <div class="modal-footer">
@@ -369,6 +423,49 @@
     var v = parseFloat(val);
     document.getElementById(id).value = (val != null && !isNaN(v)) ? v.toFixed(2) : '';
   }
+  function escAttr(s) {
+    if (s == null) return '';
+    return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+  }
+  function escCell(s) {
+    if (s == null || s === '') return '—';
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+  function appendOwnerRow(container, name, pct) {
+    var div = document.createElement('div');
+    div.className = 'row g-2 mb-2 align-items-end';
+    div.innerHTML = '<div class="col-md-7"><input type="text" name="ownerNames" class="form-control form-control-sm" placeholder="Владелец" value="' + escAttr(name || '') + '"></div>' +
+      '<div class="col-md-5"><div class="input-group input-group-sm"><input type="text" name="ownerPercents" class="form-control" placeholder="%" value="' + escAttr(pct != null ? String(pct) : '') + '"><span class="input-group-text">%</span></div></div>';
+    container.appendChild(div);
+  }
+  function fillEditOwnersFromJson(jsonStr) {
+    var arr = [];
+    try { arr = JSON.parse(jsonStr || '[]'); } catch (e) { arr = []; }
+    var single = document.getElementById('edit-owner-single');
+    var multi = document.getElementById('edit-owner-multiple');
+    var sBlock = document.getElementById('editOwnerSingleBlock');
+    var mBlock = document.getElementById('editOwnerMultipleBlock');
+    var rows = document.getElementById('editOwnerRows');
+    document.getElementById('edit-single-owner-name').value = '';
+    if (rows) rows.innerHTML = '';
+    if (arr.length === 1) {
+      single.checked = true;
+      sBlock.style.display = 'block';
+      mBlock.style.display = 'none';
+      document.getElementById('edit-single-owner-name').value = arr[0].name || '';
+    } else if (arr.length >= 2) {
+      multi.checked = true;
+      sBlock.style.display = 'none';
+      mBlock.style.display = 'block';
+      for (var i = 0; i < arr.length; i++) {
+        appendOwnerRow(rows, arr[i].name, arr[i].percent);
+      }
+    } else {
+      single.checked = true;
+      sBlock.style.display = 'block';
+      mBlock.style.display = 'none';
+    }
+  }
   function openEditModal(btn) {
     document.getElementById('edit-unit-id').value = btn.getAttribute('data-id');
     var pid = btn.getAttribute('data-point-id');
@@ -384,6 +481,7 @@
     var baseValue = parseFloat(btn.getAttribute('data-base-value'));
     document.getElementById('edit-unit-base-value').value = isNaN(baseValue) ? '' : baseValue.toFixed(2);
     document.getElementById('edit-unit-condition').value = btn.getAttribute('data-condition');
+    fillEditOwnersFromJson(btn.getAttribute('data-owners-json'));
     new bootstrap.Modal(document.getElementById('modalEditUnit')).show();
   }
 
@@ -396,6 +494,40 @@
   function confirmDeleteUnit() {
     document.getElementById('deleteUnitForm').submit();
   }
+
+  (function() {
+    function syncAddOwnerMode() {
+      var m = document.querySelector('#modalAddUnit input[name="ownerMode"]:checked');
+      if (!m) return;
+      var single = m.value === 'single';
+      document.getElementById('addOwnerSingleBlock').style.display = single ? 'block' : 'none';
+      document.getElementById('addOwnerMultipleBlock').style.display = single ? 'none' : 'block';
+    }
+    document.querySelectorAll('#modalAddUnit input[name="ownerMode"]').forEach(function(r) {
+      r.addEventListener('change', syncAddOwnerMode);
+    });
+    syncAddOwnerMode();
+    var btnAddA = document.getElementById('btnAddOwnerRowAdd');
+    if (btnAddA) btnAddA.addEventListener('click', function() {
+      var c = document.getElementById('addOwnerRows');
+      var div = document.createElement('div');
+      div.className = 'row g-2 mb-2 align-items-end';
+      div.innerHTML = '<div class="col-md-7"><input type="text" name="ownerNames" class="form-control form-control-sm" placeholder="Владелец"></div>' +
+        '<div class="col-md-5"><div class="input-group input-group-sm"><input type="text" name="ownerPercents" class="form-control" placeholder="%"><span class="input-group-text">%</span></div></div>';
+      c.appendChild(div);
+    });
+    document.querySelectorAll('#modalEditUnit input[name="ownerMode"]').forEach(function(r) {
+      r.addEventListener('change', function() {
+        var single = document.querySelector('#modalEditUnit input[name="ownerMode"]:checked').value === 'single';
+        document.getElementById('editOwnerSingleBlock').style.display = single ? 'block' : 'none';
+        document.getElementById('editOwnerMultipleBlock').style.display = single ? 'none' : 'block';
+      });
+    });
+    var btnAddE = document.getElementById('btnAddOwnerRowEdit');
+    if (btnAddE) btnAddE.addEventListener('click', function() {
+      appendOwnerRow(document.getElementById('editOwnerRows'), '', '');
+    });
+  })();
 
   (function() {
     var toolNameId = /*[[${toolNameId}]]*/ 0;
@@ -425,13 +557,15 @@
     function buildRow(u) {
       var canDelete = u.status === 'FREE' && !u.inBooking;
       var fp = /*[[${firstPointId}]]*/ null;
+      var oj = u.ownersJson != null ? String(u.ownersJson) : '[]';
       var actions = '<div class="d-flex justify-content-center gap-1">' +
         '<a href="/inventory/unit/' + u.id + '" class="btn-icon text-primary" title="Информация и история"><i class="bi bi-eye"></i></a>' +
-        '<button type="button" class="btn-icon" data-id="' + u.id + '" data-point-id="' + (u.pointId != null ? u.pointId : (fp != null ? fp : '')) + '" data-serial="' + (u.serialNumber || '') + '"' +
+        '<button type="button" class="btn-icon" data-id="' + u.id + '" data-point-id="' + (u.pointId != null ? u.pointId : (fp != null ? fp : '')) + '" data-serial="' + (u.serialNumber || '').replace(/"/g, '&quot;') + '"' +
         ' data-price-first-day="' + fmtNum(u.priceFirstDay) + '" data-price-second-day="' + fmtNum(u.priceSecondDay) + '"' +
         ' data-price-subsequent-days="' + fmtNum(u.priceSubsequentDays) + '" data-price-first-month="' + fmtNum(u.priceFirstMonth) + '"' +
         ' data-price-second-month="' + fmtNum(u.priceSecondMonth) + '" data-price-subsequent-months="' + fmtNum(u.priceSubsequentMonths) + '"' +
         ' data-base-value="' + fmtNum(u.baseValue) + '" data-condition="' + (u.condition || '') + '"' +
+        ' data-owners-json="' + oj.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;') + '"' +
         ' onclick="openEditModal(this)" title="Редактировать"><i class="bi bi-pencil"></i></button>';
       if (canDelete) {
         actions += '<button type="button" class="btn-icon text-danger" data-id="' + u.id + '" data-serial="' + (u.serialNumber || '') + '" onclick="openDeleteUnit(this)" title="Удалить"><i class="bi bi-trash"></i></button>';
@@ -444,6 +578,7 @@
       var pn = u.pointName != null ? u.pointName : '—';
       return '<tr><td class="ps-4"><code class="text-muted">' + (u.serialNumber || '') + '</code></td>' +
         '<td class="align-middle" style="max-width:12rem;"><span class="small point-cell-ellipsis" title="' + (u.pointName != null ? u.pointName.replace(/"/g, '&quot;') : '') + '">' + pn + '</span></td>' +
+        '<td class="small">' + escCell(u.ownersSummary) + '</td>' +
         '<td><span class="fw-semibold ' + condCl + '">' + cond + '/10</span></td>' +
         '<td><strong class="text-primary">' + fmtNum(u.priceFirstDay) + ' Br</strong></td>' +
         '<td class="small text-muted">' + fmtNum(u.baseValue) + ' Br</td>' +

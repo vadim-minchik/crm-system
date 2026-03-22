@@ -2,7 +2,9 @@ package com.studio.crm_system.controller;
 
 import com.studio.crm_system.entity.User;
 import com.studio.crm_system.repository.UserRepository;
+import com.studio.crm_system.dto.OwnerBalanceRowDto;
 import com.studio.crm_system.service.ExpenseService;
+import com.studio.crm_system.service.OwnerShareService;
 import com.studio.crm_system.service.RecurringExpenseService;
 import com.studio.crm_system.service.StatisticsService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -36,7 +38,7 @@ public class StatisticsController {
 		String username = (principal instanceof UserDetails)
 				? ((UserDetails) principal).getUsername()
 				: principal.toString();
-		return userRepository.findByLogin(username).orElse(null);
+		return userRepository.findByLoginAndIsDeletedFalse(username).orElse(null);
 	}
 
 	@Autowired
@@ -44,6 +46,9 @@ public class StatisticsController {
 
 	@Autowired
 	private RecurringExpenseService recurringExpenseService;
+
+	@Autowired
+	private OwnerShareService ownerShareService;
 
 	@GetMapping
 	public String showStatistics(
@@ -122,7 +127,24 @@ public class StatisticsController {
 		model.addAttribute("expensesList", expenseService.findAll());
 		model.addAttribute("totalExpenses", expenseService.getTotalExpenses());
 		model.addAttribute("recurringExpensesList", recurringExpenseService.findAll());
-		model.addAttribute("activeFullStatsTab", "expenses".equals(tab) ? "expenses" : null);
+		String statsTab = "expenses".equals(tab) ? "expenses" : ("owners".equals(tab) ? "owners" : null);
+		model.addAttribute("activeFullStatsTab", statsTab);
+
+		List<OwnerBalanceRowDto> ownerBalanceRows = ownerShareService.buildAllOwnerBalanceRows();
+		model.addAttribute("ownerBalanceRows", ownerBalanceRows);
+		BigDecimal ownersTotalAccrued = ownerBalanceRows.stream()
+				.map(OwnerBalanceRowDto::getAccrued)
+				.reduce(BigDecimal.ZERO, BigDecimal::add);
+		BigDecimal ownersTotalPaid = ownerBalanceRows.stream()
+				.map(OwnerBalanceRowDto::getPaid)
+				.reduce(BigDecimal.ZERO, BigDecimal::add);
+		BigDecimal ownersTotalToPay = ownerBalanceRows.stream()
+				.map(OwnerBalanceRowDto::getToPay)
+				.reduce(BigDecimal.ZERO, BigDecimal::add);
+		model.addAttribute("ownersTotalAccrued", ownersTotalAccrued);
+		model.addAttribute("ownersTotalPaid", ownersTotalPaid);
+		model.addAttribute("ownersTotalToPay", ownersTotalToPay);
+		model.addAttribute("ownerRecentPayouts", ownerShareService.recentPayoutsAll(40));
 
 		return "html/statistics";
 	}

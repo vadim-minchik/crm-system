@@ -36,11 +36,13 @@
     <span th:if="${param.error[0] == 'date_from_required'}">Укажите дату и время начала.</span>
     <span th:if="${param.error[0] == 'date_to_required'}">Укажите дату и время окончания.</span>
     <span th:if="${param.error[0] == 'date_to_before_from'}">Окончание не может быть раньше начала.</span>
+    <span th:if="${param.error[0] == 'not_awaiting_delivery'}">Прокат не в статусе «ожидает доставки».</span>
     <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
   </div>
   <div th:if="${param.success}" class="alert alert-success alert-dismissible fade show" role="alert">
     <i class="bi bi-check-circle-fill me-2"></i>
     <span th:if="${param.success[0] == 'rental_updated'}">Изменения сохранены.</span>
+    <span th:if="${param.success[0] == 'delivered'}">Доставка отмечена, прокат начался.</span>
     <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
   </div>
 
@@ -54,9 +56,13 @@
         <div class="flex-grow-1">
           <h2 class="mb-0 fw-bold" th:text="'Прокат #' + ${rental.id}">Прокат</h2>
           <div class="d-flex align-items-center gap-3 mt-1">
-            <span class="badge"
-                  th:classappend="${rental.status.name() == 'ACTIVE' ? 'bg-primary' : (rental.status.name() == 'COMPLETED' ? 'bg-success' : (rental.status.name() == 'DEBTOR' ? 'bg-danger' : (rental.status.name() == 'SOON_DEBTOR' ? 'bg-warning text-dark' : (rental.status.name() == 'BOOKED' ? 'bg-info' : 'bg-secondary'))))}"
-                  th:text="${rental.status.name() == 'ACTIVE' ? 'В прокате' : (rental.status.name() == 'COMPLETED' ? 'Завершён' : (rental.status.name() == 'DEBTOR' ? 'Должник' : (rental.status.name() == 'SOON_DEBTOR' ? 'К приёмке' : (rental.status.name() == 'BOOKED' ? 'Забронирован' : 'Отменён'))))}">—</span>
+            <span class="badge bg-dark" th:if="${rental.status.name() == 'AWAITING_DELIVERY'}">Ожидает доставки</span>
+            <span class="badge bg-primary" th:if="${rental.status.name() == 'ACTIVE'}">В прокате</span>
+            <span class="badge bg-success" th:if="${rental.status.name() == 'COMPLETED'}">Завершён</span>
+            <span class="badge bg-danger" th:if="${rental.status.name() == 'DEBTOR'}">Должник</span>
+            <span class="badge bg-warning text-dark" th:if="${rental.status.name() == 'SOON_DEBTOR'}">К приёмке</span>
+            <span class="badge bg-info text-dark" th:if="${rental.status.name() == 'BOOKED'}">Забронирован</span>
+            <span class="badge bg-secondary" th:if="${rental.status.name() == 'CANCELLED'}">Отменён</span>
           </div>
         </div>
         <div class="d-flex align-items-center flex-wrap gap-2">
@@ -64,16 +70,23 @@
             <i class="bi bi-arrow-left me-1"></i> К журналу
           </a>
           <div class="d-flex align-items-center gap-2">
-            <button th:if="${rental.status.name() == 'ACTIVE' || rental.status.name() == 'SOON_DEBTOR' || rental.status.name() == 'DEBTOR'}" type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#editRentalModal" title="Редактировать">
+            <button th:if="${rental.status.name() == 'ACTIVE' || rental.status.name() == 'SOON_DEBTOR' || rental.status.name() == 'DEBTOR' || rental.status.name() == 'AWAITING_DELIVERY'}" type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#editRentalModal" title="Редактировать">
               <i class="bi bi-pencil me-1"></i> Редактировать
             </button>
+            <form th:if="${rental.status.name() == 'AWAITING_DELIVERY'}" th:action="@{/rentals/delivered}" method="post" class="d-inline mb-0 me-1">
+              <input type="hidden" name="id" th:value="${rental.id}">
+              <input type="hidden" name="redirectTo" value="detail">
+              <button type="submit" class="btn btn-success">
+                <i class="bi bi-truck me-1"></i> Доставлено — начать прокат
+              </button>
+            </form>
             <form th:if="${rental.status.name() == 'SOON_DEBTOR' || rental.status.name() == 'DEBTOR'}" th:action="@{/rentals/complete}" method="post" class="d-inline mb-0">
               <input type="hidden" name="id" th:value="${rental.id}">
               <button type="submit" class="btn btn-success">
                 <i class="bi bi-check-circle me-1"></i> Завершить прокат
               </button>
             </form>
-            <form th:if="${rental.status.name() == 'ACTIVE'}" th:action="@{/rentals/cancel}" method="post" class="d-inline mb-0" onsubmit="return confirm('Отменить прокат? Оборудование станет свободным.');">
+            <form th:if="${rental.status.name() == 'ACTIVE' || rental.status.name() == 'AWAITING_DELIVERY'}" th:action="@{/rentals/cancel}" method="post" class="d-inline mb-0" onsubmit="return confirm('Отменить прокат? Оборудование станет свободным.');">
               <input type="hidden" name="id" th:value="${rental.id}">
               <button type="submit" class="btn btn-outline-secondary">
                 <i class="bi bi-x-circle me-1"></i> Отменить прокат
@@ -110,6 +123,26 @@
         <div class="info-row">
           <span class="info-label">По</span>
           <span class="info-value" th:text="${#temporals.format(rental.dateTo, 'dd.MM.yyyy HH:mm')}">—</span>
+        </div>
+      </div>
+
+      <div class="info-block" th:if="${rental.createdAt != null || rental.deliveredAt != null || deliveryLeadDescription != null}">
+        <div class="section-title"><i class="bi bi-clock-history me-1"></i>Оформление и выдача</div>
+        <div class="info-row" th:if="${rental.createdAt != null}">
+          <span class="info-label">Оформлено в системе</span>
+          <span class="info-value" th:text="${#temporals.format(rental.createdAt, 'dd.MM.yyyy HH:mm')}">—</span>
+        </div>
+        <div class="info-row" th:if="${rental.deliveredAt != null}">
+          <span class="info-label">Время доставки / выдачи клиенту</span>
+          <span class="info-value" th:text="${#temporals.format(rental.deliveredAt, 'dd.MM.yyyy HH:mm')}">—</span>
+        </div>
+        <div class="info-row" th:if="${rental.createdAt != null && rental.deliveredAt != null}">
+          <span class="info-label">Интервал</span>
+          <span class="info-value" th:text="|с ${#temporals.format(rental.createdAt, 'dd.MM.yyyy HH:mm')} по ${#temporals.format(rental.deliveredAt, 'dd.MM.yyyy HH:mm')}|">—</span>
+        </div>
+        <div class="info-row" th:if="${deliveryLeadDescription != null}">
+          <span class="info-label">Длительность оформление → выдача</span>
+          <span class="info-value" th:text="${deliveryLeadDescription}">—</span>
         </div>
       </div>
 
@@ -155,7 +188,7 @@
           <span class="info-value" th:text="${rental.createdByStaff.surname + ' ' + rental.createdByStaff.name + (rental.createdByStaff.patronymic != null ? ' ' + rental.createdByStaff.patronymic : '')}">—</span>
         </div>
         <div class="info-row" th:if="${rental.handedOverByStaff != null}">
-          <span class="info-label">Кто отдал</span>
+          <span class="info-label" th:text="${rental.deliveredAt != null ? 'Доставил / отдал клиенту' : 'Кто отдал'}">Кто отдал</span>
           <span class="info-value" th:text="${rental.handedOverByStaff.surname + ' ' + rental.handedOverByStaff.name + (rental.handedOverByStaff.patronymic != null ? ' ' + rental.handedOverByStaff.patronymic : '')}">—</span>
         </div>
       </div>

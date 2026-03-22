@@ -22,6 +22,10 @@ public class InventoryUnitRowDto {
 	private boolean inBooking;
 	private Long pointId;
 	private String pointName;
+	/** Краткая строка для таблицы: «Иванов 50% · Петров 50%». */
+	private String ownersSummary;
+	/** JSON [{name, percent}] для формы редактирования. */
+	private String ownersJson;
 
 	public Long getId() { return id; }
 	public void setId(Long id) { this.id = id; }
@@ -53,4 +57,8 @@ public class InventoryUnitRowDto {
 	public void setPointId(Long pointId) { this.pointId = pointId; }
 	public String getPointName() { return pointName; }
 	public void setPointName(String pointName) { this.pointName = pointName; }
+	public String getOwnersSummary() { return ownersSummary; }
+	public void setOwnersSummary(String ownersSummary) { this.ownersSummary = ownersSummary; }
+	public String getOwnersJson() { return ownersJson; }
+	public void setOwnersJson(String ownersJson) { this.ownersJson = ownersJson; }
 }

@@ -56,7 +56,7 @@
 
 		<div class="card-table">
 			<div class="table-responsive">
-				<table class="table table-hover mb-0">
+				<table class="table table-hover mb-0 staff-table">
 					<thead>
 						<tr>
 							<th class="ps-4">Сотрудник</th>
@@ -74,8 +74,9 @@
 								<div class="fw-bold" th:text="${u.surname + ' ' + u.name}">ФИО</div>
 								<small class="text-muted" th:text="${u.email}">email</small>
 							</td>
-							<td>
-								<span th:if="${u.point != null}" th:text="${u.point.name}" class="badge bg-light text-dark border">Точка</span>
+							<td class="align-middle" style="max-width: 12rem;">
+								<span th:if="${u.point != null}" th:text="${u.point.name}" th:title="${u.point.name}"
+									class="badge bg-light text-dark border point-cell-ellipsis">Точка</span>
 								<span th:if="${u.point == null}" class="text-muted small">—</span>
 							</td>
 							<td><code th:text="${u.login}">login</code></td>

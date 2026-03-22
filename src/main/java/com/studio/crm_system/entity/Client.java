@@ -37,6 +37,10 @@ public class Client {
 	@Column(nullable = false)
 	private LocalDate passportIssueDate;
 
+	/** Кем выдан паспорт (например: Октябрьское РУВД г. Минска). Обязательно при вводе. */
+	@Column(length = 500)
+	private String passportIssuedBy;
+
 	@Column(nullable = false)
 	private LocalDate passportExpiryDate;
 
@@ -106,6 +110,9 @@ public class Client {
 
 	public LocalDate getPassportIssueDate() { return passportIssueDate; }
 	public void setPassportIssueDate(LocalDate passportIssueDate) { this.passportIssueDate = passportIssueDate; }
+
+	public String getPassportIssuedBy() { return passportIssuedBy; }
+	public void setPassportIssuedBy(String passportIssuedBy) { this.passportIssuedBy = passportIssuedBy; }
 
 	public LocalDate getPassportExpiryDate() { return passportExpiryDate; }
 	public void setPassportExpiryDate(LocalDate passportExpiryDate) { this.passportExpiryDate = passportExpiryDate; }

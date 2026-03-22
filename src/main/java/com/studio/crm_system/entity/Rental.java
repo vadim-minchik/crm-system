@@ -69,6 +69,21 @@ public class Rental {
 	@Enumerated(EnumType.STRING)
 	private RentalStatus status = RentalStatus.ACTIVE;
 
+	/** Когда оборудование фактически передано клиенту (прокат переведён в ACTIVE). */
+	@Column(name = "delivered_at")
+	private LocalDateTime deliveredAt;
+
+	/** Момент оформления заказа в системе (для расчёта «сколько ждали доставку»). */
+	@Column(name = "created_at")
+	private LocalDateTime createdAt;
+
+	@PrePersist
+	protected void onCreate() {
+		if (createdAt == null) {
+			createdAt = LocalDateTime.now();
+		}
+	}
+
 	public Long getId() { return id; }
 	public void setId(Long id) { this.id = id; }
 
@@ -126,4 +141,10 @@ public class Rental {
 
 	public RentalStatus getStatus() { return status; }
 	public void setStatus(RentalStatus status) { this.status = status; }
+
+	public LocalDateTime getDeliveredAt() { return deliveredAt; }
+	public void setDeliveredAt(LocalDateTime deliveredAt) { this.deliveredAt = deliveredAt; }
+
+	public LocalDateTime getCreatedAt() { return createdAt; }
+	public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
 }

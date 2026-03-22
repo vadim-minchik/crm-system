@@ -28,6 +28,25 @@
     </div>
   </div>
 
+  <div th:if="${param.success != null && param.success[0] == 'payout_recorded'}" class="alert alert-success alert-dismissible fade show" role="alert">
+    <i class="bi bi-check-circle me-2"></i>Выплата владельцу записана.
+    <a th:href="@{/statistics(tab='owners')}" class="alert-link ms-2">Открыть вкладку «Владельцы»</a>
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+  </div>
+
+  <div class="alert alert-primary border-0 shadow-sm mb-4 py-3 d-flex flex-wrap align-items-center justify-content-between gap-3">
+    <div class="small mb-0">
+      <i class="bi bi-people me-2 fs-5 align-middle"></i>
+      <strong>Владельцы техники</strong> (учёт отдельно от графика выручки):
+      к выплате <strong class="fs-6" th:text="${#numbers.formatDecimal(ownersTotalToPay, 1, 2)}">0</strong> Br
+      <span class="text-white-50">·</span>
+      начислено <span th:text="${#numbers.formatDecimal(ownersTotalAccrued, 1, 2)}">0</span> Br
+      <span class="text-white-50">·</span>
+      выплачено <span th:text="${#numbers.formatDecimal(ownersTotalPaid, 1, 2)}">0</span> Br
+    </div>
+    <a th:href="@{/statistics(tab='owners')}" class="btn btn-sm btn-light text-primary fw-semibold"><i class="bi bi-wallet2 me-1"></i>Выплаты и история</a>
+  </div>
+
   <div class="row g-3 mb-4">
     <div class="col-md-6 col-xl-3">
       <div class="card stats-card border-0 shadow-sm h-100 stat-clickable" data-bs-toggle="modal" data-bs-target="#modalStatClients">
@@ -158,6 +177,7 @@
             <span class="small text-danger fw-semibold"><i class="bi bi-arrow-down-circle me-1"></i>Затраты за период: <span th:text="${#numbers.formatDecimal(chartPeriodExpenses != null ? chartPeriodExpenses : 0, 1, 2)}">0</span> Br</span>
           </div>
           <form th:action="@{/statistics}" method="get" class="d-flex flex-wrap align-items-center gap-2">
+            <input type="hidden" name="tab" th:value="${activeFullStatsTab}" th:if="${activeFullStatsTab != null}">
             <label class="small text-muted mb-0">С:</label>
             <input type="date" name="dateFrom" class="form-control form-control-sm" style="width: auto;"
                    th:value="${revenueDateFrom != null ? #temporals.format(revenueDateFrom, 'yyyy-MM-dd') : ''}">
@@ -210,6 +230,15 @@
   <hr class="my-4">
   <h4 class="mb-3"><i class="bi bi-table me-2"></i>Полная статистика с сортировкой</h4>
   <p class="text-muted small mb-3">Нажмите на заголовок столбца для сортировки.</p>
+  <div th:if="${param.tab != null && param.tab[0] == 'owners'}" class="mb-3">
+    <div th:if="${param.error}" class="alert alert-danger alert-dismissible py-2" role="alert">
+      <span th:if="${param.error[0] == 'invalid_amount'}">Укажите корректную сумму выплаты.</span>
+      <span th:if="${param.error[0] == 'owner_not_found'}">Строка владельца не найдена.</span>
+      <span th:if="${param.error[0] == 'owner_required'}">Не выбран владелец.</span>
+      <span th:if="${param.error[0] == 'amount_exceeds_balance'}">Сумма больше, чем «к выплате».</span>
+      <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+  </div>
   <div th:if="${param.tab != null && param.tab[0] == 'expenses'}" class="mb-3">
     <div th:if="${param.success}" class="alert alert-success alert-dismissible py-2" role="alert">
       <span th:if="${param.success[0] == 'expense_added'}">Расход добавлен.</span>
@@ -234,13 +263,14 @@
     <span class="small text-muted" id="fullStatsFilterHint">При смене вкладки фильтр применяется к новой таблице.</span>
   </div>
   <ul class="nav nav-tabs mb-3" role="tablist">
-    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabFullClients" type="button" th:classappend="${activeFullStatsTab != 'expenses' ? 'active' : ''}">Клиенты</button></li>
+    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabFullClients" type="button" th:classappend="${activeFullStatsTab == null ? 'active' : ''}">Клиенты</button></li>
     <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabFullRentals" type="button">Прокаты</button></li>
     <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabFullEquipment" type="button">Оборудование</button></li>
     <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabFullExpenses" type="button" th:classappend="${activeFullStatsTab == 'expenses' ? 'active' : ''}"><i class="bi bi-currency-ruble me-1 stats-tab-icon"></i>Затраты</button></li>
+    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabFullOwners" type="button" th:classappend="${activeFullStatsTab == 'owners' ? 'active' : ''}"><i class="bi bi-people me-1 stats-tab-icon"></i>Владельцы</button></li>
   </ul>
   <div class="tab-content">
-    <div class="tab-pane fade" th:classappend="${activeFullStatsTab != 'expenses' ? 'show active' : ''}" id="tabFullClients">
+    <div class="tab-pane fade" th:classappend="${activeFullStatsTab == null ? 'show active' : ''}" id="tabFullClients">
       <div class="card border-0 shadow-sm">
         <div class="table-responsive">
           <table class="table table-hover table-sm mb-0 sortable-table" data-table="clients">
@@ -264,7 +294,7 @@
             <tbody>
               <tr th:each="r : ${allRentalsList}">
                 <td th:text="${r.client != null ? (r.client.surname + ' ' + r.client.name) : '—'}">—</td>
-                <td><span class="badge bg-primary" th:if="${r.status.name() == 'ACTIVE'}">Активный</span><span class="badge bg-secondary" th:if="${r.status.name() == 'COMPLETED'}">Завершён</span><span class="badge bg-danger" th:if="${r.status.name() == 'DEBTOR'}">Должник</span><span class="badge bg-warning text-dark" th:if="${r.status.name() == 'CANCELLED'}">Отменён</span><span class="badge bg-info" th:if="${r.status.name() == 'BOOKED'}">Бронь</span><span class="badge bg-dark" th:if="${r.status.name() == 'SOON_DEBTOR'}">Скоро должник</span></td>
+                <td><span class="badge bg-dark" th:if="${r.status.name() == 'AWAITING_DELIVERY'}">Ожидает доставки</span><span class="badge bg-primary" th:if="${r.status.name() == 'ACTIVE'}">Активный</span><span class="badge bg-secondary" th:if="${r.status.name() == 'COMPLETED'}">Завершён</span><span class="badge bg-danger" th:if="${r.status.name() == 'DEBTOR'}">Должник</span><span class="badge bg-warning text-dark" th:if="${r.status.name() == 'CANCELLED'}">Отменён</span><span class="badge bg-info" th:if="${r.status.name() == 'BOOKED'}">Бронь</span><span class="badge bg-warning text-dark" th:if="${r.status.name() == 'SOON_DEBTOR'}">Скоро должник</span></td>
                 <td th:text="${r.dateFrom != null ? #temporals.format(r.dateFrom, 'dd.MM.yy HH:mm') : '—'}">—</td>
                 <td th:text="${r.dateTo != null ? #temporals.format(r.dateTo, 'dd.MM.yy HH:mm') : '—'}">—</td>
                 <td th:text="${r.totalAmount != null ? (#numbers.formatDecimal(r.totalAmount, 1, 2) + ' Br') : '—'}" th:attr="data-num=${r.totalAmount != null ? r.totalAmount.doubleValue() : 0}">—</td>
@@ -290,6 +320,65 @@
             </tbody>
           </table>
         </div>
+      </div>
+    </div>
+    <div class="tab-pane fade" th:classappend="${activeFullStatsTab == 'owners' ? 'show active' : ''}" id="tabFullOwners">
+      <div class="card border-0 shadow-sm mb-3">
+        <div class="card-body small text-muted">
+          <p class="mb-2"><strong>Как считается доля владельца:</strong> учитываются прокаты со статусами <strong>завершён</strong>, <strong>должник</strong>, <strong>скоро должник</strong>. Сумма проката распределяется между единицами пропорционально расчётной стоимости аренды по тарифу каждой единицы; затем к доле единицы применяется процент владельца. Это <strong>не меняет</strong> общую выручку в графиках выше — отдельный учёт выплат собственникам техники.</p>
+          <div class="d-flex flex-wrap gap-4">
+            <span>Начислено всего: <strong class="text-dark" th:text="${#numbers.formatDecimal(ownersTotalAccrued, 1, 2)}">0</strong> Br</span>
+            <span>Выплачено: <strong class="text-success" th:text="${#numbers.formatDecimal(ownersTotalPaid, 1, 2)}">0</strong> Br</span>
+            <span>К выплате: <strong class="text-primary" th:text="${#numbers.formatDecimal(ownersTotalToPay, 1, 2)}">0</strong> Br</span>
+          </div>
+        </div>
+      </div>
+      <div class="card border-0 shadow-sm mb-3">
+        <div class="card-header bg-white border-0 fw-semibold">По каждому владельцу</div>
+        <div class="table-responsive">
+          <table class="table table-hover table-sm mb-0 sortable-table" data-table="owners">
+            <thead><tr><th data-sort="string">Экземпляр</th><th data-sort="string">S/N</th><th data-sort="string">Владелец</th><th data-sort="num">Доля %</th><th data-sort="num">Начислено</th><th data-sort="num">Выплачено</th><th data-sort="num">К выплате</th><th></th></tr></thead>
+            <tbody>
+              <tr th:each="row : ${ownerBalanceRows}">
+                <td th:text="${row.modelTitle}">—</td>
+                <td><code class="small" th:text="${row.serialNumber}">—</code></td>
+                <td th:text="${row.ownerName}">—</td>
+                <td th:text="${#numbers.formatDecimal(row.sharePercent, 1, 2)}" th:attr="data-num=${row.sharePercent != null ? row.sharePercent.doubleValue() : 0}">—</td>
+                <td th:text="${#numbers.formatDecimal(row.accrued, 1, 2)}" th:attr="data-num=${row.accrued != null ? row.accrued.doubleValue() : 0}">—</td>
+                <td th:text="${#numbers.formatDecimal(row.paid, 1, 2)}" th:attr="data-num=${row.paid != null ? row.paid.doubleValue() : 0}">—</td>
+                <td th:text="${#numbers.formatDecimal(row.toPay, 1, 2)}" th:attr="data-num=${row.toPay != null ? row.toPay.doubleValue() : 0}">—</td>
+                <td>
+                  <button type="button" class="btn btn-sm btn-outline-primary btn-owner-payout"
+                          th:if="${row.toPay != null and row.toPay.compareTo(T(java.math.BigDecimal).ZERO) > 0}"
+                          th:data-owner-id="${row.equipmentOwnerId}"
+                          th:data-max="${row.toPay}"
+                          th:data-label="${row.ownerName + ' / ' + row.serialNumber}"
+                          data-bs-toggle="modal" data-bs-target="#modalOwnerPayout">Выплатить</button>
+                  <span class="text-muted small" th:if="${row.toPay == null or row.toPay.compareTo(T(java.math.BigDecimal).ZERO) <= 0}">—</span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="card-footer bg-white border-0 text-muted small" th:if="${#lists.isEmpty(ownerBalanceRows)}">Нет владельцев в базе (добавьте владельцев при создании или редактировании экземпляра на складе).</div>
+      </div>
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white border-0 fw-semibold"><i class="bi bi-clock-history me-1"></i>История выплат</div>
+        <div class="table-responsive">
+          <table class="table table-hover table-sm mb-0">
+            <thead><tr><th>Дата</th><th>Экземпляр</th><th>Кому</th><th>Сумма, Br</th><th>Комментарий</th></tr></thead>
+            <tbody>
+              <tr th:each="p : ${ownerRecentPayouts}">
+                <td th:text="${#temporals.format(p.paidAt, 'dd.MM.yyyy HH:mm')}">—</td>
+                <td><a th:href="@{/inventory/unit/{id}(id=${p.equipment.id})}" th:text="${p.equipment.serialNumber}" class="text-decoration-none">S/N</a></td>
+                <td th:text="${p.payeeName}">—</td>
+                <td th:text="${#numbers.formatDecimal(p.amount, 1, 2)}">—</td>
+                <td class="small text-muted" th:text="${p.note != null ? p.note : '—'}">—</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="card-footer bg-white border-0 text-muted small" th:if="${#lists.isEmpty(ownerRecentPayouts)}">Пока нет записанных выплат.</div>
       </div>
     </div>
     <div class="tab-pane fade" th:classappend="${activeFullStatsTab == 'expenses' ? 'show active' : ''}" id="tabFullExpenses">
@@ -439,6 +528,38 @@
           </div>
         </div>
       </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="modalOwnerPayout" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form th:action="@{/statistics/owners/payout}" method="post">
+        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+        <input type="hidden" name="equipmentOwnerId" id="ownerPayoutOwnerId">
+        <input type="hidden" name="redirect" id="ownerPayoutRedirect" th:value="@{/statistics(tab='owners')}">
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="bi bi-cash-coin me-2"></i>Выплата владельцу</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <p class="small text-muted mb-2" id="ownerPayoutLabel"></p>
+          <div class="mb-2">
+            <label class="form-label">Сумма, Br *</label>
+            <input type="text" name="amount" id="ownerPayoutAmount" class="form-control" required placeholder="0.00">
+            <div class="form-text">Не больше «к выплате». Макс.: <span id="ownerPayoutMaxHint">—</span> Br</div>
+          </div>
+          <div class="mb-2">
+            <label class="form-label">Комментарий</label>
+            <input type="text" name="note" class="form-control" maxlength="500" placeholder="Необязательно">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+          <button type="submit" class="btn btn-primary">Записать выплату</button>
+        </div>
+      </form>
     </div>
   </div>
 </div>
@@ -803,6 +924,21 @@
       document.getElementById('editExpenseCategory').value = btn.getAttribute('data-category') || '';
     });
   }
+  var modalOwnerPayout = document.getElementById('modalOwnerPayout');
+  if (modalOwnerPayout) {
+    modalOwnerPayout.addEventListener('show.bs.modal', function(e) {
+      var btn = e.relatedTarget;
+      if (!btn || !btn.classList.contains('btn-owner-payout')) return;
+      document.getElementById('ownerPayoutOwnerId').value = btn.getAttribute('data-owner-id') || '';
+      var max = btn.getAttribute('data-max') || '0';
+      document.getElementById('ownerPayoutAmount').value = max;
+      document.getElementById('ownerPayoutMaxHint').textContent = max;
+      document.getElementById('ownerPayoutLabel').textContent = btn.getAttribute('data-label') || '';
+      var rd = btn.getAttribute('data-redirect');
+      if (rd) document.getElementById('ownerPayoutRedirect').value = rd;
+      else document.getElementById('ownerPayoutRedirect').value = '/statistics?tab=owners';
+    });
+  }
   var modalRecurringEdit = document.getElementById('modalRecurringEdit');
   if (modalRecurringEdit) {
     modalRecurringEdit.addEventListener('show.bs.modal', function(e) {
@@ -848,7 +984,7 @@
   filterInput.addEventListener('input', applyFilter);
   filterInput.addEventListener('keyup', applyFilter);
 
-  document.querySelectorAll('[data-bs-target="#tabFullClients"], [data-bs-target="#tabFullRentals"], [data-bs-target="#tabFullEquipment"], [data-bs-target="#tabFullExpenses"]').forEach(function(btn) {
+  document.querySelectorAll('[data-bs-target="#tabFullClients"], [data-bs-target="#tabFullRentals"], [data-bs-target="#tabFullEquipment"], [data-bs-target="#tabFullExpenses"], [data-bs-target="#tabFullOwners"]').forEach(function(btn) {
     btn.addEventListener('shown.bs.tab', function() { applyFilter(); });
   });
   applyFilter();

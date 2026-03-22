@@ -119,6 +119,7 @@ public class ClientController {
 			@RequestParam String gender,
 			@RequestParam String birthDate,
 			@RequestParam String passportIssueDate,
+			@RequestParam String passportIssuedBy,
 			@RequestParam String passportExpiryDate,
 			@RequestParam String addressStreet,
 			@RequestParam String addressHouse,
@@ -129,6 +130,9 @@ public class ClientController {
 
 		User user = getCurrentUser();
 		if (user == null) return "redirect:/login";
+
+		String issuedBy = passportIssuedBy != null ? passportIssuedBy.trim() : "";
+		if (issuedBy.isEmpty()) return "redirect:/clients?error=passport_issuer_required";
 
 		LocalDate birth = parseDate(birthDate, "birth");
 		LocalDate issue = parseDate(passportIssueDate, "issue");
@@ -173,6 +177,7 @@ public class ClientController {
 		client.setGender(gender);
 		client.setBirthDate(birth);
 		client.setPassportIssueDate(issue);
+		client.setPassportIssuedBy(issuedBy);
 		client.setPassportExpiryDate(expiry);
 		client.setAddressStreet(addr(addressStreet));
 		client.setAddressHouse(addr(addressHouse));
@@ -206,6 +211,7 @@ public class ClientController {
 			@RequestParam String gender,
 			@RequestParam String birthDate,
 			@RequestParam String passportIssueDate,
+			@RequestParam String passportIssuedBy,
 			@RequestParam String passportExpiryDate,
 			@RequestParam String addressStreet,
 			@RequestParam String addressHouse,
@@ -217,6 +223,9 @@ public class ClientController {
 
 		User user = getCurrentUser();
 		if (user == null) return "redirect:/login";
+
+		String issuedBy = passportIssuedBy != null ? passportIssuedBy.trim() : "";
+		if (issuedBy.isEmpty()) return "redirect:/clients?error=passport_issuer_required";
 
 		Client dbClient = clientRepository.findById(id).orElse(null);
 		if (dbClient == null) return "redirect:/clients?error=client_not_found";
@@ -264,6 +273,7 @@ public class ClientController {
 		dbClient.setGender(gender);
 		dbClient.setBirthDate(birth);
 		dbClient.setPassportIssueDate(issue);
+		dbClient.setPassportIssuedBy(issuedBy);
 		dbClient.setPassportExpiryDate(expiry);
 		dbClient.setAddressStreet(addr(addressStreet));
 		dbClient.setAddressHouse(addr(addressHouse));

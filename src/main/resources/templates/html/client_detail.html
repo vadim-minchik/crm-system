@@ -141,6 +141,10 @@
           <span class="info-value" th:text="${#temporals.format(client.passportIssueDate,'dd.MM.yyyy')}">—</span>
         </div>
         <div class="info-row">
+          <span class="info-label">Кем выдан</span>
+          <span class="info-value" th:text="${client.passportIssuedBy != null && !#strings.isEmpty(client.passportIssuedBy)} ? client.passportIssuedBy : '—'">—</span>
+        </div>
+        <div class="info-row">
           <span class="info-label">Срок действия</span>
           <span class="info-value"
                 th:classappend="${client.passportExpiryDate.isBefore(#temporals.createNow().toLocalDate().plusMonths(3)) ? 'expiry-warn' : 'expiry-ok'}"
@@ -255,7 +259,15 @@
                 <td class="small" th:text="${rental.equipmentDisplayString}">—</td>
                 <td class="small" th:text="${rental.point != null ? rental.point.name : '—'}">—</td>
                 <td class="small" th:text="${rental.totalAmount != null ? rental.totalAmount + ' Br' : '—'}">—</td>
-                <td><span class="badge" th:classappend="${rental.status.name() == 'ACTIVE' ? 'bg-success' : (rental.status.name() == 'COMPLETED' ? 'bg-secondary' : 'bg-warning text-dark')}" th:text="${rental.status.name()}">—</span></td>
+                <td>
+                  <span class="badge bg-dark" th:if="${rental.status.name() == 'AWAITING_DELIVERY'}">Доставка</span>
+                  <span class="badge bg-success" th:if="${rental.status.name() == 'ACTIVE'}">В прокате</span>
+                  <span class="badge bg-secondary" th:if="${rental.status.name() == 'COMPLETED'}">Завершён</span>
+                  <span class="badge bg-danger" th:if="${rental.status.name() == 'DEBTOR'}">Должник</span>
+                  <span class="badge bg-warning text-dark" th:if="${rental.status.name() == 'SOON_DEBTOR'}">К приёмке</span>
+                  <span class="badge bg-info text-dark" th:if="${rental.status.name() == 'BOOKED'}">Бронь</span>
+                  <span class="badge bg-light text-dark border" th:if="${rental.status.name() == 'CANCELLED'}">Отменён</span>
+                </td>
               </tr>
             </tbody>
           </table>

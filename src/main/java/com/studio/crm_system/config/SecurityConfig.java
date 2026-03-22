@@ -32,6 +32,8 @@ public class SecurityConfig {
         http.userDetailsService(userDetailsService)
                 .authorizeHttpRequests((requests) -> requests
                         .requestMatchers("/css/**", "/js/**", "/images/**", "/login", "/logout").permitAll()
+                        .requestMatchers("/points/**", "/documents/**", "/statistics/**")
+                                .hasAnyAuthority("ADMIN", "SUPER_ADMIN")
                         .anyRequest().authenticated())
                 .formLogin((form) -> form
                         .loginPage("/login")

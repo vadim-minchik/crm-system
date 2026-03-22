@@ -10,6 +10,7 @@ import com.studio.crm_system.repository.ClientRepository;
 import com.studio.crm_system.repository.EquipmentRepository;
 import com.studio.crm_system.repository.RentalRepository;
 import com.studio.crm_system.repository.UserRepository;
+import com.studio.crm_system.util.ClientPassportChecks;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -39,6 +40,11 @@ public class RentalService {
 
 	public List<Rental> findActive() {
 		return rentalRepository.findByStatusOrderByDateFromDesc(RentalStatus.ACTIVE);
+	}
+
+	/** Оформлены, но ещё не доставлены клиенту — не в «активных» прокатах. */
+	public List<Rental> findAwaitingDelivery() {
+		return rentalRepository.findByStatusOrderByDateFromDesc(RentalStatus.AWAITING_DELIVERY);
 	}
 
 	public List<Rental> findCompleted() {
@@ -112,13 +118,21 @@ public class RentalService {
 			Optional<Rental> active = rentalRepository.findFirstByEquipmentIdAndStatusInOrderByDateToDesc(e.getId(), java.util.List.of(RentalStatus.ACTIVE, RentalStatus.SOON_DEBTOR, RentalStatus.DEBTOR));
 			statusLabel = active.map(r -> "В прокате с " + r.getDateFrom().format(DATETIME_FMT) + " по " + r.getDateTo().format(DATETIME_FMT)).orElse("В прокате");
 		} else {
-			// RESERVED: показываем с и по текущей брони
-			statusLabel = bookingService.getActiveBookingForEquipment(e.getId())
-					.map(b -> {
-						LocalDateTime from = b.getDateFrom() != null ? b.getDateFrom() : b.getCreatedAt();
-						return "Забронирован с " + from.format(DATETIME_FMT) + " по " + b.getDateTo().format(DATETIME_FMT);
-					})
-					.orElse("Забронирован");
+			Optional<Rental> awaiting = rentalRepository.findFirstByEquipmentIdAndStatusOrderByDateToDesc(
+					e.getId(), RentalStatus.AWAITING_DELIVERY);
+			if (awaiting.isPresent()) {
+				Rental ar = awaiting.get();
+				statusLabel = "Ожидает доставки, прокат №" + ar.getId() + " с " + ar.getDateFrom().format(DATETIME_FMT)
+						+ " по " + ar.getDateTo().format(DATETIME_FMT);
+			} else {
+				// RESERVED: показываем с и по текущей брони
+				statusLabel = bookingService.getActiveBookingForEquipment(e.getId())
+						.map(b -> {
+							LocalDateTime from = b.getDateFrom() != null ? b.getDateFrom() : b.getCreatedAt();
+							return "Забронирован с " + from.format(DATETIME_FMT) + " по " + b.getDateTo().format(DATETIME_FMT);
+						})
+						.orElse("Забронирован");
+			}
 		}
 		return new EquipmentSelectOption(
 				e.getId(),
@@ -155,6 +169,7 @@ public class RentalService {
 	@Transactional
 	public String createRentals(Long clientId, List<Long> equipmentIds, LocalDateTime dateFrom, LocalDateTime dateTo, BigDecimal manualTotal,
 			BigDecimal additionalServicesAmount, String additionalServicesDescription, BigDecimal deliveryAmount, String deliveryAddress,
+			boolean deliveryRequested,
 			Long createdByStaffId, Long handedOverByStaffId) {
 		if (clientId == null) return "client_required";
 		if (equipmentIds == null || equipmentIds.isEmpty()) return "equipment_required";
@@ -166,6 +181,9 @@ public class RentalService {
 
 		Client client = clientRepository.findByIdAndIsDeletedFalse(clientId).orElse(null);
 		if (client == null) return "client_not_found";
+		if (!ClientPassportChecks.isPassportValidOn(client, dateFrom.toLocalDate())) {
+			return "client_passport_expired";
+		}
 
 		List<Equipment> toRent = new ArrayList<>();
 		for (Long eid : equipmentIds) {
@@ -190,6 +208,8 @@ public class RentalService {
 				? additionalServicesAmount.setScale(2, RoundingMode.HALF_UP) : BigDecimal.ZERO;
 		BigDecimal delAmt = (deliveryAmount != null && deliveryAmount.compareTo(BigDecimal.ZERO) > 0)
 				? deliveryAmount.setScale(2, RoundingMode.HALF_UP) : BigDecimal.ZERO;
+		String addrTrimmed = (deliveryAddress != null && !deliveryAddress.isBlank()) ? deliveryAddress.trim() : null;
+		boolean needsDelivery = deliveryRequested || delAmt.compareTo(BigDecimal.ZERO) > 0 || addrTrimmed != null;
 		BigDecimal totalSum = baseSum.add(addServ).add(delAmt).setScale(2, RoundingMode.HALF_UP);
 
 		Rental rental = new Rental();
@@ -201,17 +221,22 @@ public class RentalService {
 		rental.setAdditionalServicesAmount(addServ.compareTo(BigDecimal.ZERO) > 0 ? addServ : null);
 		rental.setAdditionalServicesDescription(additionalServicesDescription != null && !additionalServicesDescription.isBlank() ? additionalServicesDescription.trim() : null);
 		rental.setDeliveryAmount(delAmt.compareTo(BigDecimal.ZERO) > 0 ? delAmt : null);
-		rental.setDeliveryAddress(deliveryAddress != null && !deliveryAddress.isBlank() ? deliveryAddress.trim() : null);
-		rental.setStatus(RentalStatus.ACTIVE);
+		rental.setDeliveryAddress(addrTrimmed);
+		rental.setStatus(needsDelivery ? RentalStatus.AWAITING_DELIVERY : RentalStatus.ACTIVE);
 		if (createdByStaffId != null) userRepository.findById(createdByStaffId).ifPresent(rental::setCreatedByStaff);
-		if (handedOverByStaffId != null) userRepository.findById(handedOverByStaffId).ifPresent(rental::setHandedOverByStaff);
+		if (needsDelivery) {
+			if (handedOverByStaffId != null) userRepository.findById(handedOverByStaffId).ifPresent(rental::setHandedOverByStaff);
+		} else if (rental.getCreatedByStaff() != null) {
+			// Без доставки выдача сразу в пункте — отдал тот же, кто оформил
+			rental.setHandedOverByStaff(rental.getCreatedByStaff());
+		}
 		rentalRepository.save(rental);
 
 		for (Equipment equipment : toRent) {
-			equipment.setStatus(EquipmentStatus.BUSY);
+			equipment.setStatus(needsDelivery ? EquipmentStatus.RESERVED : EquipmentStatus.BUSY);
 			equipmentRepository.save(equipment);
 		}
-		return null;
+		return needsDelivery ? "awaiting_delivery" : null;
 	}
 
 	@Transactional
@@ -265,10 +290,31 @@ public class RentalService {
 	}
 
 	@Transactional
+	public String markDelivered(Long rentalId, Long deliveredByUserId) {
+		Rental rental = rentalRepository.findByIdForUpdateWithEquipment(rentalId).orElse(null);
+		if (rental == null) return "not_found";
+		if (rental.getStatus() != RentalStatus.AWAITING_DELIVERY) return "not_awaiting_delivery";
+
+		rental.setStatus(RentalStatus.ACTIVE);
+		rental.setDeliveredAt(LocalDateTime.now());
+		if (deliveredByUserId != null) {
+			userRepository.findById(deliveredByUserId).ifPresent(rental::setHandedOverByStaff);
+		}
+		rentalRepository.save(rental);
+
+		for (Equipment eq : rental.getEquipmentList()) {
+			eq.setStatus(EquipmentStatus.BUSY);
+			equipmentRepository.save(eq);
+		}
+		return null;
+	}
+
+	@Transactional
 	public String cancelRental(Long rentalId) {
 		Rental rental = rentalRepository.findByIdForUpdate(rentalId).orElse(null);
 		if (rental == null) return "not_found";
-		if (rental.getStatus() != RentalStatus.ACTIVE) return "not_active";
+		RentalStatus st = rental.getStatus();
+		if (st != RentalStatus.ACTIVE && st != RentalStatus.AWAITING_DELIVERY) return "not_active";
 
 		rental.setStatus(RentalStatus.CANCELLED);
 		rentalRepository.save(rental);

@@ -3,9 +3,15 @@ package com.studio.crm_system.entity;
 import com.studio.crm_system.enums.EquipmentStatus;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "equipment")
+@NamedEntityGraph(
+		name = "Equipment.withOwners",
+		attributeNodes = @NamedAttributeNode("owners")
+)
 public class Equipment {
 
 	@Id
@@ -62,6 +68,10 @@ public class Equipment {
 	@Column(nullable = false)
 	private Boolean isDeleted = false;
 
+	@OneToMany(mappedBy = "equipment", cascade = CascadeType.ALL, orphanRemoval = true)
+	@OrderBy("sortOrder ASC")
+	private List<EquipmentOwner> owners = new ArrayList<>();
+
 	public String getTitle() {
 		return toolName != null ? toolName.getName() : "Неизвестно";
 	}
@@ -111,4 +121,7 @@ public class Equipment {
 
 	public Boolean getIsDeleted() { return isDeleted; }
 	public void setIsDeleted(Boolean isDeleted) { this.isDeleted = isDeleted; }
+
+	public List<EquipmentOwner> getOwners() { return owners; }
+	public void setOwners(List<EquipmentOwner> owners) { this.owners = owners; }
 }

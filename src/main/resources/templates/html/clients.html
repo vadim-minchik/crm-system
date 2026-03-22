@@ -62,6 +62,7 @@
     <span th:if="${param.error[0] == 'issue_before_birth'}">Дата выдачи паспорта не может быть раньше даты рождения.</span>
     <span th:if="${param.error[0] == 'expiry_before_issue'}">Срок действия не может быть раньше даты выдачи.</span>
     <span th:if="${param.error[0] == 'expiry_too_far'}">Срок действия паспорта не может превышать 15 лет от даты выдачи.</span>
+    <span th:if="${param.error[0] == 'passport_issuer_required'}">Укажите орган, выдавший паспорт.</span>
     <span th:if="${param.error[0] == 'photo_too_large'}">Фото слишком большое. Максимальный размер — 25 МБ. Сожмите изображение.</span>
     <span th:if="${param.error[0] == 'not_image'}">Разрешены только изображения (jpg, png).</span>
     <span th:if="${param.error[0] == 'upload_failed'}">Ошибка загрузки фото. Проверьте настройки Supabase Storage.</span>
@@ -109,6 +110,9 @@
               выд. <span th:text="${#temporals.format(c.passportIssueDate,'dd.MM.yyyy')}">01.01.2019</span>
               &nbsp;до <span th:text="${#temporals.format(c.passportExpiryDate,'dd.MM.yyyy')}">01.01.2029</span>
             </small>
+            <br th:if="${c.passportIssuedBy != null && !#strings.isEmpty(c.passportIssuedBy)}"/>
+            <small class="text-muted" th:if="${c.passportIssuedBy != null && !#strings.isEmpty(c.passportIssuedBy)}"
+                   th:text="${c.passportIssuedBy}">РУВД</small>
           </td>
           <td class="td-ellipsis">
             <small th:text="${c.addressStreet}">ул. Ленина</small><br/>
@@ -138,6 +142,7 @@
                       th:data-gender="${c.gender}"
                       th:data-birth="${#temporals.format(c.birthDate,'dd.MM.yyyy')}"
                       th:data-issue="${#temporals.format(c.passportIssueDate,'dd.MM.yyyy')}"
+                      th:attr="data-passport-issued-by=${c.passportIssuedBy != null ? c.passportIssuedBy : ''}"
                       th:data-expiry="${#temporals.format(c.passportExpiryDate,'dd.MM.yyyy')}"
                       th:data-street="${c.addressStreet}" th:data-house="${c.addressHouse}"
                       th:data-entrance="${c.addressEntrance}" th:data-building="${c.addressBuilding}"
@@ -248,6 +253,14 @@
               <label class="form-label">Срок действия *</label>
               <input type="text" name="passportExpiryDate" class="form-control date-input"
                      placeholder="30.05.2029" required>
+            </div>
+          </div>
+          <div class="row g-2 mt-1">
+            <div class="col-12">
+              <label class="form-label">Кем выдан паспорт *</label>
+              <input type="text" name="passportIssuedBy" class="form-control"
+                     placeholder="Октябрьское РУВД г. Минска" required maxlength="500" autocomplete="organization">
+              <div class="form-text">Полное наименование органа (как в паспорте)</div>
             </div>
           </div>
         </div>
@@ -393,6 +406,13 @@
                      pattern="\d{2}\.\d{2}\.\d{4}" required>
             </div>
           </div>
+          <div class="row g-2 mt-1">
+            <div class="col-12">
+              <label class="form-label">Кем выдан паспорт *</label>
+              <input type="text" name="passportIssuedBy" id="e-passport-issued-by" class="form-control"
+                     maxlength="500" required autocomplete="organization">
+            </div>
+          </div>
         </div>
 
         <div class="mb-3">
@@ -460,6 +480,7 @@
     document.getElementById('e-birth').value = btn.getAttribute('data-birth');
     document.getElementById('e-ident').value = btn.getAttribute('data-ident');
     document.getElementById('e-issue').value = btn.getAttribute('data-issue');
+    document.getElementById('e-passport-issued-by').value = btn.getAttribute('data-passport-issued-by') || '';
     document.getElementById('e-expiry').value = btn.getAttribute('data-expiry');
     document.getElementById('e-street').value = btn.getAttribute('data-street');
     document.getElementById('e-house').value = btn.getAttribute('data-house');
