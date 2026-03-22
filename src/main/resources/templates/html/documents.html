@@ -27,6 +27,7 @@
 		<span th:if="${param.error[0] == 'upload_failed'}">Не удалось загрузить файл в хранилище.</span>
 		<span th:if="${param.error[0] == 'not_docx'}">Загружен не файл .docx. Используйте исходный шаблон из Word (сохраните как «Документ Word (.docx)»). Не загружайте сформированный системой документ.</span>
 		<span th:if="${param.error[0] == 'not_found'}">Шаблон не найден.</span>
+		<span th:if="${param.error[0] == 'stale_data'}">Данные уже изменены другим пользователем. Обновите страницу и повторите действие.</span>
 		<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
 	</div>
 	<div th:if="${param.success}" class="alert alert-success alert-dismissible fade show" role="alert">
@@ -40,8 +41,7 @@
 	<section class="mb-4">
 		<div class="d-flex align-items-center justify-content-between mb-3">
 			<div>
-				<h3 class="h5 mb-1"><i class="bi bi-file-earmark-word me-2 text-primary"></i>Шаблоны</h3>
-				<p class="text-muted small mb-0">Файлы .docx из Word с переменными в двойных скобках. Список переменных — ниже; для оборудования удобнее одна переменная на весь список (например <code>{{EQUIPMENT_LINES}}</code>), а не отдельно по каждой позиции.</p>
+				<h3 class="h5 mb-0"><i class="bi bi-file-earmark-word me-2 text-primary"></i>Шаблоны</h3>
 			</div>
 			<button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#uploadModal">
 				<i class="bi bi-upload"></i> Загрузить шаблон
@@ -68,6 +68,7 @@
 							<td class="text-end pe-4">
 								<a th:href="@{/documents/{id}/file(id=${t.id})}" class="btn btn-sm btn-outline-primary me-1" download><i class="bi bi-download"></i> Скачать</a>
 								<form th:action="@{/documents/{id}/delete(id=${t.id})}" method="post" class="d-inline" onsubmit="return confirm('Удалить этот шаблон? Файл будет удалён из хранилища.');">
+									<input type="hidden" name="version" th:value="${t.version}">
 									<button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
 								</form>
 							</td>
@@ -96,10 +97,6 @@
 				<li class="mb-1"><code>{{EQUIPMENT_NUMBERED}}</code> — нумерованный список</li>
 				<li class="mb-0"><code>{{EQUIPMENT_LINES_SHORT}}</code> — коротко (название и S/N)</li>
 			</ul>
-			<p class="mb-0">
-				<strong>Формат текста по оборудованию</strong> уже зашит в CRM: в <code>{{EQUIPMENT_LINES}}</code> подставляется полный блок
-				(оценка, состояние, все тарифы суток и месяцев, точка). Для таблицы по слотам остаются переменные <code>{{EQUIPMENT_1_TITLE}}</code> … <code>{{EQUIPMENT_50_…}}</code>.
-			</p>
 		</div>
 		<p class="text-muted small mb-3">Вставляйте в Word именно в двойных фигурных скобках. При скачивании документа по прокату подставятся данные клиента и проката.</p>
 		<p class="small text-muted mb-2">Ниже перечислены переменные для каждой из до <strong>50</strong> позиций оборудования в прокате (<code>{{EQUIPMENT_1_TITLE}}</code> … <code>{{EQUIPMENT_50_PRICE_SUBSEQUENT_MONTHS}}</code>). Для короткого варианта используйте <code>{{EQUIPMENT_LINES}}</code>.</p>

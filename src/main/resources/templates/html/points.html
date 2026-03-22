@@ -26,6 +26,7 @@
 		<i class="bi bi-exclamation-triangle-fill me-2"></i><strong>Ошибка: </strong>
 		<span th:if="${param.error[0] == 'name_required'}">Укажите название точки.</span>
 		<span th:if="${param.error[0] == 'not_found'}">Точка не найдена.</span>
+		<span th:if="${param.error[0] == 'stale_data'}">Данные уже изменены другим пользователем. Обновите страницу и повторите действие.</span>
 		<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
 	</div>
 	<div th:if="${param.success}" class="alert alert-success alert-dismissible fade show" role="alert">
@@ -51,12 +52,13 @@
 					<td><span class="text-muted" th:text="${p.address != null ? p.address : '—'}">—</span></td>
 					<td class="text-end pe-4">
 						<button type="button" class="btn btn-sm btn-outline-primary me-1"
-								th:data-id="${p.id}" th:data-name="${p.name}" th:data-address="${p.address != null ? p.address : ''}"
+								th:data-id="${p.id}" th:data-version="${p.version}" th:data-name="${p.name}" th:data-address="${p.address != null ? p.address : ''}"
 								onclick="fillEdit(this)" data-bs-toggle="modal" data-bs-target="#editModal">
 							<i class="bi bi-pencil"></i> Изменить
 						</button>
 						<form th:action="@{/points/delete}" method="post" class="d-inline" onsubmit="return confirm('Удалить точку? Сотрудники и старые прокаты останутся без привязки.');">
 							<input type="hidden" name="id" th:value="${p.id}">
+							<input type="hidden" name="version" th:value="${p.version}">
 							<button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
 						</form>
 					</td>
@@ -122,6 +124,7 @@
 <script>
 function fillEdit(btn) {
 	document.getElementById('edit-id').value = btn.dataset.id;
+	document.getElementById('edit-version').value = btn.dataset.version || '';
 	document.getElementById('edit-name').value = btn.dataset.name || '';
 	document.getElementById('edit-address').value = btn.dataset.address || '';
 }

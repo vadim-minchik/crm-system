@@ -11,6 +11,7 @@ import com.studio.crm_system.repository.EquipmentRepository;
 import com.studio.crm_system.repository.RentalRepository;
 import com.studio.crm_system.repository.UserRepository;
 import com.studio.crm_system.util.ClientPassportChecks;
+import com.studio.crm_system.web.OptimisticLockSupport;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -240,11 +241,12 @@ public class RentalService {
 	}
 
 	@Transactional
-	public String updateRental(Long id, LocalDateTime dateFrom, LocalDateTime dateTo, BigDecimal totalAmount,
+	public String updateRental(Long id, Long expectedVersion, LocalDateTime dateFrom, LocalDateTime dateTo, BigDecimal totalAmount,
 			BigDecimal additionalServicesAmount, String additionalServicesDescription, BigDecimal deliveryAmount, String deliveryAddress,
 			Long createdByStaffId, Long handedOverByStaffId) {
 		Rental rental = rentalRepository.findByIdWithEquipment(id).orElse(null);
 		if (rental == null) return "not_found";
+		if (OptimisticLockSupport.isStale(expectedVersion, rental.getVersion())) return "stale_data";
 		if (dateFrom == null) return "date_from_required";
 		if (dateTo == null) return "date_to_required";
 		if (!dateTo.isAfter(dateFrom)) return "date_to_before_from";
@@ -273,9 +275,10 @@ public class RentalService {
 	}
 
 	@Transactional
-	public String completeRental(Long rentalId) {
+	public String completeRental(Long rentalId, Long expectedVersion) {
 		Rental rental = rentalRepository.findByIdForUpdate(rentalId).orElse(null);
 		if (rental == null) return "not_found";
+		if (OptimisticLockSupport.isStale(expectedVersion, rental.getVersion())) return "stale_data";
 		RentalStatus s = rental.getStatus();
 		if (s != RentalStatus.ACTIVE && s != RentalStatus.SOON_DEBTOR && s != RentalStatus.DEBTOR)
 			return "not_active";
@@ -290,9 +293,10 @@ public class RentalService {
 	}
 
 	@Transactional
-	public String markDelivered(Long rentalId, Long deliveredByUserId) {
+	public String markDelivered(Long rentalId, Long deliveredByUserId, Long expectedVersion) {
 		Rental rental = rentalRepository.findByIdForUpdateWithEquipment(rentalId).orElse(null);
 		if (rental == null) return "not_found";
+		if (OptimisticLockSupport.isStale(expectedVersion, rental.getVersion())) return "stale_data";
 		if (rental.getStatus() != RentalStatus.AWAITING_DELIVERY) return "not_awaiting_delivery";
 
 		rental.setStatus(RentalStatus.ACTIVE);
@@ -310,9 +314,10 @@ public class RentalService {
 	}
 
 	@Transactional
-	public String cancelRental(Long rentalId) {
+	public String cancelRental(Long rentalId, Long expectedVersion) {
 		Rental rental = rentalRepository.findByIdForUpdate(rentalId).orElse(null);
 		if (rental == null) return "not_found";
+		if (OptimisticLockSupport.isStale(expectedVersion, rental.getVersion())) return "stale_data";
 		RentalStatus st = rental.getStatus();
 		if (st != RentalStatus.ACTIVE && st != RentalStatus.AWAITING_DELIVERY) return "not_active";
 

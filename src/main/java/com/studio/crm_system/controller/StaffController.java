@@ -5,6 +5,7 @@ import com.studio.crm_system.entity.User;
 import com.studio.crm_system.repository.PointRepository;
 import com.studio.crm_system.repository.UserRepository;
 import com.studio.crm_system.enums.Role;
+import com.studio.crm_system.web.OptimisticLockSupport;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -200,6 +201,8 @@ public class StaffController {
 		User dbUser = userRepository.findById(details.getId()).orElse(null);
 
 		if (actor != null && dbUser != null) {
+			if (OptimisticLockSupport.isStale(details.getVersion(), dbUser.getVersion()))
+				return "redirect:/staff?error=stale_data";
 			if (actor.getRole() == Role.ADMIN && dbUser.getRole() != Role.WORKER)
 				return "redirect:/staff";
 

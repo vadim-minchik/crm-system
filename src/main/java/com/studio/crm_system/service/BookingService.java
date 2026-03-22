@@ -8,6 +8,7 @@ import com.studio.crm_system.enums.RentalStatus;
 import com.studio.crm_system.repository.BookingRepository;
 import com.studio.crm_system.repository.EquipmentRepository;
 import com.studio.crm_system.repository.RentalRepository;
+import com.studio.crm_system.web.OptimisticLockSupport;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -168,9 +169,10 @@ public class BookingService {
 	}
 
 	@Transactional
-	public String delete(Long id) {
+	public String delete(Long id, Long expectedVersion) {
 		Booking booking = bookingRepository.findById(id).orElse(null);
 		if (booking == null) return "not_found";
+		if (OptimisticLockSupport.isStale(expectedVersion, booking.getVersion())) return "stale_data";
 
 		List<Long> equipmentIds = new ArrayList<>();
 		for (Equipment eq : booking.getEquipmentList()) {

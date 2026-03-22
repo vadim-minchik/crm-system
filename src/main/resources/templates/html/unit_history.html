@@ -29,6 +29,7 @@
     <span th:if="${param.error[0] == 'owner_not_found'}">Владелец не найден.</span>
     <span th:if="${param.error[0] == 'amount_exceeds_balance'}">Сумма больше «к выплате».</span>
     <span th:if="${param.error[0] == 'owner_required'}">Ошибка: не выбран владелец.</span>
+    <span th:if="${param.error[0] == 'stale_data'}">Данные уже изменены другим пользователем. Обновите страницу и повторите действие.</span>
     <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
   </div>
 
@@ -118,6 +119,7 @@
             <button type="button" class="btn btn-sm btn-outline-primary btn-owner-payout-unit"
                     th:if="${row.toPay != null and row.toPay.compareTo(T(java.math.BigDecimal).ZERO) > 0}"
                     th:data-owner-id="${row.equipmentOwnerId}"
+                    th:data-owner-version="${row.equipmentOwnerVersion}"
                     th:data-max="${row.toPay}"
                     th:data-label="${row.ownerName}"
                     data-bs-toggle="modal" data-bs-target="#modalOwnerPayoutUnit">Выплатить</button>
@@ -172,6 +174,7 @@
         <form th:action="@{/statistics/owners/payout}" method="post">
           <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
           <input type="hidden" name="equipmentOwnerId" id="unitOwnerPayoutOwnerId">
+          <input type="hidden" name="ownerVersion" id="unitOwnerPayoutOwnerVersion">
           <input type="hidden" name="redirect" th:value="@{/inventory/unit/{id}(id=${unit.id})}">
           <div class="modal-header">
             <h5 class="modal-title">Выплата владельцу</h5>
@@ -257,6 +260,7 @@
     var btn = e.relatedTarget;
     if (!btn || !btn.classList.contains('btn-owner-payout-unit')) return;
     document.getElementById('unitOwnerPayoutOwnerId').value = btn.getAttribute('data-owner-id') || '';
+    document.getElementById('unitOwnerPayoutOwnerVersion').value = btn.getAttribute('data-owner-version') || '';
     var max = btn.getAttribute('data-max') || '0';
     document.getElementById('unitOwnerPayoutAmount').value = max;
     document.getElementById('unitOwnerPayoutMaxHint').textContent = max;

@@ -67,6 +67,7 @@
     <span th:if="${param.error[0] == 'not_image'}">Разрешены только изображения (jpg, png).</span>
     <span th:if="${param.error[0] == 'upload_failed'}">Ошибка загрузки фото. Проверьте настройки Supabase Storage.</span>
     <span th:if="${param.error[0] == 'server_error'}">Внутренняя ошибка сервера. Проверьте консоль приложения для подробностей.</span>
+    <span th:if="${param.error[0] == 'stale_data'}">Данные уже изменены другим пользователем. Обновите страницу и повторите действие.</span>
     <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
   </div>
   <div th:if="${param.success}" class="alert alert-success alert-dismissible fade show" role="alert">
@@ -150,12 +151,14 @@
                       th:data-phone="${c.phoneNumber}" th:data-rating="${c.rating}"
                       th:data-blacklisted="${c.blacklisted}"
                       th:data-photo="${c.passportPhotoUrl}"
+                      th:data-version="${c.version}"
                       onclick="prepareEdit(this)" title="Редактировать">
                 <i class="bi bi-pencil"></i>
               </button>
               <form th:action="@{/clients/delete}" method="post" style="display:inline;"
                     onsubmit="return confirm('Удалить клиента из базы?')">
                 <input type="hidden" name="id" th:value="${c.id}">
+                <input type="hidden" name="version" th:value="${c.version}">
                 <button type="submit" class="btn-icon"><i class="bi bi-trash"></i></button>
               </form>
             </span>
@@ -333,6 +336,7 @@
   <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
     <form th:action="@{/clients/edit}" method="post" class="modal-content">
       <input type="hidden" name="id" id="edit-id">
+      <input type="hidden" name="version" id="edit-version">
       <div class="modal-header">
         <h5><i class="bi bi-pencil me-2"></i>Редактирование клиента</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
@@ -473,6 +477,7 @@
   // ===== Открыть модал редактирования =====
   function prepareEdit(btn) {
     document.getElementById('edit-id').value = btn.getAttribute('data-id');
+    document.getElementById('edit-version').value = btn.getAttribute('data-version') || '';
     document.getElementById('e-surname').value = btn.getAttribute('data-surname');
     document.getElementById('e-name').value = btn.getAttribute('data-name');
     document.getElementById('e-patr').value = btn.getAttribute('data-patr');

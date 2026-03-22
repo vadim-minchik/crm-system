@@ -9,6 +9,7 @@ public class OwnerBalanceRowDto {
 	private String serialNumber;
 	private String modelTitle;
 	private Long equipmentOwnerId;
+	private Long equipmentOwnerVersion;
 	private String ownerName;
 	private BigDecimal sharePercent;
 	private BigDecimal accrued;
@@ -23,6 +24,8 @@ public class OwnerBalanceRowDto {
 	public void setModelTitle(String modelTitle) { this.modelTitle = modelTitle; }
 	public Long getEquipmentOwnerId() { return equipmentOwnerId; }
 	public void setEquipmentOwnerId(Long equipmentOwnerId) { this.equipmentOwnerId = equipmentOwnerId; }
+	public Long getEquipmentOwnerVersion() { return equipmentOwnerVersion; }
+	public void setEquipmentOwnerVersion(Long equipmentOwnerVersion) { this.equipmentOwnerVersion = equipmentOwnerVersion; }
 	public String getOwnerName() { return ownerName; }
 	public void setOwnerName(String ownerName) { this.ownerName = ownerName; }
 	public BigDecimal getSharePercent() { return sharePercent; }

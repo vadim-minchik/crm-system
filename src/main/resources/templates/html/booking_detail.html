@@ -33,6 +33,7 @@
   <div th:if="${param.error}" class="alert alert-danger alert-dismissible fade show" role="alert">
     <i class="bi bi-exclamation-triangle-fill me-2"></i><strong>Ошибка: </strong>
     <span th:if="${param.error[0] == 'not_found'}">Бронь не найдена.</span>
+    <span th:if="${param.error[0] == 'stale_data'}">Данные уже изменены другим пользователем. Обновите страницу и повторите действие.</span>
     <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
   </div>
 
@@ -53,6 +54,7 @@
           </a>
           <form th:action="@{/rentals/booking/delete}" method="post" class="d-inline mb-0" onsubmit="return confirm('Удалить бронь? Оборудование снова станет доступным.');">
             <input type="hidden" name="id" th:value="${booking.id}">
+            <input type="hidden" name="version" th:value="${booking.version}">
             <button type="submit" class="btn btn-outline-danger">
               <i class="bi bi-trash me-1"></i> Удалить бронь
             </button>

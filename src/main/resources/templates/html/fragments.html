@@ -72,6 +72,10 @@
 			</button>
 		</form>
 	</div>
+	<script th:inline="javascript">
+		window.__CRM_DATA_REVISION__ = /*[[${dataRevision}]]*/ 0;
+	</script>
+	<script defer th:src="@{/js/crm-data-sync.js}"></script>
 	</div>
 
 </body>

@@ -11,6 +11,10 @@ public class Client {
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long id;
 
+	@Version
+	@Column(nullable = false)
+	private Long version;
+
 	@Column(nullable = false)
 	private String surname;
 
@@ -86,6 +90,9 @@ public class Client {
 
 	public Long getId() { return id; }
 	public void setId(Long id) { this.id = id; }
+
+	public Long getVersion() { return version; }
+	public void setVersion(Long version) { this.version = version; }
 
 	public String getSurname() { return surname; }
 	public void setSurname(String surname) { this.surname = surname; }

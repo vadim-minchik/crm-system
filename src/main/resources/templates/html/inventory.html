@@ -72,6 +72,7 @@
     <span th:if="${param.error[0] == 'name_exists'}">Раздел с таким названием уже существует.</span>
     <span th:if="${param.error[0] == 'in_use'}">Нельзя удалить: оборудование в прокате или в брони.</span>
     <span th:if="${param.error[0] == 'not_found'}">Запись не найдена.</span>
+    <span th:if="${param.error[0] == 'stale_data'}">Данные уже изменены другим пользователем. Обновите страницу и повторите действие.</span>
     <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
   </div>
   <div th:if="${param.success}" class="alert alert-success alert-dismissible fade show" role="alert">
@@ -108,12 +109,12 @@
         </a>
         <div class="card-actions">
           <button type="button" class="action-btn"
-                  th:data-id="${pc.id}" th:data-name="${pc.name}" th:data-desc="${pc.description}"
+                  th:data-id="${pc.id}" th:data-version="${pc.version}" th:data-name="${pc.name}" th:data-desc="${pc.description}"
                   onclick="openEditPC(this)" title="Редактировать">
             <i class="bi bi-pencil"></i>
           </button>
           <button th:if="${!precategoryIdsLocked.contains(pc.id)}" type="button" class="action-btn danger"
-                  th:data-id="${pc.id}" th:data-name="${pc.name}"
+                  th:data-id="${pc.id}" th:data-version="${pc.version}" th:data-name="${pc.name}"
                   th:data-cats="${categoriesCount[pc.id]}" th:data-units="${unitsCount[pc.id]}"
                   onclick="openDeletePC(this)" title="Удалить">
             <i class="bi bi-trash"></i>
@@ -231,6 +232,7 @@
       <div class="modal-footer">
         <form th:action="@{/inventory/precategory/delete}" method="post" style="width:100%; display:flex; gap:8px;">
           <input type="hidden" name="id" id="del-pc-id">
+          <input type="hidden" name="version" id="del-pc-version">
           <button type="button" class="btn btn-outline-secondary flex-fill" data-bs-dismiss="modal">Отмена</button>
           <button type="submit" class="btn btn-danger flex-fill">
             <i class="bi bi-trash me-1"></i> Удалить всё
@@ -251,6 +253,7 @@
   }
   function openDeletePC(btn) {
     document.getElementById('del-pc-id').value          = btn.dataset.id;
+    document.getElementById('del-pc-version').value     = btn.dataset.version || '';
     document.getElementById('del-pc-name').textContent  = btn.dataset.name;
     document.getElementById('del-pc-cats').textContent  = btn.dataset.cats;
     document.getElementById('del-pc-units').textContent = btn.dataset.units;

@@ -58,6 +58,7 @@
     <span th:if="${param.error[0] == 'owners_mismatch'}">Несовпадение списков имён и процентов.</span>
     <span th:if="${param.error[0] == 'owners_percent_invalid'}">Проверьте проценты: число от 0 до 100 для каждого владельца.</span>
     <span th:if="${param.error[0] == 'owners_percent_sum'}">Сумма долей от сдачи должна быть 100% (допуск ±0,02).</span>
+    <span th:if="${param.error[0] == 'stale_data'}">Данные уже изменены другим пользователем. Обновите страницу и повторите действие.</span>
     <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
   </div>
   <div th:if="${param.success}" class="alert alert-success alert-dismissible fade show" role="alert">
@@ -117,6 +118,7 @@
               </a>
               <button type="button" class="btn-icon"
                       th:data-id="${u.id}"
+                      th:data-version="${u.version}"
                       th:data-point-id="${u.point != null ? u.point.id : firstPointId}"
                       th:data-serial="${u.serialNumber}"
                       th:data-price-first-day="${u.priceFirstDay}"
@@ -135,6 +137,7 @@
               <button th:if="${u.status.name() == 'FREE' and !equipmentIdsWithBooking.contains(u.id)}"
                       type="button" class="btn-icon text-danger"
                       th:data-id="${u.id}"
+                      th:data-version="${u.version}"
                       th:data-serial="${u.serialNumber}"
                       onclick="openDeleteUnit(this)"
                       title="Удалить">
@@ -291,6 +294,7 @@
       </div>
       <div class="modal-body">
         <input type="hidden" name="id" id="edit-unit-id">
+        <input type="hidden" name="version" id="edit-unit-version">
         <div class="row g-3">
           <div class="col-12">
             <label class="form-label fw-semibold">Точка (локация) *</label>
@@ -389,6 +393,7 @@
 
 <form id="deleteUnitForm" th:action="@{/inventory/delete}" method="post" style="display:none;">
   <input type="hidden" name="id" id="delete-unit-id">
+  <input type="hidden" name="version" id="delete-unit-version">
 </form>
 
 <div class="modal fade" id="modalDeleteUnit" tabindex="-1">
@@ -468,6 +473,7 @@
   }
   function openEditModal(btn) {
     document.getElementById('edit-unit-id').value = btn.getAttribute('data-id');
+    document.getElementById('edit-unit-version').value = btn.getAttribute('data-version') || '';
     var pid = btn.getAttribute('data-point-id');
     var ptSel = document.getElementById('edit-unit-point');
     if (ptSel && pid) ptSel.value = pid;
@@ -487,6 +493,7 @@
 
   function openDeleteUnit(btn) {
     document.getElementById('delete-unit-id').value = btn.getAttribute('data-id');
+    document.getElementById('delete-unit-version').value = btn.getAttribute('data-version') || '';
     document.getElementById('del-unit-serial').textContent = btn.getAttribute('data-serial');
     new bootstrap.Modal(document.getElementById('modalDeleteUnit')).show();
   }
@@ -568,7 +575,7 @@
         ' data-owners-json="' + oj.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;') + '"' +
         ' onclick="openEditModal(this)" title="Редактировать"><i class="bi bi-pencil"></i></button>';
       if (canDelete) {
-        actions += '<button type="button" class="btn-icon text-danger" data-id="' + u.id + '" data-serial="' + (u.serialNumber || '') + '" onclick="openDeleteUnit(this)" title="Удалить"><i class="bi bi-trash"></i></button>';
+        actions += '<button type="button" class="btn-icon text-danger" data-id="' + u.id + '" data-version="' + (u.version != null ? u.version : '') + '" data-serial="' + (u.serialNumber || '') + '" onclick="openDeleteUnit(this)" title="Удалить"><i class="bi bi-trash"></i></button>';
       } else {
         actions += '<span class="btn-icon text-muted" style="cursor:default;" title="Нельзя удалить: в прокате или в брони"><i class="bi bi-lock"></i></span>';
       }

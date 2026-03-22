@@ -22,6 +22,7 @@ import com.studio.crm_system.service.BookingService;
 import com.studio.crm_system.service.OwnerShareService;
 import com.studio.crm_system.service.RentalService;
 import com.studio.crm_system.enums.EquipmentStatus;
+import com.studio.crm_system.web.OptimisticLockSupport;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -288,10 +289,12 @@ public class EquipmentController {
 
 	@PostMapping("/precategory/edit")
 	public String editPreCategory(@RequestParam Long id,
+	                               @RequestParam Long version,
 	                               @RequestParam String name,
 	                               @RequestParam(required = false) String description) {
 		PreCategory pc = preCategoryRepository.findById(id).orElse(null);
 		if (pc == null) return "redirect:/inventory?error=not_found";
+		if (OptimisticLockSupport.isStale(version, pc.getVersion())) return "redirect:/inventory?error=stale_data";
 		if (name == null || name.trim().isEmpty())
 			return "redirect:/inventory?error=name_required";
 		pc.setName(name.trim());
@@ -301,9 +304,10 @@ public class EquipmentController {
 	}
 
 	@PostMapping("/precategory/delete")
-	public String deletePreCategory(@RequestParam Long id) {
+	public String deletePreCategory(@RequestParam Long id, @RequestParam Long version) {
 		PreCategory pc = preCategoryRepository.findById(id).orElse(null);
 		if (pc == null) return "redirect:/inventory?success=precategory_deleted";
+		if (OptimisticLockSupport.isStale(version, pc.getVersion())) return "redirect:/inventory?error=stale_data";
 
 		if (hasAnyBusyInPreCategory(pc))
 			return "redirect:/inventory?error=in_use";
@@ -394,10 +398,12 @@ public class EquipmentController {
 
 	@PostMapping("/category/edit")
 	public String editCategory(@RequestParam Long id,
+	                           @RequestParam Long version,
 	                           @RequestParam String name,
 	                           @RequestParam(required = false) String description) {
 		Category cat = categoryRepository.findById(id).orElse(null);
 		if (cat == null) return "redirect:/inventory?error=not_found";
+		if (OptimisticLockSupport.isStale(version, cat.getVersion())) return "redirect:/inventory?error=stale_data";
 		if (name == null || name.trim().isEmpty())
 			return "redirect:/inventory/category/" + id + "?error=name_required";
 
@@ -408,9 +414,10 @@ public class EquipmentController {
 	}
 
 	@PostMapping("/category/delete")
-	public String deleteCategory(@RequestParam Long id) {
+	public String deleteCategory(@RequestParam Long id, @RequestParam Long version) {
 		Category cat = categoryRepository.findById(id).orElse(null);
 		if (cat == null) return "redirect:/inventory?success=category_deleted";
+		if (OptimisticLockSupport.isStale(version, cat.getVersion())) return "redirect:/inventory?error=stale_data";
 
 		Long pcId = cat.getPreCategory().getId();
 		if (categoryRepository.countByParentCategoryAndIsDeletedFalse(cat) > 0)
@@ -510,10 +517,12 @@ public class EquipmentController {
 
 	@PostMapping("/model/edit")
 	public String editModel(@RequestParam Long id,
+	                        @RequestParam Long version,
 	                        @RequestParam String name,
 	                        @RequestParam(required = false) String description) {
 		ToolName toolName = toolNameRepository.findById(id).orElse(null);
 		if (toolName == null) return "redirect:/inventory?error=not_found";
+		if (OptimisticLockSupport.isStale(version, toolName.getVersion())) return "redirect:/inventory?error=stale_data";
 
 		Long categoryId = toolName.getCategory().getId();
 		if (name == null || name.trim().isEmpty())
@@ -526,9 +535,10 @@ public class EquipmentController {
 	}
 
 	@PostMapping("/model/delete")
-	public String deleteModel(@RequestParam Long id) {
+	public String deleteModel(@RequestParam Long id, @RequestParam Long version) {
 		ToolName toolName = toolNameRepository.findById(id).orElse(null);
 		if (toolName == null) return "redirect:/inventory?error=not_found";
+		if (OptimisticLockSupport.isStale(version, toolName.getVersion())) return "redirect:/inventory?error=stale_data";
 
 		Long categoryId = toolName.getCategory().getId();
 		List<Equipment> modelUnits = equipmentRepository.findByToolNameAndIsDeletedFalse(toolName);
@@ -670,6 +680,7 @@ public class EquipmentController {
 			dto.setPointName(u.getPoint() != null ? u.getPoint().getName() : null);
 			dto.setOwnersSummary(ownersSummaryLine(u));
 			dto.setOwnersJson(ownersToJson(u));
+			dto.setVersion(u.getVersion());
 			rows.add(dto);
 		}
 		result.put("content", rows);
@@ -756,6 +767,7 @@ public class EquipmentController {
 
 	@PostMapping("/edit")
 	public String editUnit(@RequestParam Long id,
+	                       @RequestParam Long version,
 	                       @RequestParam(value = "pointId", required = false) Long pointId,
 	                       @RequestParam String serialNumber,
 	                       @RequestParam BigDecimal priceFirstDay,
@@ -773,6 +785,10 @@ public class EquipmentController {
 
 		Equipment eq = equipmentRepository.findByIdAndIsDeletedFalse(id).orElse(null);
 		if (eq == null) return "redirect:/inventory?error=not_found";
+		if (OptimisticLockSupport.isStale(version, eq.getVersion())) {
+			Long tid = eq.getToolName() != null ? eq.getToolName().getId() : null;
+			return tid != null ? "redirect:/inventory/" + tid + "?error=stale_data" : "redirect:/inventory?error=stale_data";
+		}
 
 		if (pointId == null)
 			return "redirect:/inventory/" + eq.getToolName().getId() + "?error=point_required";
@@ -805,9 +821,13 @@ public class EquipmentController {
 	}
 
 	@PostMapping("/delete")
-	public String deleteUnit(@RequestParam Long id) {
+	public String deleteUnit(@RequestParam Long id, @RequestParam Long version) {
 		Equipment eq = equipmentRepository.findByIdAndIsDeletedFalse(id).orElse(null);
 		if (eq == null) return "redirect:/inventory?error=not_found";
+		if (OptimisticLockSupport.isStale(version, eq.getVersion())) {
+			Long tid = eq.getToolName() != null ? eq.getToolName().getId() : null;
+			return tid != null ? "redirect:/inventory/" + tid + "?error=stale_data" : "redirect:/inventory?error=stale_data";
+		}
 
 		Long toolNameId = eq.getToolName().getId();
 		if (eq.getStatus() != EquipmentStatus.FREE)

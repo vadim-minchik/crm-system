@@ -3,6 +3,7 @@ package com.studio.crm_system.controller;
 import com.studio.crm_system.entity.User;
 import com.studio.crm_system.repository.UserRepository;
 import com.studio.crm_system.service.ExpenseService;
+import com.studio.crm_system.web.OptimisticLockSupport;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.format.annotation.DateTimeFormat.ISO;
@@ -54,6 +55,7 @@ public class ExpenseController {
 	@PostMapping("/edit")
 	public String edit(
 			@RequestParam Long id,
+			@RequestParam Long version,
 			@RequestParam @DateTimeFormat(iso = ISO.DATE) LocalDate expenseDate,
 			@RequestParam BigDecimal amount,
 			@RequestParam String description,
@@ -65,15 +67,24 @@ public class ExpenseController {
 		if (description == null || description.isBlank())
 			return "redirect:/statistics?tab=expenses&error=description_required#tabFullExpenses";
 
-		if (!expenseService.update(id, expenseDate, amount, description, category))
+		var opt = expenseService.findById(id);
+		if (opt.isEmpty())
 			return "redirect:/statistics?tab=expenses&error=not_found#tabFullExpenses";
+		if (OptimisticLockSupport.isStale(version, opt.get().getVersion()))
+			return "redirect:/statistics?tab=expenses&error=stale_data#tabFullExpenses";
+		expenseService.applyUpdate(opt.get(), expenseDate, amount, description, category);
 		return "redirect:/statistics?tab=expenses&success=expense_updated#tabFullExpenses";
 	}
 
 	@PostMapping("/delete")
-	public String delete(@RequestParam Long id) {
+	public String delete(@RequestParam Long id, @RequestParam Long version) {
 		if (getCurrentUser() == null) return "redirect:/login";
-		expenseService.delete(id);
+		var opt = expenseService.findById(id);
+		if (opt.isEmpty())
+			return "redirect:/statistics?tab=expenses&error=not_found#tabFullExpenses";
+		if (OptimisticLockSupport.isStale(version, opt.get().getVersion()))
+			return "redirect:/statistics?tab=expenses&error=stale_data#tabFullExpenses";
+		expenseService.applySoftDelete(opt.get());
 		return "redirect:/statistics?tab=expenses&success=expense_deleted#tabFullExpenses";
 	}
 }

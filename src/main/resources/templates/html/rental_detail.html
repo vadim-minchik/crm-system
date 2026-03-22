@@ -37,6 +37,7 @@
     <span th:if="${param.error[0] == 'date_to_required'}">Укажите дату и время окончания.</span>
     <span th:if="${param.error[0] == 'date_to_before_from'}">Окончание не может быть раньше начала.</span>
     <span th:if="${param.error[0] == 'not_awaiting_delivery'}">Прокат не в статусе «ожидает доставки».</span>
+    <span th:if="${param.error[0] == 'stale_data'}">Данные уже изменены другим пользователем. Обновите страницу и повторите действие.</span>
     <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
   </div>
   <div th:if="${param.success}" class="alert alert-success alert-dismissible fade show" role="alert">
@@ -75,6 +76,7 @@
             </button>
             <form th:if="${rental.status.name() == 'AWAITING_DELIVERY'}" th:action="@{/rentals/delivered}" method="post" class="d-inline mb-0 me-1">
               <input type="hidden" name="id" th:value="${rental.id}">
+              <input type="hidden" name="version" th:value="${rental.version}">
               <input type="hidden" name="redirectTo" value="detail">
               <button type="submit" class="btn btn-success">
                 <i class="bi bi-truck me-1"></i> Доставлено — начать прокат
@@ -82,12 +84,14 @@
             </form>
             <form th:if="${rental.status.name() == 'SOON_DEBTOR' || rental.status.name() == 'DEBTOR'}" th:action="@{/rentals/complete}" method="post" class="d-inline mb-0">
               <input type="hidden" name="id" th:value="${rental.id}">
+              <input type="hidden" name="version" th:value="${rental.version}">
               <button type="submit" class="btn btn-success">
                 <i class="bi bi-check-circle me-1"></i> Завершить прокат
               </button>
             </form>
             <form th:if="${rental.status.name() == 'ACTIVE' || rental.status.name() == 'AWAITING_DELIVERY'}" th:action="@{/rentals/cancel}" method="post" class="d-inline mb-0" onsubmit="return confirm('Отменить прокат? Оборудование станет свободным.');">
               <input type="hidden" name="id" th:value="${rental.id}">
+              <input type="hidden" name="version" th:value="${rental.version}">
               <button type="submit" class="btn btn-outline-secondary">
                 <i class="bi bi-x-circle me-1"></i> Отменить прокат
               </button>
@@ -205,6 +209,7 @@
       </div>
       <div class="modal-body">
         <input type="hidden" name="id" th:value="${rental.id}">
+        <input type="hidden" name="version" th:value="${rental.version}">
         <div class="row g-3">
           <div class="col-12">
             <label class="form-label fw-semibold">С какого числа и времени *</label>

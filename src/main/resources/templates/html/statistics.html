@@ -236,6 +236,7 @@
       <span th:if="${param.error[0] == 'owner_not_found'}">Строка владельца не найдена.</span>
       <span th:if="${param.error[0] == 'owner_required'}">Не выбран владелец.</span>
       <span th:if="${param.error[0] == 'amount_exceeds_balance'}">Сумма больше, чем «к выплате».</span>
+      <span th:if="${param.error[0] == 'stale_data'}">Данные уже изменены другим пользователем. Обновите страницу и повторите действие.</span>
       <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     </div>
   </div>
@@ -254,6 +255,7 @@
       <span th:if="${param.error[0] == 'description_required'}">Укажите описание.</span>
       <span th:if="${param.error[0] == 'not_found'}">Расход не найден.</span>
       <span th:if="${param.error[0] == 'recurring_validation'}" th:text="${recurringValidationError != null ? recurringValidationError : 'Проверьте данные повторяющегося расхода.'}">Ошибка валидации.</span>
+      <span th:if="${param.error[0] == 'stale_data'}">Данные уже изменены другим пользователем. Обновите страницу и повторите действие.</span>
       <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     </div>
   </div>
@@ -351,6 +353,7 @@
                   <button type="button" class="btn btn-sm btn-outline-primary btn-owner-payout"
                           th:if="${row.toPay != null and row.toPay.compareTo(T(java.math.BigDecimal).ZERO) > 0}"
                           th:data-owner-id="${row.equipmentOwnerId}"
+                          th:data-owner-version="${row.equipmentOwnerVersion}"
                           th:data-max="${row.toPay}"
                           th:data-label="${row.ownerName + ' / ' + row.serialNumber}"
                           data-bs-toggle="modal" data-bs-target="#modalOwnerPayout">Выплатить</button>
@@ -397,10 +400,11 @@
                 <td th:text="${ex.category != null ? ex.category : '—'}">—</td>
                 <td th:text="${#numbers.formatDecimal(ex.amount, 1, 2)}" th:attr="data-num=${ex.amount != null ? ex.amount.doubleValue() : 0}">—</td>
                 <td>
-                  <button type="button" class="btn btn-sm btn-outline-secondary me-1 btn-expense-edit" data-bs-toggle="modal" data-bs-target="#modalExpenseEdit" th:data-id="${ex.id}" th:data-date="${#temporals.format(ex.expenseDate, 'yyyy-MM-dd')}" th:data-amount="${ex.amount}" th:data-description="${ex.description}" th:data-category="${ex.category != null ? ex.category : ''}">Изменить</button>
+                  <button type="button" class="btn btn-sm btn-outline-secondary me-1 btn-expense-edit" data-bs-toggle="modal" data-bs-target="#modalExpenseEdit" th:data-id="${ex.id}" th:data-version="${ex.version}" th:data-date="${#temporals.format(ex.expenseDate, 'yyyy-MM-dd')}" th:data-amount="${ex.amount}" th:data-description="${ex.description}" th:data-category="${ex.category != null ? ex.category : ''}">Изменить</button>
                   <form th:action="@{/statistics/expenses/delete}" method="post" class="d-inline" onsubmit="return confirm('Удалить этот расход?');">
                     <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
                     <input type="hidden" name="id" th:value="${ex.id}">
+                    <input type="hidden" name="version" th:value="${ex.version}">
                     <button type="submit" class="btn btn-sm btn-outline-danger">Удалить</button>
                   </form>
                 </td>
@@ -428,10 +432,11 @@
                 <td th:text="${#temporals.format(rec.endDate, 'dd.MM.yyyy')}">—</td>
                 <td th:text="${rec.periodType != null ? rec.periodType.label : '—'}">—</td>
                 <td>
-                  <button type="button" class="btn btn-sm btn-outline-secondary me-1 btn-recurring-edit" data-bs-toggle="modal" data-bs-target="#modalRecurringEdit" th:data-id="${rec.id}" th:data-amount="${rec.amount}" th:data-description="${rec.description}" th:data-category="${rec.category != null ? rec.category : ''}" th:data-start="${#temporals.format(rec.startDate, 'yyyy-MM-dd')}" th:data-end="${#temporals.format(rec.endDate, 'yyyy-MM-dd')}" th:data-period="${rec.periodType != null ? rec.periodType.name() : 'MONTHLY'}">Изменить</button>
+                  <button type="button" class="btn btn-sm btn-outline-secondary me-1 btn-recurring-edit" data-bs-toggle="modal" data-bs-target="#modalRecurringEdit" th:data-id="${rec.id}" th:data-version="${rec.version}" th:data-amount="${rec.amount}" th:data-description="${rec.description}" th:data-category="${rec.category != null ? rec.category : ''}" th:data-start="${#temporals.format(rec.startDate, 'yyyy-MM-dd')}" th:data-end="${#temporals.format(rec.endDate, 'yyyy-MM-dd')}" th:data-period="${rec.periodType != null ? rec.periodType.name() : 'MONTHLY'}">Изменить</button>
                   <form th:action="@{/statistics/expenses/recurring/delete}" method="post" class="d-inline" onsubmit="return confirm('Удалить этот шаблон? Уже созданные расходы останутся в списке.');">
                     <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
                     <input type="hidden" name="id" th:value="${rec.id}">
+                    <input type="hidden" name="version" th:value="${rec.version}">
                     <button type="submit" class="btn btn-sm btn-outline-danger">Удалить</button>
                   </form>
                 </td>
@@ -465,6 +470,7 @@
             <form id="formExpenseEdit" th:action="@{/statistics/expenses/edit}" method="post">
               <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
               <input type="hidden" name="id" id="editExpenseId">
+              <input type="hidden" name="version" id="editExpenseVersion">
               <div class="modal-body">
                 <div class="mb-2"><label class="form-label">Дата *</label><input type="date" name="expenseDate" id="editExpenseDate" class="form-control" required></div>
                 <div class="mb-2"><label class="form-label">Сумма, Br *</label><input type="number" name="amount" id="editExpenseAmount" class="form-control" step="0.01" min="0.01" required></div>
@@ -509,6 +515,7 @@
             <form id="formRecurringEdit" th:action="@{/statistics/expenses/recurring/edit}" method="post">
               <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
               <input type="hidden" name="id" id="editRecurringId">
+              <input type="hidden" name="version" id="editRecurringVersion">
               <div class="modal-body">
                 <div class="mb-2"><label class="form-label">Сумма, Br *</label><input type="number" name="amount" id="editRecurringAmount" class="form-control" step="0.01" min="0.01" required></div>
                 <div class="mb-2"><label class="form-label">Описание *</label><input type="text" name="description" id="editRecurringDescription" class="form-control" required maxlength="500"></div>
@@ -918,6 +925,7 @@
       var btn = e.relatedTarget;
       if (!btn || !btn.classList.contains('btn-expense-edit')) return;
       document.getElementById('editExpenseId').value = btn.getAttribute('data-id') || '';
+      document.getElementById('editExpenseVersion').value = btn.getAttribute('data-version') || '';
       document.getElementById('editExpenseDate').value = btn.getAttribute('data-date') || '';
       document.getElementById('editExpenseAmount').value = btn.getAttribute('data-amount') || '';
       document.getElementById('editExpenseDescription').value = btn.getAttribute('data-description') || '';
@@ -945,6 +953,7 @@
       var btn = e.relatedTarget;
       if (!btn || !btn.classList.contains('btn-recurring-edit')) return;
       document.getElementById('editRecurringId').value = btn.getAttribute('data-id') || '';
+      document.getElementById('editRecurringVersion').value = btn.getAttribute('data-version') || '';
       document.getElementById('editRecurringAmount').value = btn.getAttribute('data-amount') || '';
       document.getElementById('editRecurringDescription').value = btn.getAttribute('data-description') || '';
       document.getElementById('editRecurringCategory').value = btn.getAttribute('data-category') || '';

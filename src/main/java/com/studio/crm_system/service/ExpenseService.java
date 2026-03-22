@@ -88,22 +88,30 @@ public class ExpenseService {
 	public boolean update(Long id, LocalDate expenseDate, BigDecimal amount, String description, String category) {
 		Optional<Expense> opt = findById(id);
 		if (opt.isEmpty()) return false;
-		Expense e = opt.get();
+		applyUpdate(opt.get(), expenseDate, amount, description, category);
+		return true;
+	}
+
+	@Transactional
+	public void applyUpdate(Expense e, LocalDate expenseDate, BigDecimal amount, String description, String category) {
 		if (expenseDate != null) e.setExpenseDate(expenseDate);
 		if (amount != null) e.setAmount(amount);
 		if (description != null) e.setDescription(description.trim());
 		e.setCategory(category != null && !category.isBlank() ? category.trim() : null);
 		expenseRepository.save(e);
-		return true;
 	}
 
 	@Transactional
 	public boolean delete(Long id) {
 		Optional<Expense> opt = findById(id);
 		if (opt.isEmpty()) return false;
-		Expense e = opt.get();
+		applySoftDelete(opt.get());
+		return true;
+	}
+
+	@Transactional
+	public void applySoftDelete(Expense e) {
 		e.setIsDeleted(true);
 		expenseRepository.save(e);
-		return true;
 	}
 }

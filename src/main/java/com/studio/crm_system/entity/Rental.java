@@ -16,6 +16,10 @@ public class Rental {
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long id;
 
+	@Version
+	@Column(nullable = false)
+	private Long version;
+
 	@ManyToOne(fetch = FetchType.EAGER)
 	@JoinColumn(name = "client_id", nullable = false)
 	private Client client;
@@ -86,6 +90,9 @@ public class Rental {
 
 	public Long getId() { return id; }
 	public void setId(Long id) { this.id = id; }
+
+	public Long getVersion() { return version; }
+	public void setVersion(Long version) { this.version = version; }
 
 	public Client getClient() { return client; }
 	public void setClient(Client client) { this.client = client; }

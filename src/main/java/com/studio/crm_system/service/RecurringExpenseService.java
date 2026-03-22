@@ -72,7 +72,13 @@ public class RecurringExpenseService {
 			LocalDate startDate, LocalDate endDate, PeriodType periodType) {
 		Optional<RecurringExpense> opt = findById(id);
 		if (opt.isEmpty()) return false;
-		RecurringExpense r = opt.get();
+		applyUpdate(opt.get(), amount, description, category, startDate, endDate, periodType);
+		return true;
+	}
+
+	@Transactional
+	public void applyUpdate(RecurringExpense r, BigDecimal amount, String description, String category,
+			LocalDate startDate, LocalDate endDate, PeriodType periodType) {
 		if (amount != null) r.setAmount(amount);
 		if (description != null) r.setDescription(description.trim());
 		r.setCategory(category != null && !category.isBlank() ? category.trim() : null);
@@ -80,16 +86,19 @@ public class RecurringExpenseService {
 		if (endDate != null) r.setEndDate(endDate);
 		if (periodType != null) r.setPeriodType(periodType);
 		recurringExpenseRepository.save(r);
-		return true;
 	}
 
 	@Transactional
 	public boolean delete(Long id) {
 		Optional<RecurringExpense> opt = findById(id);
 		if (opt.isEmpty()) return false;
-		RecurringExpense r = opt.get();
+		applySoftDelete(opt.get());
+		return true;
+	}
+
+	@Transactional
+	public void applySoftDelete(RecurringExpense r) {
 		r.setIsDeleted(true);
 		recurringExpenseRepository.save(r);
-		return true;
 	}
 }

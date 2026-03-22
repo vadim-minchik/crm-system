@@ -204,6 +204,7 @@ public class RentalController {
 
 	@PostMapping("/edit")
 	public String edit(@RequestParam Long id,
+	                  @RequestParam Long version,
 	                  @RequestParam String dateFrom,
 	                  @RequestParam String dateTo,
 	                  @RequestParam(required = false) BigDecimal totalAmount,
@@ -217,30 +218,30 @@ public class RentalController {
 		LocalDateTime to = parseDateTime(dateTo);
 		BigDecimal addServ = parseDecimal(additionalServicesAmount);
 		BigDecimal delAmt = parseDecimal(deliveryAmount);
-		String error = rentalService.updateRental(id, from, to, totalAmount, addServ, additionalServicesDescription, delAmt, deliveryAddress, createdByStaffId, handedOverByStaffId);
+		String error = rentalService.updateRental(id, version, from, to, totalAmount, addServ, additionalServicesDescription, delAmt, deliveryAddress, createdByStaffId, handedOverByStaffId);
 		if (error != null) return "redirect:/rentals/" + id + "?error=" + error;
 		return "redirect:/rentals/" + id + "?success=rental_updated";
 	}
 
 	@PostMapping("/complete")
-	public String complete(@RequestParam Long id) {
-		String error = rentalService.completeRental(id);
+	public String complete(@RequestParam Long id, @RequestParam Long version) {
+		String error = rentalService.completeRental(id, version);
 		if (error != null) return "redirect:/rentals?error=" + error;
 		return "redirect:/rentals?success=rental_completed";
 	}
 
 	@PostMapping("/cancel")
-	public String cancel(@RequestParam Long id) {
-		String error = rentalService.cancelRental(id);
+	public String cancel(@RequestParam Long id, @RequestParam Long version) {
+		String error = rentalService.cancelRental(id, version);
 		if (error != null) return "redirect:/rentals?error=" + error;
 		return "redirect:/rentals?success=rental_cancelled";
 	}
 
 	@PostMapping("/delivered")
-	public String markDelivered(@RequestParam Long id, @RequestParam(required = false) String redirectTo) {
+	public String markDelivered(@RequestParam Long id, @RequestParam Long version, @RequestParam(required = false) String redirectTo) {
 		User current = getCurrentUser();
 		if (current == null) return "redirect:/login";
-		String error = rentalService.markDelivered(id, current.getId());
+		String error = rentalService.markDelivered(id, current.getId(), version);
 		if (error != null) {
 			if ("detail".equals(redirectTo)) return "redirect:/rentals/" + id + "?error=" + error;
 			return "redirect:/rentals?error=" + error;
@@ -285,8 +286,8 @@ public class RentalController {
 	}
 
 	@PostMapping("/booking/delete")
-	public String deleteBooking(@RequestParam Long id) {
-		String error = bookingService.delete(id);
+	public String deleteBooking(@RequestParam Long id, @RequestParam Long version) {
+		String error = bookingService.delete(id, version);
 		if (error != null) return "redirect:/rentals?error=" + error;
 		return "redirect:/rentals?success=booking_deleted";
 	}

@@ -6,6 +6,7 @@ import com.studio.crm_system.repository.DocumentTemplateRepository;
 import com.studio.crm_system.repository.UserRepository;
 import com.studio.crm_system.service.RentalDocumentService;
 import com.studio.crm_system.service.TemplateStorageService;
+import com.studio.crm_system.web.OptimisticLockSupport;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -139,11 +140,13 @@ public class DocumentController {
 	}
 
 	@PostMapping("/{id}/delete")
-	public String delete(@PathVariable Long id) {
+	public String delete(@PathVariable Long id, @RequestParam Long version) {
 		if (getCurrentUser() == null) return "redirect:/login";
 
 		DocumentTemplate template = documentTemplateRepository.findById(id).orElse(null);
 		if (template == null) return "redirect:/documents?error=not_found";
+		if (OptimisticLockSupport.isStale(version, template.getVersion()))
+			return "redirect:/documents?error=stale_data";
 
 		if (template.getFileUrl() != null && !template.getFileUrl().isBlank()) {
 			storageService.deleteByUrl(template.getFileUrl());

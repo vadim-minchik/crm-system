@@ -63,6 +63,7 @@
     <span th:if="${param.error[0] == 'invalid_score'}">Оценка должна быть от 1 до 10.</span>
     <span th:if="${param.error[0] == 'review_not_found'}">Отзыв не найден.</span>
     <span th:if="${param.error[0] == 'review_delete_denied'}">Удалить можно только свой отзыв.</span>
+    <span th:if="${param.error[0] == 'stale_data'}">Данные уже изменены другим пользователем. Обновите страницу и повторите действие.</span>
     <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
   </div>
   <div th:if="${param.success}" class="alert alert-success alert-dismissible fade show">
@@ -95,6 +96,7 @@
               <span th:text="${client.rating + ' / 10'}">10 / 10</span>
             </span>
             <form th:action="@{/clients/{id}/toggle-blacklist(id=${client.id})}" method="post" class="d-inline">
+              <input type="hidden" name="version" th:value="${client.version}">
               <button type="submit" class="btn btn-sm ms-2"
                       th:classappend="${client.blacklisted} ? 'btn-outline-secondary' : 'btn-outline-danger'">
                 <span th:if="${client.blacklisted}"><i class="bi bi-slash-circle me-1"></i>Убрать из ЧС</span>
@@ -292,6 +294,7 @@
             </button>
             <form th:action="@{/clients/{id}/delete-photo(id=${client.id})}" method="post"
                   onsubmit="return confirm('Удалить фото паспорта?')">
+              <input type="hidden" name="version" th:value="${client.version}">
               <button type="submit" class="btn btn-sm btn-outline-danger">
                 <i class="bi bi-trash"></i>
               </button>
@@ -300,6 +303,7 @@
           <div class="collapse mt-3" id="uploadForm">
             <form th:action="@{/clients/{id}/upload-photo(id=${client.id})}"
                   method="post" enctype="multipart/form-data">
+              <input type="hidden" name="version" th:value="${client.version}">
               <input type="file" name="photo" class="form-control form-control-sm mb-2"
                      accept="image/*" required>
               <button type="submit" class="btn btn-primary btn-sm w-100">
@@ -316,6 +320,7 @@
           </div>
           <form th:action="@{/clients/{id}/upload-photo(id=${client.id})}"
                 method="post" enctype="multipart/form-data">
+            <input type="hidden" name="version" th:value="${client.version}">
             <input type="file" name="photo" class="form-control form-control-sm mb-2"
                    accept="image/*" required>
             <button type="submit" class="btn btn-primary btn-sm w-100">

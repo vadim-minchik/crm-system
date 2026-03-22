@@ -15,6 +15,10 @@ public class OwnerPayout {
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long id;
 
+	@Version
+	@Column(nullable = false)
+	private Long version;
+
 	@ManyToOne(fetch = FetchType.EAGER, optional = false)
 	@JoinColumn(name = "equipment_id", nullable = false)
 	private Equipment equipment;
@@ -42,6 +46,9 @@ public class OwnerPayout {
 
 	public Long getId() { return id; }
 	public void setId(Long id) { this.id = id; }
+
+	public Long getVersion() { return version; }
+	public void setVersion(Long version) { this.version = version; }
 
 	public Equipment getEquipment() { return equipment; }
 	public void setEquipment(Equipment equipment) { this.equipment = equipment; }

@@ -45,15 +45,15 @@ public class PointController {
 	}
 
 	@PostMapping("/edit")
-	public String edit(@RequestParam Long id, @RequestParam String name, @RequestParam(required = false) String address) {
-		String error = pointService.update(id, name, address);
+	public String edit(@RequestParam Long id, @RequestParam Long version, @RequestParam String name, @RequestParam(required = false) String address) {
+		String error = pointService.update(id, version, name, address);
 		if (error != null) return "redirect:/points?error=" + error;
 		return "redirect:/points?success=point_updated";
 	}
 
 	@PostMapping("/delete")
-	public String delete(@RequestParam Long id) {
-		String error = pointService.softDelete(id);
+	public String delete(@RequestParam Long id, @RequestParam Long version) {
+		String error = pointService.softDelete(id, version);
 		if (error != null) return "redirect:/points?error=" + error;
 		return "redirect:/points?success=point_deleted";
 	}

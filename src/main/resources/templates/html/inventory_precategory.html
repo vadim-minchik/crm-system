@@ -77,6 +77,7 @@
     <span th:if="${param.error[0] == 'name_exists'}">Категория с таким названием уже существует в этом разделе.</span>
     <span th:if="${param.error[0] == 'in_use'}">Нельзя удалить: оборудование в прокате или в брони.</span>
     <span th:if="${param.error[0] == 'not_found'}">Запись не найдена.</span>
+    <span th:if="${param.error[0] == 'stale_data'}">Данные уже изменены другим пользователем. Обновите страницу и повторите действие.</span>
     <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
   </div>
   <div th:if="${param.success}" class="alert alert-success alert-dismissible fade show" role="alert">
@@ -116,7 +117,7 @@
             <i class="bi bi-pencil"></i>
           </button>
           <button th:if="${!categoryIdsLocked.contains(c.id)}" type="button" class="action-btn danger"
-                  th:data-id="${c.id}" th:data-name="${c.name}"
+                  th:data-id="${c.id}" th:data-version="${c.version}" th:data-name="${c.name}"
                   th:data-models="${modelsCount[c.id]}" th:data-units="${unitsCount[c.id]}"
                   onclick="openDeleteCat(this)" title="Удалить">
             <i class="bi bi-trash"></i>
@@ -184,6 +185,7 @@
       </div>
       <div class="modal-body">
         <input type="hidden" name="id" id="edit-cat-id">
+        <input type="hidden" name="version" id="edit-cat-version">
         <div class="mb-3">
           <label class="form-label fw-semibold">Название *</label>
           <input type="text" name="name" id="edit-cat-name" class="form-control" maxlength="60" required>
@@ -251,12 +253,14 @@
 <script>
   function openEditCat(btn) {
     document.getElementById('edit-cat-id').value   = btn.dataset.id;
+    document.getElementById('edit-cat-version').value = btn.dataset.version || '';
     document.getElementById('edit-cat-name').value = btn.dataset.name;
     document.getElementById('edit-cat-desc').value = btn.dataset.desc !== 'null' ? (btn.dataset.desc || '') : '';
     new bootstrap.Modal(document.getElementById('modalEditCat')).show();
   }
   function openDeleteCat(btn) {
     document.getElementById('del-cat-id').value           = btn.dataset.id;
+    document.getElementById('del-cat-version').value      = btn.dataset.version || '';
     document.getElementById('del-cat-name').textContent   = btn.dataset.name;
     document.getElementById('del-cat-models').textContent = btn.dataset.models;
     document.getElementById('del-cat-units').textContent  = btn.dataset.units;

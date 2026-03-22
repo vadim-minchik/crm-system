@@ -30,6 +30,7 @@ public class OwnerPayoutController {
 
 	@PostMapping("/payout")
 	public String recordPayout(@RequestParam Long equipmentOwnerId,
+	                           @RequestParam Long ownerVersion,
 	                           @RequestParam String amount,
 	                           @RequestParam(required = false) String note,
 	                           @RequestParam(required = false) String redirect) {
@@ -42,7 +43,7 @@ public class OwnerPayoutController {
 		} catch (Exception e) {
 			return redirectWithError(redirect, "invalid_amount");
 		}
-		String err = ownerShareService.recordPayout(equipmentOwnerId, amt, note, user);
+		String err = ownerShareService.recordPayout(equipmentOwnerId, ownerVersion, amt, note, user);
 		if (err != null)
 			return redirectWithError(redirect, err);
 		return "redirect:" + appendQueryParam(safeRedirect(redirect), "success", "payout_recorded");

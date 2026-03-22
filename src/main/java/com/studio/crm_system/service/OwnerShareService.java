@@ -11,6 +11,7 @@ import com.studio.crm_system.enums.RentalStatus;
 import com.studio.crm_system.repository.EquipmentOwnerRepository;
 import com.studio.crm_system.repository.OwnerPayoutRepository;
 import com.studio.crm_system.repository.RentalRepository;
+import com.studio.crm_system.web.OptimisticLockSupport;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -136,6 +137,7 @@ public class OwnerShareService {
 		row.setSerialNumber(eq.getSerialNumber());
 		row.setModelTitle(eq.getTitle());
 		row.setEquipmentOwnerId(o.getId());
+		row.setEquipmentOwnerVersion(o.getVersion());
 		row.setOwnerName(o.getOwnerName());
 		row.setSharePercent(o.getRentalSharePercent());
 		BigDecimal acc = accruedForEquipmentOwner(o);
@@ -159,12 +161,14 @@ public class OwnerShareService {
 	}
 
 	@Transactional
-	public String recordPayout(Long equipmentOwnerId, BigDecimal amount, String note, User recordedBy) {
+	public String recordPayout(Long equipmentOwnerId, Long expectedOwnerVersion, BigDecimal amount, String note, User recordedBy) {
 		if (equipmentOwnerId == null)
 			return "owner_required";
 		EquipmentOwner owner = equipmentOwnerRepository.findById(equipmentOwnerId).orElse(null);
 		if (owner == null)
 			return "owner_not_found";
+		if (OptimisticLockSupport.isStale(expectedOwnerVersion, owner.getVersion()))
+			return "stale_data";
 		if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0)
 			return "invalid_amount";
 		amount = amount.setScale(2, RoundingMode.HALF_UP);

@@ -8,6 +8,7 @@ import com.studio.crm_system.repository.UserRepository;
 import com.studio.crm_system.service.ClientReviewService;
 import com.studio.crm_system.enums.Role;
 import com.studio.crm_system.security.InputValidator;
+import com.studio.crm_system.web.OptimisticLockSupport;
 import com.studio.crm_system.service.FileStorageService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -202,6 +203,7 @@ public class ClientController {
 	@PostMapping("/edit")
 	public String editClient(
 			@RequestParam Long id,
+			@RequestParam Long version,
 			@RequestParam String surname,
 			@RequestParam String name,
 			@RequestParam String patronymic,
@@ -229,6 +231,10 @@ public class ClientController {
 
 		Client dbClient = clientRepository.findById(id).orElse(null);
 		if (dbClient == null) return "redirect:/clients?error=client_not_found";
+
+		if (OptimisticLockSupport.isStale(version, dbClient.getVersion())) {
+			return "redirect:/clients/" + id + "?error=stale_data";
+		}
 
 		if (user.getRole() == Role.WORKER && !user.getLogin().equals(dbClient.getCreatedBy())) {
 			return "redirect:/clients?error=access_denied";
@@ -310,12 +316,16 @@ public class ClientController {
 	}
 
 	@PostMapping("/{id}/toggle-blacklist")
-	public String toggleBlacklist(@PathVariable Long id) {
+	public String toggleBlacklist(@PathVariable Long id, @RequestParam Long version) {
 		User user = getCurrentUser();
 		if (user == null) return "redirect:/login";
 
 		Client client = clientRepository.findById(id).orElse(null);
 		if (client == null || client.getIsDeleted()) return "redirect:/clients?error=client_not_found";
+
+		if (OptimisticLockSupport.isStale(version, client.getVersion())) {
+			return "redirect:/clients/" + id + "?error=stale_data";
+		}
 
 		if (user.getRole() == Role.WORKER && !user.getLogin().equals(client.getCreatedBy())) {
 			return "redirect:/clients?error=access_denied";
@@ -369,12 +379,17 @@ public class ClientController {
 
 	@PostMapping("/{id}/upload-photo")
 	public String uploadPhoto(@PathVariable Long id,
+	                          @RequestParam Long version,
 	                          @RequestParam("photo") MultipartFile photo) {
 		User user = getCurrentUser();
 		if (user == null) return "redirect:/login";
 
 		Client client = clientRepository.findById(id).orElse(null);
 		if (client == null) return "redirect:/clients?error=client_not_found";
+
+		if (OptimisticLockSupport.isStale(version, client.getVersion())) {
+			return "redirect:/clients/" + id + "?error=stale_data";
+		}
 
 		if (photo.isEmpty()) return "redirect:/clients/" + id + "?error=no_file";
 
@@ -399,12 +414,16 @@ public class ClientController {
 	}
 
 	@PostMapping("/{id}/delete-photo")
-	public String deletePhoto(@PathVariable Long id) {
+	public String deletePhoto(@PathVariable Long id, @RequestParam Long version) {
 		User user = getCurrentUser();
 		if (user == null) return "redirect:/login";
 
 		Client client = clientRepository.findById(id).orElse(null);
 		if (client == null) return "redirect:/clients";
+
+		if (OptimisticLockSupport.isStale(version, client.getVersion())) {
+			return "redirect:/clients/" + id + "?error=stale_data";
+		}
 
 		if (client.getPassportPhotoUrl() != null) {
 			storageService.deleteByUrl(client.getPassportPhotoUrl());
@@ -416,12 +435,16 @@ public class ClientController {
 	}
 
 	@PostMapping("/delete")
-	public String deleteClient(@RequestParam Long id) {
+	public String deleteClient(@RequestParam Long id, @RequestParam Long version) {
 		User user = getCurrentUser();
 		if (user == null) return "redirect:/login";
 
 		Client dbClient = clientRepository.findById(id).orElse(null);
 		if (dbClient == null) return "redirect:/clients?error=client_not_found";
+
+		if (OptimisticLockSupport.isStale(version, dbClient.getVersion())) {
+			return "redirect:/clients?error=stale_data";
+		}
 
 		if (user.getRole() == Role.WORKER && !user.getLogin().equals(dbClient.getCreatedBy())) {
 			return "redirect:/clients?error=access_denied";

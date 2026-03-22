@@ -43,6 +43,7 @@
 			<span th:if="${param.error[0] == 'access_denied'}">Недостаточно прав для выполнения операции.</span>
 			<span th:if="${param.error[0] == 'point_required'}">Выберите точку (локацию).</span>
 			<span th:if="${param.error[0] == 'point_invalid'}">Указана неверная точка.</span>
+			<span th:if="${param.error[0] == 'stale_data'}">Данные уже изменены другим пользователем. Обновите страницу и повторите действие.</span>
 			<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
 		</div>
 
@@ -107,6 +108,7 @@
 										th:data-apt="${u.addressApartment}"
 										th:data-social="${u.socialNetwork}"
 										th:data-point-id="${u.point != null ? u.point.id : ''}"
+										th:data-version="${u.version}"
 										onclick="fillEdit(this)" data-bs-toggle="modal"
 										data-bs-target="#editModal">
 										<i class="bi bi-pencil"></i>
@@ -266,6 +268,7 @@
 			<form th:action="@{/staff/edit}" method="post"
 				class="modal-content">
 				<input type="hidden" name="id" id="e-id">
+				<input type="hidden" name="version" id="e-version">
 				<div class="modal-header">
 					<h5>Редактирование сотрудника</h5>
 					<button type="button" class="btn-close"
@@ -405,6 +408,7 @@
 	<script>
     function fillEdit(btn) {
         document.getElementById('e-id').value = btn.getAttribute('data-id') || '';
+        document.getElementById('e-version').value = btn.getAttribute('data-version') || '';
         document.getElementById('e-login').value = btn.getAttribute('data-login') || '';
         document.getElementById('e-name').value = btn.getAttribute('data-name') || '';
         document.getElementById('e-surname').value = btn.getAttribute('data-surname') || '';

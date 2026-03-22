@@ -5,6 +5,7 @@ import com.studio.crm_system.enums.PeriodType;
 import com.studio.crm_system.repository.UserRepository;
 import com.studio.crm_system.service.ExpenseService;
 import com.studio.crm_system.service.RecurringExpenseService;
+import com.studio.crm_system.web.OptimisticLockSupport;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.format.annotation.DateTimeFormat.ISO;
@@ -66,6 +67,7 @@ public class RecurringExpenseController {
 	@PostMapping("/edit")
 	public String edit(
 			@RequestParam Long id,
+			@RequestParam Long version,
 			@RequestParam BigDecimal amount,
 			@RequestParam String description,
 			@RequestParam(required = false) String category,
@@ -81,15 +83,24 @@ public class RecurringExpenseController {
 			return "redirect:/statistics?tab=expenses&error=recurring_validation#tabFullExpenses";
 		}
 
-		if (!recurringExpenseService.update(id, amount, description, category, startDate, endDate, periodType))
+		var opt = recurringExpenseService.findById(id);
+		if (opt.isEmpty())
 			return "redirect:/statistics?tab=expenses&error=not_found#tabFullExpenses";
+		if (OptimisticLockSupport.isStale(version, opt.get().getVersion()))
+			return "redirect:/statistics?tab=expenses&error=stale_data#tabFullExpenses";
+		recurringExpenseService.applyUpdate(opt.get(), amount, description, category, startDate, endDate, periodType);
 		return "redirect:/statistics?tab=expenses&success=recurring_updated#tabFullExpenses";
 	}
 
 	@PostMapping("/delete")
-	public String delete(@RequestParam Long id) {
+	public String delete(@RequestParam Long id, @RequestParam Long version) {
 		if (getCurrentUser() == null) return "redirect:/login";
-		recurringExpenseService.delete(id);
+		var opt = recurringExpenseService.findById(id);
+		if (opt.isEmpty())
+			return "redirect:/statistics?tab=expenses&error=not_found#tabFullExpenses";
+		if (OptimisticLockSupport.isStale(version, opt.get().getVersion()))
+			return "redirect:/statistics?tab=expenses&error=stale_data#tabFullExpenses";
+		recurringExpenseService.applySoftDelete(opt.get());
 		return "redirect:/statistics?tab=expenses&success=recurring_deleted#tabFullExpenses";
 	}
 }

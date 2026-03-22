@@ -18,6 +18,10 @@ public class Equipment {
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long id;
 
+	@Version
+	@Column(nullable = false)
+	private Long version;
+
 	@ManyToOne(fetch = FetchType.EAGER)
 	@JoinColumn(name = "tool_name_id", nullable = false)
 	private ToolName toolName;
@@ -82,6 +86,9 @@ public class Equipment {
 
 	public Long getId() { return id; }
 	public void setId(Long id) { this.id = id; }
+
+	public Long getVersion() { return version; }
+	public void setVersion(Long version) { this.version = version; }
 
 	public ToolName getToolName() { return toolName; }
 	public void setToolName(ToolName toolName) { this.toolName = toolName; }

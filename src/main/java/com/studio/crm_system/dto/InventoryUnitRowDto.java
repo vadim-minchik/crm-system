@@ -8,6 +8,7 @@ import java.math.BigDecimal;
 public class InventoryUnitRowDto {
 
 	private Long id;
+	private Long version;
 	private String serialNumber;
 	private Integer condition;
 	private BigDecimal priceFirstDay;
@@ -29,6 +30,8 @@ public class InventoryUnitRowDto {
 
 	public Long getId() { return id; }
 	public void setId(Long id) { this.id = id; }
+	public Long getVersion() { return version; }
+	public void setVersion(Long version) { this.version = version; }
 	public String getSerialNumber() { return serialNumber; }
 	public void setSerialNumber(String serialNumber) { this.serialNumber = serialNumber; }
 	public Integer getCondition() { return condition; }
