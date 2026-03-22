@@ -2,6 +2,7 @@
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
 <meta charset="UTF-8">
+<th:block th:replace="~{html/fragments :: viewport-meta}"></th:block>
 <title>Документы | STUDIO.CRM</title>
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
@@ -103,7 +104,7 @@
 		<div class="card-table">
 			<div class="table-responsive" style="max-height: min(70vh, 720px);">
 				<table class="table table-sm table-hover mb-0">
-					<thead class="table-light sticky-top">
+					<thead class="sticky-top">
 						<tr>
 							<th class="ps-4">Переменная</th>
 							<th>Описание</th>
@@ -121,7 +122,7 @@
 	</section>
 
 	<!-- В конце — всё вместе: как пользоваться -->
-	<section class="card-table p-4 bg-light rounded">
+	<section class="card-table p-4 rounded">
 		<h3 class="h6 mb-3"><i class="bi bi-link-45deg me-2"></i>Как это работает вместе</h3>
 		<ol class="mb-0 ps-3 small text-muted">
 			<li class="mb-2"><strong>Шаблоны</strong> — выше: загружаете .docx из Word. Переменные — в блоке «Все переменные для шаблонов» (все примеры с описанием).</li>
