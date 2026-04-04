@@ -112,6 +112,10 @@ public class User {
 	@JoinColumn(name = "point_id")
 	private Point point;
 
+	/** Коды разделов меню через запятую ({@link com.studio.crm_system.enums.NavSection}); пусто = по умолчанию для роли. */
+	@Column(name = "menu_sections", length = 500)
+	private String menuSections;
+
 	@Column(nullable = false)
 	private Boolean isDeleted = false;
 
@@ -138,6 +142,8 @@ public class User {
 	public void setCreatedBy(User createdBy) {this.createdBy = createdBy;}
 	public Point getPoint() {return point;}
 	public void setPoint(Point point) {this.point = point;}
+	public String getMenuSections() { return menuSections; }
+	public void setMenuSections(String menuSections) { this.menuSections = menuSections; }
 	public Long getId() {return id;}
 	public void setId(Long id) {this.id = id;}
 	public Long getVersion() { return version; }

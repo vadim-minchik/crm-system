@@ -56,6 +56,17 @@
 			<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
 		</div>
 
+		<div class="d-flex flex-wrap gap-2 align-items-center mb-3 staff-toolbar">
+			<div class="input-group staff-search-wrap flex-grow-1" style="min-width: 200px; max-width: 360px;">
+				<span class="input-group-text" aria-hidden="true"><i class="bi bi-search"></i></span>
+				<input type="search" id="staffSearchInput" class="form-control" placeholder="Поиск: ФИО, логин, email, телефон, точка…" autocomplete="off" aria-label="Поиск сотрудника">
+			</div>
+			<button type="button" class="btn btn-outline-secondary d-flex align-items-center" id="staffSortBtn" title="Сортировка по фамилии и имени (нажмите для А→Я или Я→А)">
+				<i class="bi bi-sort-down-alt" id="staffSortIcon"></i>
+				<span class="ms-1 d-none d-sm-inline" id="staffSortLabel">По ФИО</span>
+			</button>
+		</div>
+
 		<div class="card-table">
 			<div class="table-responsive">
 				<table class="table table-hover mb-0 staff-table">
@@ -71,7 +82,8 @@
 						</tr>
 					</thead>
 					<tbody id="tbody-staff">
-						<tr th:each="u : ${allUsers}">
+						<tr th:each="u : ${allUsers}"
+							th:attr="data-sort-key=${u.surname + ' ' + u.name + ' ' + (u.patronymic != null ? u.patronymic : '')}">
 							<td class="ps-4">
 								<div class="fw-bold" th:text="${u.surname + ' ' + u.name}">ФИО</div>
 								<small class="text-muted" th:text="${u.email}">email</small>
@@ -100,6 +112,7 @@
 										th:data-email="${u.email}" th:data-phone="${u.phoneNumber}"
 										th:data-trusted-phone="${u.trustedPersonPhone}"
 										th:data-role="${u.role}"
+										th:data-menu-sections="${menuEffectiveCsvByUserId[u.id]}"
 										th:data-pass-series="${u.passportSeries}" th:data-pass-num="${u.passportNumber}"
 										th:data-ident="${u.identificationNumber}"
 										th:data-pass-issue="${u.passportIssueDate != null ? #temporals.format(u.passportIssueDate, 'dd.MM.yyyy') : ''}"
@@ -196,6 +209,20 @@
 								<option value="" disabled selected>— выберите точку —</option>
 								<option th:each="p : ${points}" th:value="${p.id}" th:text="${p.name}">Точка</option>
 							</select>
+						</div>
+						<div class="col-12" th:if="${currentUserRole.name() != 'WORKER'}">
+							<label class="form-label">Видимые разделы меню</label>
+							<p class="text-muted small mb-2">Отметьте разделы бокового меню для этого сотрудника. Выдать можно только те разделы, которые доступны вам.</p>
+							<div class="row g-2">
+								<div class="col-md-4" th:each="s : ${editableMenuSections}">
+									<div class="form-check">
+										<input class="form-check-input add-menu-cb" type="checkbox" name="menuSection"
+											th:value="${s.code}" th:id="|add-menu-${s.code}|"
+											th:checked="${workerDefaultMenuCodes.contains(s.code)}">
+										<label class="form-check-label" th:for="|add-menu-${s.code}|" th:text="${s.titleRu}">Раздел</label>
+									</div>
+								</div>
+							</div>
 						</div>
 						<div class="col-12 mt-2">
 							<div class="fw-semibold text-uppercase text-muted small mb-2">
@@ -335,6 +362,19 @@
 								<option th:each="p : ${points}" th:value="${p.id}" th:text="${p.name}">Точка</option>
 							</select>
 						</div>
+						<div class="col-12" th:if="${currentUserRole.name() != 'WORKER'}">
+							<label class="form-label">Видимые разделы меню</label>
+							<p class="text-muted small mb-2">Сотрудник увидит в меню только отмеченные разделы (в пределах его роли и ваших прав).</p>
+							<div class="row g-2">
+								<div class="col-md-4" th:each="s : ${editableMenuSections}">
+									<div class="form-check">
+										<input class="form-check-input edit-menu-cb" type="checkbox" name="menuSection"
+											th:value="${s.code}" th:id="|edit-menu-${s.code}|">
+										<label class="form-check-label" th:for="|edit-menu-${s.code}|" th:text="${s.titleRu}">Раздел</label>
+									</div>
+								</div>
+							</div>
+						</div>
 						<div class="col-12 mt-2">
 							<div class="fw-semibold text-uppercase text-muted small mb-2">
 								<i class="bi bi-passport me-1"></i>Паспортные данные <span class="fw-normal">(не обязательно)</span>
@@ -406,6 +446,10 @@
 
 	<script
 		src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+	<script th:inline="javascript">
+		const CRM_MENU_DEFAULTS_WORKER = /*[[${workerDefaultMenuCodes}]]*/ [];
+		const CRM_MENU_DEFAULTS_ADMIN = /*[[${adminDefaultMenuCodes}]]*/ [];
+	</script>
 	<script>
     function fillEdit(btn) {
         document.getElementById('e-id').value = btn.getAttribute('data-id') || '';
@@ -432,7 +476,65 @@
         var pid = btn.getAttribute('data-point-id');
         var sel = document.getElementById('e-point-id');
         if (sel && pid) sel.value = pid;
+        var csv = btn.getAttribute('data-menu-sections') || '';
+        var codes = csv.split(',').map(function (c) { return c.trim(); }).filter(Boolean);
+        document.querySelectorAll('.edit-menu-cb').forEach(function (cb) {
+            cb.checked = codes.indexOf(cb.value) >= 0;
+        });
     }
+
+    function applyAddMenuDefaults(codes) {
+        document.querySelectorAll('.add-menu-cb').forEach(function (cb) {
+            cb.checked = codes.indexOf(cb.value) >= 0;
+        });
+    }
+    document.getElementById('addModal')?.addEventListener('show.bs.modal', function () {
+        var roleSel = this.querySelector('select[name="role"]');
+        var codes = (roleSel && roleSel.value === 'ADMIN') ? CRM_MENU_DEFAULTS_ADMIN : CRM_MENU_DEFAULTS_WORKER;
+        applyAddMenuDefaults(codes);
+    });
+    document.querySelector('#addModal select[name="role"]')?.addEventListener('change', function () {
+        applyAddMenuDefaults(this.value === 'ADMIN' ? CRM_MENU_DEFAULTS_ADMIN : CRM_MENU_DEFAULTS_WORKER);
+    });
+
+    (function initStaffTableFilterSort() {
+        var tbody = document.getElementById('tbody-staff');
+        var searchInput = document.getElementById('staffSearchInput');
+        var sortBtn = document.getElementById('staffSortBtn');
+        var sortIcon = document.getElementById('staffSortIcon');
+        var sortLabel = document.getElementById('staffSortLabel');
+        if (!tbody || !searchInput || !sortBtn) return;
+
+        var rows = Array.prototype.slice.call(tbody.querySelectorAll('tr'));
+        /** true = последняя сортировка по возрастанию (А→Я) */
+        var sortAsc = false;
+
+        function applySearch() {
+            var q = searchInput.value.trim().toLowerCase();
+            rows.forEach(function (tr) {
+                var show = !q || tr.innerText.toLowerCase().indexOf(q) !== -1;
+                tr.style.display = show ? '' : 'none';
+            });
+        }
+
+        searchInput.addEventListener('input', applySearch);
+
+        sortBtn.addEventListener('click', function () {
+            sortAsc = !sortAsc;
+            var sorted = rows.slice().sort(function (a, b) {
+                var ka = (a.getAttribute('data-sort-key') || '').toLowerCase();
+                var kb = (b.getAttribute('data-sort-key') || '').toLowerCase();
+                var c = ka.localeCompare(kb, 'ru');
+                return sortAsc ? c : -c;
+            });
+            sorted.forEach(function (tr) { tbody.appendChild(tr); });
+            if (sortIcon) {
+                sortIcon.className = 'bi ' + (sortAsc ? 'bi-sort-alpha-down' : 'bi-sort-alpha-up');
+            }
+            if (sortLabel) sortLabel.textContent = sortAsc ? 'А → Я' : 'Я → А';
+            applySearch();
+        });
+    })();
 
     // Валидация кириллицы для ФИО (авто-капитализация первой буквы)
     function validateCyrillic(input) {

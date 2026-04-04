@@ -12,7 +12,7 @@
 </head>
 <body>
 
-	<div th:fragment="sidebar(activeTab)" class="crm-shell">
+	<div th:fragment="sidebar(activeTab)" class="crm-shell" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 		<div class="sidebar-backdrop" id="sidebarBackdrop" aria-hidden="true"></div>
 
 		<aside class="sidebar" id="appSidebar" aria-label="Главное меню">
@@ -23,45 +23,42 @@
 		</div>
 
 		<nav class="sidebar-nav">
-			<a href="/staff" class="nav-link" th:classappend="${activeTab == 'staff' ? 'active' : ''}">
+			<a href="/staff" class="nav-link" sec:authorize="hasAuthority('MENU_STAFF')" th:classappend="${activeTab == 'staff' ? 'active' : ''}">
 				<i class="bi bi-person-badge"></i>
 				<span>Штат сотрудников</span>
 			</a>
 
-			<a href="/callbacks" class="nav-link" th:classappend="${activeTab == 'callbacks' ? 'active' : ''}">
+			<a href="/callbacks" class="nav-link" sec:authorize="hasAuthority('MENU_CALLBACKS')" th:classappend="${activeTab == 'callbacks' ? 'active' : ''}">
 				<i class="bi bi-telephone-forward"></i>
 				<span>Перезвон</span>
 			</a>
 			
-			<a href="/clients" class="nav-link" th:classappend="${activeTab == 'clients' ? 'active' : ''}">
+			<a href="/clients" class="nav-link" sec:authorize="hasAuthority('MENU_CLIENTS')" th:classappend="${activeTab == 'clients' ? 'active' : ''}">
 				<i class="bi bi-people"></i>
 				<span>База клиентов</span>
 			</a>
 			
-			<a href="/inventory" class="nav-link" th:classappend="${activeTab == 'inventory' ? 'active' : ''}">
+			<a href="/inventory" class="nav-link" sec:authorize="hasAuthority('MENU_INVENTORY')" th:classappend="${activeTab == 'inventory' ? 'active' : ''}">
 				<i class="bi bi-box-seam"></i>
 				<span>Склад техники</span>
 			</a>
 
-			<a href="/points" class="nav-link" th:classappend="${activeTab == 'points' ? 'active' : ''}"
-			   th:if="${currentUserRole != null and (currentUserRole.name() == 'ADMIN' or currentUserRole.name() == 'SUPER_ADMIN')}">
+			<a href="/points" class="nav-link" sec:authorize="hasAuthority('MENU_POINTS')" th:classappend="${activeTab == 'points' ? 'active' : ''}">
 				<i class="bi bi-geo-alt"></i>
 				<span>Точки выдачи</span>
 			</a>
 			
-			<a href="/rentals" class="nav-link" th:classappend="${activeTab == 'rentals' ? 'active' : ''}">
+			<a href="/rentals" class="nav-link" sec:authorize="hasAuthority('MENU_RENTALS')" th:classappend="${activeTab == 'rentals' ? 'active' : ''}">
 				<i class="bi bi-journal-text"></i>
 				<span>Журнал прокатов</span>
 			</a>
 
-			<a href="/documents" class="nav-link" th:classappend="${activeTab == 'documents' ? 'active' : ''}"
-			   th:if="${currentUserRole != null and (currentUserRole.name() == 'ADMIN' or currentUserRole.name() == 'SUPER_ADMIN')}">
+			<a href="/documents" class="nav-link" sec:authorize="hasAuthority('MENU_DOCUMENTS')" th:classappend="${activeTab == 'documents' ? 'active' : ''}">
 				<i class="bi bi-folder2-open"></i>
 				<span>Документы</span>
 			</a>
 
-			<a href="/statistics" class="nav-link" th:classappend="${activeTab == 'statistics' ? 'active' : ''}"
-			   th:if="${currentUserRole != null and (currentUserRole.name() == 'ADMIN' or currentUserRole.name() == 'SUPER_ADMIN')}">
+			<a href="/statistics" class="nav-link" sec:authorize="hasAuthority('MENU_STATISTICS')" th:classappend="${activeTab == 'statistics' ? 'active' : ''}">
 				<i class="bi bi-bar-chart-line"></i>
 				<span>Статистика</span>
 			</a>
@@ -74,9 +71,9 @@
 				</div>
 				<div class="user-details">
 					<strong th:text="${username}">User</strong>
-					<small th:if="${currentUserRole == 'SUPER_ADMIN'}" class="role-super">SUPER ADMIN</small>
-					<small th:if="${currentUserRole == 'ADMIN'}" class="role-admin">ADMIN</small>
-					<small th:if="${currentUserRole == 'WORKER'}" class="role-worker">WORKER</small>
+					<small th:if="${currentUserRole != null and currentUserRole.name() == 'SUPER_ADMIN'}" class="role-super">SUPER ADMIN</small>
+					<small th:if="${currentUserRole != null and currentUserRole.name() == 'ADMIN'}" class="role-admin">ADMIN</small>
+					<small th:if="${currentUserRole != null and currentUserRole.name() == 'WORKER'}" class="role-worker">WORKER</small>
 				</div>
 			</div>
 			<div class="theme-toggle-wrap mb-2">

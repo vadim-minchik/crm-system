@@ -2,9 +2,11 @@ package com.studio.crm_system.controller;
 
 import com.studio.crm_system.entity.Point;
 import com.studio.crm_system.entity.User;
+import com.studio.crm_system.enums.NavSection;
 import com.studio.crm_system.repository.PointRepository;
 import com.studio.crm_system.repository.UserRepository;
 import com.studio.crm_system.enums.Role;
+import com.studio.crm_system.service.MenuScopeService;
 import com.studio.crm_system.web.OptimisticLockSupport;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -16,7 +18,13 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.EnumSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Controller
@@ -31,6 +39,9 @@ public class StaffController {
 
 	@Autowired
 	private PasswordEncoder passwordEncoder;
+
+	@Autowired
+	private MenuScopeService menuScopeService;
 
 	private User getCurrentUser() {
 		Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
@@ -120,12 +131,29 @@ public class StaffController {
 		model.addAttribute("allUsers", filteredUsers);
 		model.addAttribute("points", pointRepository.findByIsDeletedFalseOrderByNameAsc());
 
+		Set<NavSection> actorMenu = menuScopeService.effectiveSections(actor);
+		List<NavSection> editableMenuSections = new ArrayList<>(EnumSet.allOf(NavSection.class));
+		editableMenuSections.removeIf(s -> !actorMenu.contains(s));
+		model.addAttribute("editableMenuSections", editableMenuSections);
+
+		Map<Long, String> menuEffectiveCsvByUserId = new LinkedHashMap<>();
+		for (User u : filteredUsers) {
+			menuEffectiveCsvByUserId.put(u.getId(), menuScopeService.toCsv(menuScopeService.effectiveSections(u)));
+		}
+		model.addAttribute("menuEffectiveCsvByUserId", menuEffectiveCsvByUserId);
+
+		model.addAttribute("workerDefaultMenuCodes",
+				menuScopeService.defaultSectionsForRole(Role.WORKER).stream().map(NavSection::getCode).toList());
+		model.addAttribute("adminDefaultMenuCodes",
+				menuScopeService.defaultSectionsForRole(Role.ADMIN).stream().map(NavSection::getCode).toList());
+
 		return "html/staff";
 	}
 
 	@PostMapping("/add")
 	public String addStaff(@ModelAttribute User newUser,
 			@RequestParam(value = "pointId", required = false) Long pointId,
+			@RequestParam(value = "menuSection", required = false) String[] menuSectionCodes,
 			@RequestParam(value = "passportIssueDate", required = false) String passportIssueDate,
 			@RequestParam(value = "passportExpiryDate", required = false) String passportExpiryDate) {
 		User actor = getCurrentUser();
@@ -178,6 +206,13 @@ public class StaffController {
 		newUser.setPassword(passwordEncoder.encode(password));
 		newUser.setPoint(point);
 
+		Role assignedRole = newUser.getRole() != null ? newUser.getRole() : Role.WORKER;
+		if (actor.getRole() == Role.ADMIN && assignedRole != Role.WORKER)
+			return "redirect:/staff?error=access_denied";
+		newUser.setRole(assignedRole);
+		newUser.setMenuSections(menuScopeService
+				.toCsv(menuScopeService.resolveGrantedSections(actor, assignedRole, menuSectionCodes)));
+
 		newUser.setPassportIssueDate(parseOptionalDate(passportIssueDate));
 		newUser.setPassportExpiryDate(parseOptionalDate(passportExpiryDate));
 		setOptionalStaffFields(newUser, newUser);
@@ -194,6 +229,7 @@ public class StaffController {
 	@PostMapping("/edit")
 	public String editStaff(@ModelAttribute User details,
 			@RequestParam(value = "pointId", required = false) Long pointId,
+			@RequestParam(value = "menuSection", required = false) String[] menuSectionCodes,
 			@RequestParam(value = "newPassword", required = false) String newPassword,
 			@RequestParam(value = "passportIssueDate", required = false) String passportIssueDate,
 			@RequestParam(value = "passportExpiryDate", required = false) String passportExpiryDate) {
@@ -287,7 +323,19 @@ public class StaffController {
 			details.setPassportExpiryDate(parseOptionalDate(passportExpiryDate));
 			setOptionalStaffFields(details, dbUser);
 
-		if (changed) {
+			boolean canEditMenu = (actor.getRole() == Role.SUPER_ADMIN && dbUser.getRole() != Role.SUPER_ADMIN)
+					|| (actor.getRole() == Role.ADMIN && dbUser.getRole() == Role.WORKER);
+			if (canEditMenu) {
+				Set<NavSection> granted = menuScopeService.resolveGrantedSections(actor, dbUser.getRole(),
+						menuSectionCodes);
+				String newCsv = menuScopeService.toCsv(granted);
+				if (!Objects.equals(newCsv, dbUser.getMenuSections())) {
+					dbUser.setMenuSections(newCsv);
+					changed = true;
+				}
+			}
+
+			if (changed) {
 			try {
 				userRepository.save(dbUser);
 			} catch (Exception e) {
