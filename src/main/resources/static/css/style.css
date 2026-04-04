@@ -90,9 +90,12 @@ body {
 	display: flex;
 	flex-direction: column;
 	z-index: 1000;
+	overflow: hidden;
+	min-height: 0;
 }
 
 .logo {
+	flex-shrink: 0;
 	margin-bottom: 32px;
 	padding-left: 8px;
 }
@@ -117,7 +120,14 @@ body {
 }
 
 .sidebar-nav {
-	flex-grow: 1;
+	flex: 1 1 auto;
+	min-height: 0;
+	overflow-y: auto;
+	overflow-x: hidden;
+	-webkit-overflow-scrolling: touch;
+	overscroll-behavior: contain;
+	margin-right: -4px;
+	padding-right: 4px;
 }
 
 .nav-link {
@@ -162,8 +172,9 @@ body {
 }
 
 .sidebar-footer {
-	margin-top: auto;
-	padding-top: 24px;
+	flex-shrink: 0;
+	margin-top: 0;
+	padding-top: 16px;
 	border-top: 1px solid var(--border-color);
 }
 
@@ -875,8 +886,8 @@ textarea.form-control {
 		z-index: 1002;
 		padding-top: calc(12px + env(safe-area-inset-top, 0));
 		padding-bottom: env(safe-area-inset-bottom, 0);
-		overflow-y: auto;
-		-webkit-overflow-scrolling: touch;
+		overflow: hidden;
+		min-height: 0;
 	}
 
 	.sidebar.sidebar--open {

@@ -45,6 +45,11 @@
 			<strong>Выход выполнен!</strong> Вы успешно вышли из системы.
 			<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
 		</div>
+		<div th:if="${param.profile_login_changed}" class="alert alert-info alert-dismissible fade show" role="alert">
+			<i class="bi bi-info-circle-fill me-2"></i>
+			Логин изменён — войдите снова с новым логином.
+			<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+		</div>
 
 		<form th:action="@{/login}" method="post">
 			<div class="mb-3">
