@@ -39,36 +39,36 @@ public class BookingService {
 		return bookingRepository.findById(id);
 	}
 
-	/** Все брони по оборудованию для истории экземпляра (по дате окончания). */
+	
 	public List<Booking> findBookingsByEquipmentId(Long equipmentId) {
 		return bookingRepository.findByEquipmentIdOrderByDateToDesc(equipmentId);
 	}
 
-	/** Конец текущей брони по оборудованию (минимальная dateTo среди активных броней) — для отображения «Забронирован до …». */
+	
 	public Optional<LocalDateTime> getBookingEndDateForEquipment(Long equipmentId) {
 		List<Booking> list = bookingRepository.findBookingsContainingEquipmentAndDateToAfter(equipmentId, LocalDateTime.now());
 		return list.stream().map(Booking::getDateTo).min(LocalDateTime::compareTo);
 	}
 
-	/** Максимальная dateTo среди активных броней по оборудованию — новая бронь «на потом» должна начинаться не раньше этой даты. */
+	
 	public Optional<LocalDateTime> getMaxBookingEndForEquipment(Long equipmentId) {
 		List<Booking> list = bookingRepository.findBookingsContainingEquipmentAndDateToAfter(equipmentId, LocalDateTime.now());
 		return list.stream().map(Booking::getDateTo).max(LocalDateTime::compareTo);
 	}
 
-	/** Последняя по дате окончания будущая бронь по оборудованию — для отображения «с … по …». */
+	
 	public Optional<Booking> getLastFutureBookingForEquipment(Long equipmentId) {
 		List<Booking> list = bookingRepository.findBookingsContainingEquipmentAndDateToAfter(equipmentId, LocalDateTime.now());
 		return list.stream().max(Comparator.comparing(Booking::getDateTo));
 	}
 
-	/** Текущая активная бронь по оборудованию (уже началась, ещё не истекла) — для отображения «с … по …». */
+	
 	public Optional<Booking> getActiveBookingForEquipment(Long equipmentId) {
 		List<Booking> list = bookingRepository.findBookingsContainingEquipmentActiveAt(equipmentId, LocalDateTime.now());
 		return list.isEmpty() ? Optional.empty() : Optional.of(list.get(0));
 	}
 
-	/** Есть ли у оборудования бронь (текущая или будущая): dateTo > now. Нужно для блокировки удаления экземпляра на складе. */
+	
 	public boolean hasActiveOrFutureBooking(Long equipmentId) {
 		return !bookingRepository.findBookingsContainingEquipmentAndDateToAfter(equipmentId, LocalDateTime.now()).isEmpty();
 	}
@@ -99,10 +99,10 @@ public class BookingService {
 		for (Long eid : equipmentIds) {
 			Equipment equipment = equipmentRepository.findByIdAndIsDeletedFalse(eid).orElse(null);
 			if (equipment == null) return "equipment_not_found";
-			// Разрешаем бронировать свободное, в прокате и уже забронированное (бронь на бронь — цепочка)
+			
 			if (equipment.getStatus() != EquipmentStatus.FREE && equipment.getStatus() != EquipmentStatus.BUSY && equipment.getStatus() != EquipmentStatus.RESERVED)
 				return "equipment_not_free";
-			// Активный прокат (в т.ч. если статус единицы в БД отстаёт): бронь не должна пересекаться по времени
+			
 			List<Rental> overlapActiveRental = rentalRepository.findActiveRentalsOverlappingInterval(
 					equipment.getId(),
 					List.of(RentalStatus.ACTIVE, RentalStatus.SOON_DEBTOR, RentalStatus.DEBTOR),
@@ -111,7 +111,7 @@ public class BookingService {
 			if (!overlapActiveRental.isEmpty()) {
 				return "booking_overlaps_active_rental";
 			}
-			// Прокат «ожидает доставки» — период занят в резерве, бронь не должна пересекаться
+			
 			Optional<Rental> awaitingRental = rentalRepository.findFirstByEquipmentIdAndStatusOrderByDateToDesc(
 					equipment.getId(), RentalStatus.AWAITING_DELIVERY);
 			if (awaitingRental.isPresent()) {
@@ -121,7 +121,7 @@ public class BookingService {
 					return "booking_overlap_awaiting";
 				}
 			}
-			// Новая бронь не должна пересекаться ни с одной существующей (можно ставить и до, и после)
+			
 			List<Booking> existing = bookingRepository.findBookingsContainingEquipmentAndDateToAfter(equipment.getId(), LocalDateTime.now());
 			for (Booking b : existing) {
 				LocalDateTime existingStart = b.getDateFrom() != null ? b.getDateFrom() : b.getCreatedAt();
@@ -143,8 +143,8 @@ public class BookingService {
 
 		LocalDateTime now = LocalDateTime.now();
 		for (Equipment equipment : toReserve) {
-			// В резерв переводим только свободное и только если бронь уже началась (с момента начала брони)
-			// Если dateFrom в будущем — оборудование остаётся FREE, кто-то может взять в прокат до начала брони
+			
+			
 			if (equipment.getStatus() == EquipmentStatus.FREE && !bookingStart.isAfter(now)) {
 				equipment.setStatus(EquipmentStatus.RESERVED);
 				equipmentRepository.save(equipment);
@@ -153,16 +153,13 @@ public class BookingService {
 		return null;
 	}
 
-	/**
-	 * Вызывается при завершении/отмене проката: освобождённое оборудование переводится в FREE
-	 * или в RESERVED, если на него есть активная бронь (dateTo в будущем).
-	 */
+	
 	@Transactional
 	public void releaseEquipment(Long equipmentId) {
 		Equipment equipment = equipmentRepository.findByIdAndIsDeletedFalse(equipmentId).orElse(null);
 		if (equipment == null) return;
 		LocalDateTime now = LocalDateTime.now();
-		// Учитываем только брони, которые уже начались (предмет занят с момента начала брони)
+		
 		boolean hasActiveBooking = !bookingRepository.findBookingsContainingEquipmentActiveAt(equipmentId, now).isEmpty();
 		equipment.setStatus(hasActiveBooking ? EquipmentStatus.RESERVED : EquipmentStatus.FREE);
 		equipmentRepository.save(equipment);
@@ -185,10 +182,7 @@ public class BookingService {
 		return null;
 	}
 
-	/**
-	 * Активирует брони с наступившей датой начала: переводит оборудование в RESERVED.
-	 * Вызывается по расписанию — тогда оборудование «занято» только с момента начала брони.
-	 */
+	
 	@Transactional
 	public void activateBookings() {
 		LocalDateTime now = LocalDateTime.now();

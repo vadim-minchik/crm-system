@@ -82,7 +82,7 @@ public class EquipmentController {
 		return p != null && p.compareTo(BigDecimal.ZERO) > 0 && p.compareTo(HUNDRED) <= 0;
 	}
 
-	/** @return null если ок, иначе код ошибки для ?error= */
+	
 	private String validateAndBuildOwners(String ownerMode, String singleOwnerName,
 			String singleOwnershipPercent, String singleProfitPercent,
 			List<String> ownerNames, List<String> ownerOwnershipPercents, List<String> ownerProfitPercents,
@@ -156,7 +156,7 @@ public class EquipmentController {
 		}
 	}
 
-	/** JSON без Jackson — чтобы Eclipse/Maven не зависели от явного classpath для com.fasterxml. */
+	
 	private static String jsonEscape(String s) {
 		if (s == null)
 			return "";
@@ -261,7 +261,7 @@ public class EquipmentController {
 		return false;
 	}
 
-	/** Проверяет, есть ли занятое оборудование (в прокате или в брони) в категории и во всей поддереве подкатегорий. */
+	
 	private boolean hasAnyBusyInCategoryTree(Category cat) {
 		if (hasAnyBusyInCategory(cat)) return true;
 		for (Category child : categoryRepository.findByParentCategoryAndIsDeletedFalse(cat)) {
@@ -666,9 +666,7 @@ public class EquipmentController {
 		return "html/inventory_detail";
 	}
 
-	/**
-	 * Подгрузка следующей страницы экземпляров для бесконечного скролла (JSON).
-	 */
+	
 	@GetMapping(value = "/{toolNameId}/units/page", produces = "application/json")
 	@ResponseBody
 	@Transactional(readOnly = true)
@@ -761,7 +759,7 @@ public class EquipmentController {
 
 		if (serialNumber == null || serialNumber.trim().isEmpty())
 			return "redirect:/inventory/" + toolNameId + "?error=serial_required";
-		// Уникальность только среди неудалённых — удалённые не мешают завести такой же серийник снова
+		
 		if (equipmentRepository.existsBySerialNumberAndIsDeletedFalse(serialNumber.trim()))
 			return "redirect:/inventory/" + toolNameId + "?error=serial_exists";
 		if (priceFirstDay == null || priceFirstDay.compareTo(BigDecimal.ZERO) <= 0)
@@ -830,7 +828,7 @@ public class EquipmentController {
 			return "redirect:/inventory/" + eq.getToolName().getId() + "?error=point_invalid";
 
 		Long toolNameId = eq.getToolName().getId();
-		// Уникальность только среди неудалённых; при редактировании — кроме текущего юнита
+		
 		if (equipmentRepository.existsBySerialNumberAndIsDeletedFalseAndIdNot(serialNumber.trim(), eq.getId()))
 			return "redirect:/inventory/" + toolNameId + "?error=serial_exists";
 		List<EquipmentOwner> builtOwners = new ArrayList<>();

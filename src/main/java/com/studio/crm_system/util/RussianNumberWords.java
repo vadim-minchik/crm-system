@@ -3,9 +3,7 @@ package com.studio.crm_system.util;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 
-/**
- * Число прописью по-русски (для сумм и оценочной стоимости в шаблонах документов).
- */
+
 public final class RussianNumberWords {
 
 	private RussianNumberWords() {}
@@ -29,9 +27,7 @@ public final class RussianNumberWords {
 			"шестьсот", "семьсот", "восемьсот", "девятьсот"
 	};
 
-	/**
-	 * Целое число от 0 до 999999999 прописью (мужской род для единиц, кроме блока тысяч).
-	 */
+	
 	public static String intToWords(long n) {
 		if (n < 0) n = 0;
 		if (n > 999_999_999L) return String.valueOf(n);
@@ -54,23 +50,19 @@ public final class RussianNumberWords {
 		return sb.toString().trim().replaceAll("\\s+", " ");
 	}
 
-	/**
-	 * Оценочная стоимость: целая часть прописью (500 → «пятьсот»).
-	 */
+	
 	public static String amountIntegerPartWords(BigDecimal amount) {
 		if (amount == null) return "—";
 		long whole = amount.setScale(0, RoundingMode.DOWN).longValue();
 		return intToWords(whole);
 	}
 
-	/** Количество суток прописью (то же правило, что и для целых чисел). */
+	
 	public static String daysCountWords(long days) {
 		return intToWords(days);
 	}
 
-	/**
-	 * @param femaleOneTwo true — для блока тысяч: одна/две; false — один/два
-	 */
+	
 	private static String hundredsToWords(int n, boolean femaleOneTwo) {
 		if (n < 0 || n > 999) return String.valueOf(n);
 		int h = n / 100;

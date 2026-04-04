@@ -3,10 +3,7 @@ package com.studio.crm_system.entity;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
 
-/**
- * Владелец экземпляра: доля владения (юридически/учётно) и отдельно доля прибыли от сдачи в прокат.
- * Сумма владений по экземпляру — 100%; сумма долей прибыли — 100%.
- */
+
 @Entity
 @Table(name = "equipment_owners")
 public class EquipmentOwner {
@@ -26,11 +23,11 @@ public class EquipmentOwner {
 	@Column(nullable = false, length = 200)
 	private String ownerName;
 
-	/** Доля владения по экземпляру, % (сумма по всем владельцам = 100). */
+	
 	@Column(name = "ownership_percent", precision = 6, scale = 2)
 	private BigDecimal ownershipPercent;
 
-	/** Доля от выручки с проката (прибыли), % — на неё начисляются выплаты; сумма по владельцам = 100. */
+	
 	@Column(name = "rental_share_percent", nullable = false, precision = 6, scale = 2)
 	private BigDecimal rentalSharePercent;
 

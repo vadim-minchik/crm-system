@@ -83,7 +83,7 @@ public class DocumentController {
 		} catch (Exception e) {
 			return "redirect:/documents?error=upload_failed";
 		}
-		// .docx - это ZIP (начинается с PK). Отклоняем файл, если это не .docx.
+		
 		if (fileBytes.length < 4 || fileBytes[0] != 0x50 || fileBytes[1] != 0x4B) {
 			return "redirect:/documents?error=not_docx";
 		}
@@ -108,7 +108,7 @@ public class DocumentController {
 		return "redirect:/documents?success=template_added";
 	}
 
-	// Скачать файл шаблона (прокси с Supabase)
+	
 	@GetMapping(value = "/{id}/file", produces = "application/octet-stream")
 	public ResponseEntity<byte[]> getFile(@PathVariable Long id) {
 		if (getCurrentUser() == null)
@@ -121,7 +121,7 @@ public class DocumentController {
 		byte[] bytes = storageService.downloadByStoredUrl(template.getFileUrl());
 		if (bytes == null || bytes.length == 0) return ResponseEntity.notFound().build();
 
-		// .docx - это ZIP (начинается с PK). Иначе в хранилище попал не тот файл.
+		
 		if (bytes.length < 4 || bytes[0] != 0x50 || bytes[1] != 0x4B) {
 			HttpHeaders headers = new HttpHeaders();
 			headers.set("X-Error-Code", "not_docx");

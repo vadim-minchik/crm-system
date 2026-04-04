@@ -720,7 +720,7 @@ body.crm-drawer-open {
 	color: #664d03;
 }
 
-/* Многострочные подсказки: не flex в ряд — иначе текст и <code> наезжают друг на друга */
+
 .alert.alert-rich {
 	display: block;
 	align-items: stretch;
@@ -863,7 +863,7 @@ textarea.form-control {
 	justify-content: center !important;
 }
 
-/* ——— Планшеты и телефоны (< 992px): выезжающее меню ——— */
+
 @media (max-width: 991.98px) {
 	.sidebar-backdrop {
 		display: block;
@@ -992,7 +992,7 @@ textarea.form-control {
 	animation: fadeIn 0.3s ease;
 }
 
-/* Длинное название точки на складе — обрезка с многоточием */
+
 .point-cell-ellipsis {
 	max-width: 10rem;
 	min-width: 0;
@@ -1003,7 +1003,7 @@ textarea.form-control {
 	vertical-align: middle;
 }
 
-/* Таблица сотрудников: колонка «Точка» не раздувает таблицу */
+
 .card-table .table.staff-table {
 	table-layout: fixed;
 	width: 100%;
@@ -1018,14 +1018,14 @@ textarea.form-control {
 	max-width: 100%;
 }
 
-/* Точка в штате: в тёмной теме .text-dark даёт светлый шрифт, а bg-light остаётся светлым — текст не виден */
+
 html[data-theme="dark"] .card-table .table.staff-table .badge.bg-light.text-dark {
 	background-color: var(--surface-muted) !important;
 	color: var(--text-dark) !important;
 	border-color: var(--border-color) !important;
 }
 
-/* Переключатель темы (сайдбар / вход) */
+
 .theme-toggle-btn {
 	border: 1px solid var(--border-color);
 	color: var(--text-muted);
@@ -1063,7 +1063,7 @@ html[data-theme="dark"] .breadcrumb-item a {
 	color: var(--primary);
 }
 
-/* Карточки и блоки с локальными inline-стилями в шаблонах */
+
 html[data-theme="dark"] .info-block,
 html[data-theme="dark"] .reviews-empty {
 	background: var(--surface-muted) !important;
@@ -1104,7 +1104,7 @@ html[data-theme="dark"] .action-btn {
 	color: var(--text-muted) !important;
 }
 
-/* Карточки Bootstrap: без принудительного белого (bg-body + переменные) */
+
 html[data-theme="dark"] .card {
 	--bs-card-bg: var(--card-bg);
 	--bs-card-border-color: var(--border-color);
@@ -1125,7 +1125,7 @@ html[data-theme="dark"] .card .text-muted {
 	color: var(--text-muted) !important;
 }
 
-/* Липкий thead без Bootstrap table-light — фон как у шапки таблицы */
+
 .card-table thead.sticky-top {
 	position: sticky;
 	top: 0;
@@ -1138,7 +1138,7 @@ html[data-theme="dark"] .text-dark {
 	color: var(--text-dark) !important;
 }
 
-/* Страница входа */
+
 @keyframes loginSlideIn {
 	from {
 		opacity: 0;

@@ -40,10 +40,7 @@ public class OwnerShareService {
 	@Autowired private EquipmentOwnerRepository equipmentOwnerRepository;
 	@Autowired private OwnerPayoutRepository ownerPayoutRepository;
 
-	/**
-	 * Доля суммы проката, относимая к одному экземпляру: пропорционально расчётной базе позиций
-	 * (как при автоматическом пересчёте total). Доп. услуги и доставка распределяются пропорционально базе.
-	 */
+	
 	public BigDecimal equipmentShareInRental(Rental rental, Equipment equipment) {
 		if (rental == null || equipment == null || rental.getTotalAmount() == null)
 			return BigDecimal.ZERO;

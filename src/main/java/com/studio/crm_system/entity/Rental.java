@@ -40,12 +40,12 @@ public class Rental {
 	@JoinColumn(name = "point_id")
 	private Point point;
 
-	/** Сотрудник, который оформил прокат (из базы пользователей). */
+	
 	@ManyToOne(fetch = FetchType.EAGER)
 	@JoinColumn(name = "created_by_staff_id")
 	private User createdByStaff;
 
-	/** Сотрудник, который отдал оборудование (из базы пользователей). */
+	
 	@ManyToOne(fetch = FetchType.EAGER)
 	@JoinColumn(name = "handed_over_by_staff_id")
 	private User handedOverByStaff;
@@ -53,19 +53,19 @@ public class Rental {
 	@Column(nullable = false, precision = 12, scale = 2)
 	private BigDecimal totalAmount;
 
-	/** Доп. услуги: сумма (Br). */
+	
 	@Column(name = "additional_services_amount", precision = 12, scale = 2)
 	private BigDecimal additionalServicesAmount;
 
-	/** Доп. услуги: описание, что входит. */
+	
 	@Column(name = "additional_services_description", length = 500)
 	private String additionalServicesDescription;
 
-	/** Доставка: стоимость (Br), null или 0 — без доставки. */
+	
 	@Column(name = "delivery_amount", precision = 12, scale = 2)
 	private BigDecimal deliveryAmount;
 
-	/** Адрес доставки (улица, дом, кв. и т.д.), если есть доставка. */
+	
 	@Column(name = "delivery_address", length = 500)
 	private String deliveryAddress;
 
@@ -73,11 +73,11 @@ public class Rental {
 	@Enumerated(EnumType.STRING)
 	private RentalStatus status = RentalStatus.ACTIVE;
 
-	/** Когда оборудование фактически передано клиенту (прокат переведён в ACTIVE). */
+	
 	@Column(name = "delivered_at")
 	private LocalDateTime deliveredAt;
 
-	/** Момент оформления заказа в системе (для расчёта «сколько ждали доставку»). */
+	
 	@Column(name = "created_at")
 	private LocalDateTime createdAt;
 

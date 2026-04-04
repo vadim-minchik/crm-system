@@ -75,10 +75,7 @@ public class MenuScopeService {
 		return "/login";
 	}
 
-	/**
-	 * Итоговый набор разделов для подчинённого: только то, что разрешено роли по умолчанию
-	 * и что может выдать актёр (пересечение с его эффективным меню).
-	 */
+	
 	public Set<NavSection> resolveGrantedSections(User actor, Role targetRole, String[] requestedCodes) {
 		Set<NavSection> actorEff = effectiveSections(actor);
 		Set<NavSection> requested = new LinkedHashSet<>();

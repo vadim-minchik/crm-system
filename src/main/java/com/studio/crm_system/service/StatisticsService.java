@@ -35,9 +35,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.TreeMap;
 
-/**
- * Сводные данные для раздела «Статистика».
- */
+
 @Service
 public class StatisticsService {
 
@@ -49,67 +47,67 @@ public class StatisticsService {
 	@Autowired private PointRepository pointRepository;
 	@Autowired private ExpenseRepository expenseRepository;
 
-	/** Количество клиентов (без удалённых). */
+	
 	public long getClientsCount() {
 		return clientRepository.findByIsDeletedFalse().size();
 	}
 
-	/** Всего единиц оборудования (без удалённых). */
+	
 	public long getEquipmentTotalCount() {
 		return equipmentRepository.findByIsDeletedFalse().size();
 	}
 
-	/** Свободное оборудование. */
+	
 	public long getEquipmentFreeCount() {
 		return equipmentRepository.findByStatusAndIsDeletedFalse(EquipmentStatus.FREE).size();
 	}
 
-	/** Занятое оборудование (в прокате). */
+	
 	public long getEquipmentBusyCount() {
 		return equipmentRepository.findByStatusAndIsDeletedFalse(EquipmentStatus.BUSY).size();
 	}
 
-	/** Забронированное оборудование. */
+	
 	public long getEquipmentReservedCount() {
 		return equipmentRepository.findByStatusAndIsDeletedFalse(EquipmentStatus.RESERVED).size();
 	}
 
-	/** Количество активных прокатов. */
+	
 	public long getActiveRentalsCount() {
 		return rentalRepository.findByStatusOrderByDateFromDesc(RentalStatus.ACTIVE).size();
 	}
 
-	/** Оформлены с доставкой, ждут выдачи клиенту. */
+	
 	public long getAwaitingDeliveryRentalsCount() {
 		return rentalRepository.findByStatusOrderByDateFromDesc(RentalStatus.AWAITING_DELIVERY).size();
 	}
 
-	/** Количество завершённых прокатов. */
+	
 	public long getCompletedRentalsCount() {
 		return rentalRepository.findByStatusOrderByDateFromDesc(RentalStatus.COMPLETED).size();
 	}
 
-	/** Количество должников (DEBTOR). */
+	
 	public long getDebtorsCount() {
 		return rentalRepository.findByStatusOrderByDateFromDesc(RentalStatus.DEBTOR).size();
 	}
 
-	/** Количество броней (всего в системе, для ориентира). */
+	
 	public long getBookingsCount() {
 		return bookingRepository.findAllByOrderByCreatedAtDesc().size();
 	}
 
-	/** Количество сотрудников (без удалённых). */
+	
 	public long getStaffCount() {
 		return userRepository.findByIsDeletedFalse().size();
 	}
 
-	/** Количество точек выдачи (без удалённых). */
+	
 	public long getPointsCount() {
 		return pointRepository.findByIsDeletedFalseOrderByNameAsc().size();
 	}
 
-	/** Сумма выручки по завершённым прокатам. */
+	
 	public BigDecimal getTotalRevenue() {
 		List<Rental> completed = rentalRepository.findByStatusOrderByDateFromDesc(RentalStatus.COMPLETED);
 		return completed.stream()
@@ -118,7 +116,7 @@ public class StatisticsService {
 				.reduce(BigDecimal.ZERO, BigDecimal::add);
 	}
 
-	// ——— Списки для модальных панелей (кликабельная статистика) ———
+	
 
 	public List<Client> getClientsList() {
 		return clientRepository.findByIsDeletedFalse();
@@ -152,7 +150,7 @@ public class StatisticsService {
 		return rentalRepository.findByStatusOrderByDateFromDesc(RentalStatus.DEBTOR);
 	}
 
-	/** Все прокаты (для полной таблицы со сортировкой). */
+	
 	public List<Rental> getAllRentalsList() {
 		return rentalRepository.findAllByOrderByDateFromDesc();
 	}
@@ -169,7 +167,7 @@ public class StatisticsService {
 		return pointRepository.findByIsDeletedFalseOrderByNameAsc();
 	}
 
-	// ——— Данные для графиков ———
+	
 
 	private static final DateTimeFormatter MONTH_FMT = DateTimeFormatter.ofPattern("MM.yyyy");
 	private static final DateTimeFormatter DAY_FMT = DateTimeFormatter.ofPattern("dd.MM.yy");
@@ -177,7 +175,7 @@ public class StatisticsService {
 	private static final int REVENUE_MONTHS = 12;
 	private static final int MAX_DAYS_FOR_DAILY = 62;
 
-	/** Выручка за произвольный период (по дням или по неделям). Прокаты учитываются по дате окончания (dateTo). */
+	
 	public List<RevenueByMonthDto> getRevenueByDateRange(LocalDate from, LocalDate to) {
 		if (from == null || to == null || from.isAfter(to)) return getRevenueByMonthLast12();
 		long days = ChronoUnit.DAYS.between(from, to) + 1;
@@ -233,7 +231,7 @@ public class StatisticsService {
 		return result;
 	}
 
-	/** Выручка по месяцам (последние 12 месяцев) для графика. */
+	
 	public List<RevenueByMonthDto> getRevenueByMonthLast12() {
 		List<Rental> completed = rentalRepository.findByStatusOrderByDateFromDesc(RentalStatus.COMPLETED);
 		Map<YearMonth, BigDecimal> byMonth = new LinkedHashMap<>();
@@ -255,7 +253,7 @@ public class StatisticsService {
 		return result;
 	}
 
-	/** Суммы расходов по тем же 12 месяцам, что и getRevenueByMonthLast12 (тот же порядок). */
+	
 	public List<BigDecimal> getExpensesByMonthLast12() {
 		List<Expense> all = expenseRepository.findByIsDeletedFalseOrderByExpenseDateDesc();
 		Map<YearMonth, BigDecimal> byMonth = new LinkedHashMap<>();
@@ -273,7 +271,7 @@ public class StatisticsService {
 		return new ArrayList<>(byMonth.values());
 	}
 
-	/** Расходы за тот же период и с теми же подписями, что и getRevenueByDateRange. */
+	
 	public List<RevenueByMonthDto> getExpensesByDateRange(LocalDate from, LocalDate to) {
 		if (from == null || to == null || from.isAfter(to)) return List.of();
 		long days = ChronoUnit.DAYS.between(from, to) + 1;
@@ -319,12 +317,12 @@ public class StatisticsService {
 		return result;
 	}
 
-	/** Подписи для графика «Оборудование по статусам». */
+	
 	public List<String> getChartEquipmentLabels() {
 		return List.of("Свободно", "Занято", "Забронировано");
 	}
 
-	/** Значения для графика «Оборудование по статусам». */
+	
 	public List<Long> getChartEquipmentValues() {
 		return List.of(
 			getEquipmentFreeCount(),
@@ -333,12 +331,12 @@ public class StatisticsService {
 		);
 	}
 
-	/** Подписи для графика «Прокаты по статусам». */
+	
 	public List<String> getChartRentalLabels() {
 		return List.of("Активные", "Ожидают доставки", "Завершённые", "Должники", "Отменённые", "Бронь", "Скоро должник");
 	}
 
-	/** Значения для графика «Прокаты по статусам». */
+	
 	public List<Long> getChartRentalValues() {
 		return List.of(
 			getActiveRentalsCount(),

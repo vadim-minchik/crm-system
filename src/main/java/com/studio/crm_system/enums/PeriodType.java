@@ -1,8 +1,6 @@
 package com.studio.crm_system.enums;
 
-/**
- * Периодичность повторяющегося расхода.
- */
+
 public enum PeriodType {
 	DAILY("Раз в день"),
 	WEEKLY("Раз в неделю"),

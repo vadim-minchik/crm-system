@@ -8,9 +8,7 @@ import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 
-/**
- * Редирект с понятной ошибкой при конфликте версий (два пользователя меняют одну запись).
- */
+
 @ControllerAdvice
 @Order(100)
 public class OptimisticLockMvcExceptionHandler {

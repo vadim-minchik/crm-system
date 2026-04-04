@@ -3,10 +3,7 @@ package com.studio.crm_system.entity;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
-/**
- * Отзыв о клиенте. Оценка 1–10 и текст.
- * Рейтинг клиента пересчитывается как среднее по всем отзывам.
- */
+
 @Entity
 @Table(name = "client_reviews")
 public class ClientReview {
@@ -27,7 +24,7 @@ public class ClientReview {
 	@JoinColumn(name = "author_id", nullable = false)
 	private User author;
 
-	/** Оценка от 1 до 10. */
+	
 	@Column(nullable = false)
 	private Integer score;
 

@@ -9,9 +9,7 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ModelAttribute;
 
-/**
- * Для HTML-запросов добавляет в модель данные сайдбара и профиля (без вызова на JSON/fetch).
- */
+
 @ControllerAdvice
 public class CrmUserModelAdvice {
 

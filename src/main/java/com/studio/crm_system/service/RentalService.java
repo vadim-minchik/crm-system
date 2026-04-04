@@ -43,7 +43,7 @@ public class RentalService {
 		return rentalRepository.findByStatusOrderByDateFromDesc(RentalStatus.ACTIVE);
 	}
 
-	/** Оформлены, но ещё не доставлены клиенту — не в «активных» прокатах. */
+	
 	public List<Rental> findAwaitingDelivery() {
 		return rentalRepository.findByStatusOrderByDateFromDesc(RentalStatus.AWAITING_DELIVERY);
 	}
@@ -68,12 +68,12 @@ public class RentalService {
 		return rentalRepository.findByIdWithEquipment(id);
 	}
 
-	/** Прокат с клиентом и связями для формирования документа (подстановки в шаблоне). */
+	
 	public Optional<Rental> findByIdForDocument(Long id) {
 		return rentalRepository.findByIdForDocument(id);
 	}
 
-	/** Все прокаты по оборудованию для истории экземпляра. */
+	
 	public List<Rental> findRentalsByEquipmentId(Long equipmentId) {
 		return rentalRepository.findByEquipmentIdOrderByDateFromDesc(equipmentId);
 	}
@@ -97,7 +97,7 @@ public class RentalService {
 		return all.stream().map(e -> toEquipmentSelectOption(e)).collect(Collectors.toList());
 	}
 
-	/** Оборудование для выбора в форме брони: свободное, в прокате и уже забронированное (цепочка броней). */
+	
 	public List<EquipmentSelectOption> getEquipmentOptionsForBooking() {
 		List<Equipment> list = equipmentRepository.findByStatusInAndIsDeletedFalse(
 				java.util.List.of(EquipmentStatus.FREE, EquipmentStatus.BUSY, EquipmentStatus.RESERVED));
@@ -108,7 +108,7 @@ public class RentalService {
 		String statusLabel;
 		boolean free = (e.getStatus() == EquipmentStatus.FREE);
 		if (e.getStatus() == EquipmentStatus.FREE) {
-			// Свободен сейчас, но если впереди есть брони — показываем с и по (последняя в цепочке)
+			
 			statusLabel = bookingService.getLastFutureBookingForEquipment(e.getId())
 					.map(b -> {
 						LocalDateTime from = b.getDateFrom() != null ? b.getDateFrom() : b.getCreatedAt();
@@ -126,7 +126,7 @@ public class RentalService {
 				statusLabel = "Ожидает доставки, прокат №" + ar.getId() + " с " + ar.getDateFrom().format(DATETIME_FMT)
 						+ " по " + ar.getDateTo().format(DATETIME_FMT);
 			} else {
-				// RESERVED: показываем с и по текущей брони
+				
 				statusLabel = bookingService.getActiveBookingForEquipment(e.getId())
 						.map(b -> {
 							LocalDateTime from = b.getDateFrom() != null ? b.getDateFrom() : b.getCreatedAt();
@@ -151,7 +151,7 @@ public class RentalService {
 		return clientRepository.findByIsDeletedFalse();
 	}
 
-	/** Считает сумму по полным дням: 1-й день X, 2-й 0.8X, далее 0.6X за день (значения из equipment). */
+	
 	public BigDecimal calculateTotal(LocalDateTime dateFrom, LocalDateTime dateTo, Equipment equipment) {
 		if (dateFrom == null || dateTo == null || equipment == null) return BigDecimal.ZERO;
 		if (!dateTo.isAfter(dateFrom)) return BigDecimal.ZERO;
@@ -228,7 +228,7 @@ public class RentalService {
 		if (needsDelivery) {
 			if (handedOverByStaffId != null) userRepository.findById(handedOverByStaffId).ifPresent(rental::setHandedOverByStaff);
 		} else if (rental.getCreatedByStaff() != null) {
-			// Без доставки выдача сразу в пункте — отдал тот же, кто оформил
+			
 			rental.setHandedOverByStaff(rental.getCreatedByStaff());
 		}
 		rentalRepository.save(rental);

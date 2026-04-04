@@ -43,9 +43,7 @@ public class CallbackRequestService {
 		return findAll(false);
 	}
 
-	/**
-	 * @param prioritizeRemindDayBefore если true — сначала строки «за день до перезвона» (как красные в списке), затем остальные по дате создания.
-	 */
+	
 	public List<CallbackRequest> findAll(boolean prioritizeRemindDayBefore) {
 		List<CallbackRequest> list = callbackRequestRepository.findAllWithEquipmentOrderByCreatedAtDesc();
 		if (!prioritizeRemindDayBefore) {
@@ -58,7 +56,7 @@ public class CallbackRequestService {
 				.collect(Collectors.toList());
 	}
 
-	/** 0 — перезвон сегодня, 1 — завтра, 2 — остальные с датой, 99 — без даты. */
+	
 	private static int remindListPriority(CallbackRequest cb) {
 		if (cb.getRemindAt() == null) {
 			return 99;

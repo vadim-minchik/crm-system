@@ -5,9 +5,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
-/**
- * Расход компании — учёт затрат.
- */
+
 @Entity
 @Table(name = "expenses")
 public class Expense {
@@ -42,7 +40,7 @@ public class Expense {
 	@Column(nullable = false)
 	private Boolean isDeleted = false;
 
-	/** Шаблон повторяющегося расхода, из которого создана эта запись (null для ручных). */
+	
 	@Column(name = "recurring_source_id")
 	private Long recurringSourceId;
 

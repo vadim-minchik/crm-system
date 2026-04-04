@@ -26,12 +26,12 @@ public class Equipment {
 	@JoinColumn(name = "tool_name_id", nullable = false)
 	private ToolName toolName;
 
-	/** Точка (локация) — обязательна при создании/редактировании (проверка в контроллере). */
+	
 	@ManyToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name = "point_id")
 	private Point point;
 
-	/** Уникальность только среди неудалённых — проверяется в контроллере. */
+	
 	@Column(nullable = false)
 	private String serialNumber;
 
@@ -41,27 +41,27 @@ public class Equipment {
 	@Column(nullable = false, precision = 10, scale = 2)
 	private BigDecimal baseValue;
 
-	/** Первые сутки (100%). */
+	
 	@Column(name = "price_first_day", nullable = false, precision = 10, scale = 2)
 	private BigDecimal priceFirstDay;
 
-	/** Вторые сутки (обычно 0,8 от первых). */
+	
 	@Column(name = "price_second_day", nullable = false, precision = 10, scale = 2)
 	private BigDecimal priceSecondDay;
 
-	/** Последующие сутки (обычно 0,6 от первых). */
+	
 	@Column(name = "price_subsequent_days", nullable = false, precision = 10, scale = 2)
 	private BigDecimal priceSubsequentDays;
 
-	/** Первый месяц (100%). */
+	
 	@Column(name = "price_first_month", nullable = false, precision = 10, scale = 2)
 	private BigDecimal priceFirstMonth;
 
-	/** Второй месяц (обычно 0,8 от первого). */
+	
 	@Column(name = "price_second_month", nullable = false, precision = 10, scale = 2)
 	private BigDecimal priceSecondMonth;
 
-	/** Последующие месяцы (обычно 0,6 от первого). */
+	
 	@Column(name = "price_subsequent_months", nullable = false, precision = 10, scale = 2)
 	private BigDecimal priceSubsequentMonths;
 

@@ -57,10 +57,7 @@ public class ExpenseService {
 		return expenseRepository.save(e);
 	}
 
-	/**
-	 * Создаёт записи расходов по всем активным шаблонам повторяющихся расходов
-	 * для периодов от startDate до min(endDate, endDate шаблона).
-	 */
+	
 	@Transactional
 	public void generateRecurringExpensesUpTo(LocalDate endDate) {
 		if (endDate == null) return;

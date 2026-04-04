@@ -5,9 +5,7 @@ import com.studio.crm_system.entity.Rental;
 
 import java.time.LocalDateTime;
 
-/**
- * Одна запись в истории экземпляра (прокат или бронь) для сортировки и отображения.
- */
+
 public class UnitHistoryEntry {
 
 	public static final String TYPE_RENTAL = "rental";

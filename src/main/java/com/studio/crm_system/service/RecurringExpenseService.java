@@ -32,9 +32,7 @@ public class RecurringExpenseService {
 				.filter(r -> !r.getIsDeleted());
 	}
 
-	/**
-	 * Валидация: сумма > 0, описание не пустое, startDate <= endDate.
-	 */
+	
 	public String validate(BigDecimal amount, String description, String category, LocalDate startDate, LocalDate endDate) {
 		if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0)
 			return "Сумма должна быть больше нуля.";

@@ -474,7 +474,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-  // ===== Открыть модал редактирования =====
+  
   function prepareEdit(btn) {
     document.getElementById('edit-id').value = btn.getAttribute('data-id');
     document.getElementById('edit-version').value = btn.getAttribute('data-version') || '';
@@ -496,7 +496,7 @@
     const isBlacklisted = btn.getAttribute('data-blacklisted') === 'true';
     document.getElementById('e-blacklisted').checked = isBlacklisted;
 
-    // Разбиваем "MP 4362782" → серия + номер
+    
     const passport = btn.getAttribute('data-passport') || '';
     const parts = passport.split(' ');
     document.getElementById('e-pass-series').value = parts[0] || '';
@@ -505,7 +505,7 @@
     new bootstrap.Modal(document.getElementById('editClientModal')).show();
   }
 
-  // ===== Автоформат дат: ДД.ММ.ГГГГ =====
+  
   document.querySelectorAll('.date-input').forEach(input => {
     input.addEventListener('input', function () {
       let v = this.value.replace(/\D/g, '');
@@ -516,12 +516,12 @@
     });
   });
 
-  // ===== Верхний регистр для серии паспорта =====
+  
   document.querySelectorAll('.text-uppercase').forEach(input => {
     input.addEventListener('input', function() { this.value = this.value.toUpperCase(); });
   });
 
-  // ===== Динамический предпросмотр номера паспорта =====
+  
   document.querySelectorAll('[name="passportSeries"], [name="passportNum"]').forEach(input => {
     input.addEventListener('input', function() {
       const form = this.closest('form');
@@ -533,23 +533,23 @@
     });
   });
 
-  // ===== ФИО: первая буква каждого слова — заглавная, остальные — строчные =====
-  // Разрешаем русские и английские буквы, пробелы, дефис
+  
+  
   document.querySelectorAll('[name="surname"],[name="name"],[name="patronymic"]').forEach(input => {
     input.addEventListener('input', function () {
-      // Удаляем всё кроме букв (рус/англ), пробелов и дефиса
+      
       let val = this.value.replace(/[^А-Яа-яЁёA-Za-z \-]/g, '');
-      // Капитализируем каждое слово
+      
       val = val.replace(/(?:^|[\s\-])./g, ch => ch.toUpperCase())
                .replace(/(?<=[\s\-])(.+?)(?=[\s\-]|$)/g, w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase());
-      // Фиксируем курсор
+      
       const pos = this.selectionStart;
       this.value = val;
       this.setSelectionRange(pos, pos);
     });
   });
 
-  // ===== Клиентская валидация дат перед отправкой =====
+  
   document.querySelectorAll('#addClientModal form, #editClientModal form').forEach(form => {
     form.addEventListener('submit', function(e) {
       const today = new Date(); today.setHours(0,0,0,0);

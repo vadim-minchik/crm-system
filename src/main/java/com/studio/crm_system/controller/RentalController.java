@@ -40,7 +40,7 @@ public class RentalController {
 	@Autowired private RentalDocumentService rentalDocumentService;
 	@Autowired private TemplateStorageService templateStorageService;
 
-	/** Убирает символы, недопустимые в имени файла Windows; кириллицу сохраняет. */
+	
 	private static String filenameSafeSegment(String s) {
 		if (s == null || s.isBlank()) {
 			return "";
@@ -50,9 +50,7 @@ public class RentalController {
 		return t;
 	}
 
-	/**
-	 * Имя файла: номер проката, дата начала, фамилия клиента, краткое имя шаблона (латиница/цифры).
-	 */
+	
 	private static String buildRentalDocxDownloadFilename(Rental rental, String templateName) {
 		String datePart = rental.getDateFrom() != null
 				? rental.getDateFrom().format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))
@@ -109,9 +107,7 @@ public class RentalController {
 		return "html/rentals";
 	}
 
-	/**
-	 * Сформировать документ по прокату и скачать как .docx (исходный шаблон с подставленными данными).
-	 */
+	
 	@GetMapping(value = "/{id}/document/docx", produces = "application/vnd.openxmlformats-officedocument.wordprocessingml.document")
 	public ResponseEntity<byte[]> getRentalDocumentAsDocx(@PathVariable Long id, @RequestParam Long templateId) {
 		if (getCurrentUser() == null)

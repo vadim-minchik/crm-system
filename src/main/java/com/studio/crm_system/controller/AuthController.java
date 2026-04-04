@@ -13,6 +13,6 @@ public class AuthController {
 
     @GetMapping("/login")
     public String login() {
-    	return "html/login"; // Возвращает твой login.html
+    	return "html/login"; 
     }
 }

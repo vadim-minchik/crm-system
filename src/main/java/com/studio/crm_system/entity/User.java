@@ -43,11 +43,11 @@ public class User {
 	@Column(nullable = false)
 	private String patronymic;
 
-	/** Уникальность только среди неудалённых — проверяется в сервисе. */
+	
 	@Column(nullable = false)
 	private String email;
 
-	/** Уникальность только среди неудалённых — проверяется в сервисе. */
+	
 	@Column(nullable = false)
 	private String login;
 
@@ -107,12 +107,12 @@ public class User {
     @JoinColumn(name = "created_by_id")
     private User createdBy;
 
-	/** Точка (локация) — обязательна при создании/редактировании (проверка в контроллере). */
+	
 	@ManyToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name = "point_id")
 	private Point point;
 
-	/** Коды разделов меню через запятую ({@link com.studio.crm_system.enums.NavSection}); пусто = по умолчанию для роли. */
+	
 	@Column(name = "menu_sections", length = 500)
 	private String menuSections;
 

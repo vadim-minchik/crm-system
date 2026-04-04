@@ -2,9 +2,7 @@ package com.studio.crm_system.dto;
 
 import java.math.BigDecimal;
 
-/**
- * Одна строка таблицы экземпляров на странице склада (для бесконечной подгрузки).
- */
+
 public class InventoryUnitRowDto {
 
 	private Long id;
@@ -18,14 +16,14 @@ public class InventoryUnitRowDto {
 	private BigDecimal priceSecondMonth;
 	private BigDecimal priceSubsequentMonths;
 	private BigDecimal baseValue;
-	private String status;       // FREE, BUSY, RESERVED
-	private String statusLabel;  // Свободно, Занят, Забронирован
+	private String status;       
+	private String statusLabel;  
 	private boolean inBooking;
 	private Long pointId;
 	private String pointName;
-	/** Краткая строка для таблицы: «Иванов 50% · Петров 50%». */
+	
 	private String ownersSummary;
-	/** JSON [{name, percent}] для формы редактирования. */
+	
 	private String ownersJson;
 
 	public Long getId() { return id; }

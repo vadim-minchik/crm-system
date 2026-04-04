@@ -1,43 +1,42 @@
 (function () {
-	var base = typeof window.__CRM_DATA_REVISION__ === 'number' ? window.__CRM_DATA_REVISION__ : 0;
-	var lastKnown = base;
-	var pendingStale = false;
-	var INTERVAL_MS = 8000;
+	var SCROLL_KEY = 'crm-reload-scroll';
+	var INTERVAL_MS = 15000;
 
-	function shouldBlockReload() {
-		return document.visibilityState === 'hidden' || document.querySelector('.modal.show');
+	try {
+		var raw = sessionStorage.getItem(SCROLL_KEY);
+		if (raw) {
+			sessionStorage.removeItem(SCROLL_KEY);
+			var o = JSON.parse(raw);
+			var here = location.pathname + location.search;
+			if (o && o.path === here && typeof o.y === 'number') {
+				window.addEventListener('load', function () {
+					requestAnimationFrame(function () {
+						requestAnimationFrame(function () {
+							window.scrollTo(o.x || 0, o.y || 0);
+						});
+					});
+				});
+			}
+		}
+	} catch (e) {
 	}
 
-	function tryFlushStale() {
-		if (!pendingStale || shouldBlockReload()) return;
-		pendingStale = false;
+	function saveScrollAndReload() {
+		try {
+			sessionStorage.setItem(
+					SCROLL_KEY,
+					JSON.stringify({
+						path: location.pathname + location.search,
+						x: window.scrollX || 0,
+						y: window.scrollY || 0
+					}));
+		} catch (e2) {
+		}
 		window.location.reload();
 	}
 
-	async function tick() {
-		try {
-			var res = await fetch('/api/data-revision', {
-				credentials: 'same-origin',
-				headers: { Accept: 'application/json' }
-			});
-			if (!res.ok) return;
-			var data = await res.json();
-			var rev = data.revision;
-			if (typeof rev !== 'number' || rev <= lastKnown) return;
-			if (shouldBlockReload()) {
-				pendingStale = true;
-				return;
-			}
-			lastKnown = rev;
-			window.location.reload();
-		} catch (e) {
-			/* сеть / парсинг — пропускаем тик */
-		}
-	}
-
-	document.addEventListener('visibilitychange', tryFlushStale);
-	document.addEventListener('hidden.bs.modal', tryFlushStale);
-
-	setTimeout(tick, 2000);
-	setInterval(tick, INTERVAL_MS);
+	setInterval(function () {
+		if (document.visibilityState === 'hidden') return;
+		saveScrollAndReload();
+	}, INTERVAL_MS);
 })();

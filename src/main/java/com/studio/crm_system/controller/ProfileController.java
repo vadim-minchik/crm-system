@@ -22,9 +22,7 @@ import java.net.URI;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 
-/**
- * Редактирование собственного профиля (логин для SUPER_ADMIN, остальные поля — для всех ролей).
- */
+
 @Controller
 public class ProfileController {
 
@@ -117,7 +115,7 @@ public class ProfileController {
 					}
 				}
 			} catch (IllegalArgumentException ignored) {
-				/* ignore */
+				
 			}
 		}
 		return "redirect:" + menuScopeService.firstAccessiblePath(actor);

@@ -15,7 +15,7 @@ public class RentalStatusScheduler {
 	@Autowired
 	private BookingService bookingService;
 
-	/** Раз в минуту по системным часам (в начале каждой минуты, без рассинхрона). */
+	
 	@Scheduled(cron = "0 * * * * ?")
 	public void runScheduledTasks() {
 		rentalService.updateRentalStatuses();

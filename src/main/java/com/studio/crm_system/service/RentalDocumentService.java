@@ -30,9 +30,7 @@ import org.apache.poi.xwpf.usermodel.XWPFTableRow;
 
 import com.studio.crm_system.util.RussianNumberWords;
 
-/**
- * Подставляет данные проката и клиента в шаблон (переменные {{NAME}}) для формирования документа Word.
- */
+
 @Service
 public class RentalDocumentService {
 
@@ -43,7 +41,7 @@ public class RentalDocumentService {
 	private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("dd.MM.yyyy");
 	public static final int MAX_EQUIPMENT_SLOTS = 50;
 
-	/** Список подстановок для справки в разделе «Документы» и при заполнении шаблона. */
+	
 	public static final String[][] PLACEHOLDERS_HELP = {
 		{ "{{CLIENT_FIO}}", "ФИО клиента (полностью)" },
 		{ "{{CLIENT_SURNAME}}", "Фамилия клиента" },
@@ -114,13 +112,10 @@ public class RentalDocumentService {
 		{ "{{RENTAL_STAFF_HANDED_OVER_BY_OR_EMPTY}}", "ФИО выдавшего/доставившего; пусто, если не указан" },
 	};
 
-	/** Кэш: все переменные слотов 1…50 для справки на странице «Документы». */
+	
 	private static String[][] equipmentSlotsHelpRows;
 
-	/**
-	 * Строки справки: для каждого N от 1 до {@link #MAX_EQUIPMENT_SLOTS} — все поля позиции
-	 * (как в подстановке в .docx).
-	 */
+	
 	private static String[][] getEquipmentSlotsHelpRows() {
 		if (equipmentSlotsHelpRows != null) {
 			return equipmentSlotsHelpRows;
@@ -151,7 +146,7 @@ public class RentalDocumentService {
 		return equipmentSlotsHelpRows;
 	}
 
-	/** Справка для страницы «Документы»: общий список + все слоты 1…50. */
+	
 	public static String[][] getPlaceholdersHelpWithEquipmentSlots() {
 		String[][] base = PLACEHOLDERS_HELP;
 		String[][] slots = getEquipmentSlotsHelpRows();
@@ -161,10 +156,7 @@ public class RentalDocumentService {
 		return out;
 	}
 
-	/**
-	 * Заполняет шаблон .docx данными проката через Apache POI.
-	 * Подставляет переменные {{NAME}} в параграфы, таблицы, колонтитулы — без зависимости от разбиения Word на run'ы.
-	 */
+	
 	public byte[] fillTemplateDocx(byte[] docxBytes, Rental rental) throws IOException {
 		if (docxBytes == null || docxBytes.length < 22) return null;
 		if (docxBytes[0] != 0x50 || docxBytes[1] != 0x4B) return null;
@@ -175,12 +167,12 @@ public class RentalDocumentService {
 		     XWPFDocument doc = new XWPFDocument(in);
 		     ByteArrayOutputStream out = new ByteArrayOutputStream()) {
 
-			// Основной текст
+			
 			for (XWPFParagraph p : doc.getParagraphs()) {
 				replaceInParagraph(p, placeholders);
 			}
 
-			// Таблицы
+			
 			for (XWPFTable table : doc.getTables()) {
 				for (XWPFTableRow row : table.getRows()) {
 					for (XWPFTableCell cell : row.getTableCells()) {
@@ -191,7 +183,7 @@ public class RentalDocumentService {
 				}
 			}
 
-			// Колонтитулы
+			
 			if (doc.getHeaderList() != null) {
 				doc.getHeaderList().forEach(h -> { if (h != null) h.getParagraphs().forEach(p -> replaceInParagraph(p, placeholders)); });
 			}
@@ -204,7 +196,7 @@ public class RentalDocumentService {
 		}
 	}
 
-	/** Подставляет переменные в каждом run отдельно; подставленный текст получает размер/цвет как у соседнего run. */
+	
 	private static void replaceInParagraph(XWPFParagraph p, Map<String, String> placeholders) {
 		java.util.List<XWPFRun> runs = p.getRuns();
 		if (runs == null || runs.isEmpty()) return;
@@ -222,12 +214,12 @@ public class RentalDocumentService {
 			if (replaced.equals(text)) continue;
 
 			run.setText(replaced, 0);
-			// Размер — как у соседнего run; цвет всегда чёрный
+			
 			applyNeighborFormatting(run, runs, i);
 		}
 	}
 
-	/** Копирует размер и шрифт из соседнего run; цвет подставленного текста всегда чёрный. */
+	
 	private static void applyNeighborFormatting(XWPFRun target, java.util.List<XWPFRun> runs, int currentIndex) {
 		Integer size = null;
 		String fontFamily = null;
@@ -245,13 +237,11 @@ public class RentalDocumentService {
 		}
 		if (size != null) target.setFontSize(size);
 		target.setColor("000000");
-		// Шрифт — как у соседа, иначе Arial (чтобы не подставлялся системный моноширинный)
+		
 		if (fontFamily != null) target.setFontFamily(fontFamily); else target.setFontFamily("Arial");
 	}
 
-	/**
-	 * Заполняет HTML-шаблон данными проката. В тексте заменяются все {{PLACEHOLDER}} на значения.
-	 */
+	
 	public String fillTemplate(String html, Rental rental) {
 		if (html == null) return "";
 		String result = html;
@@ -370,7 +360,7 @@ public class RentalDocumentService {
 		return m;
 	}
 
-	/** ФИО без «—»: для шаблонов, где пустое место, если сотрудник не задан. */
+	
 	private static void putOptionalStaffFioPlaceholders(Map<String, String> m, Rental rental) {
 		User createdBy = rental != null ? rental.getCreatedByStaff() : null;
 		User handedOver = rental != null ? rental.getHandedOverByStaff() : null;
@@ -380,9 +370,7 @@ public class RentalDocumentService {
 		m.put("{{RENTAL_STAFF_HANDED_OVER_BY_OR_EMPTY}}", hf.isBlank() ? "" : hf);
 	}
 
-	/**
-	 * Оформление → доставка: даты и длительность. Все ключи — пустая строка, если нет данных или длительность 0.
-	 */
+	
 	private static void putOrderAndDeliveryTimelinePlaceholders(Map<String, String> m, Rental rental) {
 		String empty = "";
 		m.put("{{RENTAL_ORDER_CREATED_AT}}", empty);
@@ -433,10 +421,7 @@ public class RentalDocumentService {
 		}
 	}
 
-	/**
-	 * Текст для карточки проката: длительность от оформления в CRM до «Доставлено».
-	 * @return null, если посчитать нельзя или интервал неположительный
-	 */
+	
 	public String buildDeliveryLeadDescriptionForUi(Rental rental) {
 		if (rental == null || rental.getCreatedAt() == null || rental.getDeliveredAt() == null) {
 			return null;
@@ -482,9 +467,7 @@ public class RentalDocumentService {
 		return sb.toString().trim();
 	}
 
-	/**
-	 * Агрегаты по списку оборудования: единый «лучший» формат без настройки в properties.
-	 */
+	
 	private static void putEquipmentAggregates(Map<String, String> m, List<Equipment> eqList) {
 		if (eqList == null || eqList.isEmpty()) {
 			m.put("{{EQUIPMENT_LINES}}", "—");
@@ -516,9 +499,7 @@ public class RentalDocumentService {
 		m.put("{{EQUIPMENT_LINES_SHORT}}", String.join("\n", shortLines));
 	}
 
-	/**
-	 * Полный юридически-технический блок по одной единице: наименование, S/N, оценка, состояние, тарифы, точка.
-	 */
+	
 	private static String buildUniversalEquipmentBlock(Equipment eq) {
 		String title = nullToEmpty(eq.getTitle());
 		String serial = nullToEmpty(eq.getSerialNumber());
@@ -574,7 +555,7 @@ public class RentalDocumentService {
 		return s != null ? s : "";
 	}
 
-	/** Для подстановки в документ: пустую строку показываем как «—», чтобы было видно, что поле не заполнено. */
+	
 	private static String emptyToDash(String s) {
 		return (s != null && !s.isBlank()) ? s : "—";
 	}
@@ -584,7 +565,7 @@ public class RentalDocumentService {
 		return (nullToEmpty(u.getSurname()) + " " + nullToEmpty(u.getName()) + " " + nullToEmpty(u.getPatronymic())).trim();
 	}
 
-	/** Паспорт сотрудника, выдавшего прокат (передавшего оборудование). */
+	
 	private static void putHandedOverStaffPassportPlaceholders(Map<String, String> m, User handedOver) {
 		if (handedOver == null) {
 			m.put("{{RENTAL_STAFF_HANDED_OVER_PASSPORT}}", "—");
@@ -626,10 +607,7 @@ public class RentalDocumentService {
 		m.put("{{" + prefix + "_ROLE}}", emptyToDash(u.getRole() != null ? u.getRole().name() : ""));
 	}
 
-	/**
-	 * Срок в календарных сутках включительно: от даты начала до даты окончания (по локальным датам).
-	 * Например 01.01 10:00 — 03.01 18:00 → 3 суток.
-	 */
+	
 	private static long rentalInclusiveCalendarDays(java.time.LocalDateTime from, java.time.LocalDateTime to) {
 		if (from == null || to == null) return 0;
 		if (to.isBefore(from)) return 0;

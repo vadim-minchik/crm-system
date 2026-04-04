@@ -33,11 +33,16 @@ public class SecurityConfig {
     @Autowired
     private CrmLoginSuccessHandler crmLoginSuccessHandler;
 
+    @Autowired
+    private CrmAccessDeniedHandler crmAccessDeniedHandler;
+
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http.userDetailsService(userDetailsService)
+                .exceptionHandling(e -> e.accessDeniedHandler(crmAccessDeniedHandler))
                 .authorizeHttpRequests((requests) -> requests
                         .requestMatchers("/css/**", "/js/**", "/images/**", "/login", "/logout").permitAll()
+                        .requestMatchers("/storage/clients/**").hasAuthority("MENU_CLIENTS")
                         .requestMatchers("/staff/**").hasAuthority("MENU_STAFF")
                         .requestMatchers("/callbacks/**").hasAuthority("MENU_CALLBACKS")
                         .requestMatchers("/clients/**").hasAuthority("MENU_CLIENTS")

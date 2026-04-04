@@ -24,11 +24,11 @@ public class Client {
 	@Column(nullable = false)
 	private String patronymic;
 
-	/** Уникальность только среди неудалённых (isDeleted = false) — проверяется в сервисе. */
+	
 	@Column(nullable = false, length = 20)
 	private String passportNumber;
 
-	/** Уникальность только среди неудалённых — проверяется в сервисе. */
+	
 	@Column(nullable = false, length = 20)
 	private String identificationNumber;
 
@@ -41,7 +41,7 @@ public class Client {
 	@Column(nullable = false)
 	private LocalDate passportIssueDate;
 
-	/** Кем выдан паспорт (например: Октябрьское РУВД г. Минска). Обязательно при вводе. */
+	
 	@Column(length = 500)
 	private String passportIssuedBy;
 
@@ -66,11 +66,11 @@ public class Client {
 	@Column(length = 500)
 	private String passportPhotoUrl;
 
-	/** Уникальность только среди неудалённых — проверяется в сервисе. */
+	
 	@Column(nullable = false)
 	private String phoneNumber;
 
-	/** Рейтинг 1–10: считается как среднее по отзывам. Вручную не редактируется. */
+	
 	@Column(nullable = false)
 	private Integer rating = 10;
 
@@ -84,7 +84,7 @@ public class Client {
 	@Column(nullable = false)
 	private Boolean isDeleted = false;
 
-	/** Чёрный список: true — клиент в чёрном списке. */
+	
 	@Column(nullable = false)
 	private Boolean blacklisted = false;
 

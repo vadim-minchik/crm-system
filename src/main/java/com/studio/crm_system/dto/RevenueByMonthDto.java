@@ -2,9 +2,7 @@ package com.studio.crm_system.dto;
 
 import java.math.BigDecimal;
 
-/**
- * Выручка за один месяц для графика.
- */
+
 public class RevenueByMonthDto {
 	private final String monthLabel;
 	private final BigDecimal total;

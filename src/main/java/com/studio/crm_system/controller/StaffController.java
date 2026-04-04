@@ -187,7 +187,7 @@ public class StaffController {
 			return "redirect:/staff?error=invalid_login";
 		}
 		
-		// Уникальность только среди неудалённых — удалённые не мешают завести такого же снова
+		
 		if (userRepository.findByLoginAndIsDeletedFalse(login).isPresent()) {
 			return "redirect:/staff?error=login_exists";
 		}

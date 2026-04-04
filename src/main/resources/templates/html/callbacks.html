@@ -13,10 +13,10 @@
   .equipment-dropdown .list-group-item:first-child { border-top: 0; }
   .callback-equipment-wrap .form-control:focus { border-color: #86b7fe; box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25); }
   .callback-equipment-wrap .form-control { width: 100%; min-width: 280px; }
-  /* За день до перезвона: фон строки + полоса слева (рамка по периметру в таблице даёт зазоры и «плавание») */
+  
   .table tbody tr.callback-row-remind-soon td {
     background-color: rgba(220, 53, 69, 0.08);
-    /* обычные горизонтальные линии сетки, без «коробки» вокруг строки */
+    
     border-top: 0;
     border-bottom: 1px solid var(--table-row-border, rgba(0, 0, 0, 0.08));
   }
@@ -258,7 +258,7 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script th:inline="javascript">
 (function () {
-  const lookupUrl = /*[[@{/callbacks/api/lookup}]]*/ '/callbacks/api/lookup';
+  const lookupUrl =  '/callbacks/api/lookup';
   const phoneEl = document.getElementById('callbackPhone');
   const btnLookup = document.getElementById('btnLookupPhone');
   const linkedId = document.getElementById('linkedClientId');

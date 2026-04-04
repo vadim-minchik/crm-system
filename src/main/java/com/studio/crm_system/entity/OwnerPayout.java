@@ -4,9 +4,7 @@ import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
-/**
- * Выплата владельцу доли от прокатов (по строке владельца экземпляра).
- */
+
 @Entity
 @Table(name = "owner_payouts")
 public class OwnerPayout {
@@ -23,7 +21,7 @@ public class OwnerPayout {
 	@JoinColumn(name = "equipment_id", nullable = false)
 	private Equipment equipment;
 
-	/** Может стать null, если строка владельца удалена при редактировании экземпляра. */
+	
 	@ManyToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name = "equipment_owner_id")
 	private EquipmentOwner equipmentOwner;

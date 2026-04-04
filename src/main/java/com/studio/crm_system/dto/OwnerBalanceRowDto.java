@@ -2,7 +2,7 @@ package com.studio.crm_system.dto;
 
 import java.math.BigDecimal;
 
-/** Строка сводки по владельцу для статистики и карточки экземпляра. */
+
 public class OwnerBalanceRowDto {
 
 	private Long equipmentId;
@@ -11,9 +11,9 @@ public class OwnerBalanceRowDto {
 	private Long equipmentOwnerId;
 	private Long equipmentOwnerVersion;
 	private String ownerName;
-	/** Доля владения по экземпляру, %. */
+	
 	private BigDecimal ownershipPercent;
-	/** Доля прибыли от проката (начисления), %. */
+	
 	private BigDecimal sharePercent;
 	private BigDecimal accrued;
 	private BigDecimal paid;

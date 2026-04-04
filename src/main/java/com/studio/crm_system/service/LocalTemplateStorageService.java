@@ -1,6 +1,7 @@
 package com.studio.crm_system.service;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -11,12 +12,9 @@ import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.Locale;
 
-/**
- * Хранение шаблонов документов (.docx) на диске сервера в uploads/documents/templates/.
- * В БД сохраняется путь вида /uploads/documents/templates/{id}_{filename}.docx.
- * Скачивание только через контроллер (авторизация), не как статика.
- */
+
 @Service
+@ConditionalOnProperty(name = "app.storage.type", havingValue = "local", matchIfMissing = true)
 public class LocalTemplateStorageService implements TemplateStorageService {
 
 	private static final String URL_PREFIX = "/uploads/";

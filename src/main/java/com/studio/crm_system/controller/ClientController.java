@@ -158,7 +158,7 @@ public class ClientController {
 		String cleanPhone = inputValidator.cleanPhone(phoneNumber.trim());
 		String identUpper = identificationNumber.trim().toUpperCase();
 
-		// Уникальность только среди неудалённых — удалённые не мешают завести такого же снова
+		
 		if (clientRepository.existsByPhoneNumberAndIsDeletedFalse(cleanPhone)) {
 			return "redirect:/clients?error=phone_exists";
 		}
@@ -260,7 +260,7 @@ public class ClientController {
 		String cleanPhone = inputValidator.cleanPhone(phoneNumber.trim());
 		String identUpper = identificationNumber.trim().toUpperCase();
 
-		// Уникальность только среди неудалённых; при редактировании — кроме текущего клиента
+		
 		if (clientRepository.existsByPhoneNumberAndIsDeletedFalseAndIdNot(cleanPhone, dbClient.getId())) {
 			return "redirect:/clients?error=phone_exists";
 		}
@@ -288,7 +288,7 @@ public class ClientController {
 		dbClient.setAddressApartment(addr(addressApartment));
 		dbClient.setPhoneNumber(cleanPhone);
 		dbClient.setBlacklisted(Boolean.TRUE.equals(blacklisted));
-		// Рейтинг не редактируется вручную — считается по отзывам
+		
 
 		try {
 			clientRepository.save(dbClient);
@@ -366,7 +366,7 @@ public class ClientController {
 			return "redirect:/clients/" + id + "?error=review_not_found";
 		}
 
-		// Работник может удалять только свои отзывы; админ — любые
+		
 		if (user.getRole() == Role.WORKER) {
 			if (review.getAuthor() == null || !review.getAuthor().getId().equals(user.getId())) {
 				return "redirect:/clients/" + id + "?error=review_delete_denied";

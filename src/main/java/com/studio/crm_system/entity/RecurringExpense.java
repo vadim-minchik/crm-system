@@ -7,9 +7,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
-/**
- * Шаблон повторяющегося расхода: система создаёт записи Expense по датам в интервале [startDate, endDate] с заданной периодичностью.
- */
+
 @Entity
 @Table(name = "recurring_expenses")
 public class RecurringExpense {

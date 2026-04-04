@@ -1,4 +1,6 @@
 HELP.md
+# Локальные секреты (пароль БД и т.п.) — не коммитить
+src/main/resources/application-local.properties
 target/
 .mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/

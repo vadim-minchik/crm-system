@@ -5,9 +5,7 @@ import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-/**
- * Разделы CRM в меню и соответствующие права Spring Security.
- */
+
 public enum NavSection {
 	STAFF("STAFF", "MENU_STAFF", "/staff", "Штат сотрудников"),
 	CALLBACKS("CALLBACKS", "MENU_CALLBACKS", "/callbacks", "Перезвон"),

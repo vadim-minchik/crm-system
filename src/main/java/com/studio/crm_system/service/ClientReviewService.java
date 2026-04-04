@@ -33,10 +33,7 @@ public class ClientReviewService {
 		return clientReviewRepository.findById(id);
 	}
 
-	/**
-	 * Добавить отзыв и пересчитать рейтинг клиента (среднее по отзывам).
-	 * Рейтинг вручную не редактируется — только через отзывы.
-	 */
+	
 	@Transactional
 	public ClientReview addReview(Long clientId, User author, int score, String comment) {
 		if (score < MIN_SCORE || score > MAX_SCORE) {
@@ -53,9 +50,7 @@ public class ClientReviewService {
 		return review;
 	}
 
-	/**
-	 * Удалить отзыв и пересчитать рейтинг клиента.
-	 */
+	
 	@Transactional
 	public void deleteReview(Long reviewId) {
 		ClientReview review = clientReviewRepository.findById(reviewId).orElse(null);
@@ -65,10 +60,7 @@ public class ClientReviewService {
 		recalculateClientRating(clientId);
 	}
 
-	/**
-	 * Пересчитать рейтинг клиента как среднее по всем отзывам (1–10).
-	 * Если отзывов нет — ставим 10.
-	 */
+	
 	public void recalculateClientRating(Long clientId) {
 		Client client = clientRepository.findById(clientId).orElse(null);
 		if (client == null) return;

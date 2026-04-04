@@ -36,7 +36,7 @@ public class CallbackRequest {
 	@Column(length = 2000)
 	private String equipmentWish;
 
-	/** Выбранная единица со склада (необязательно). Старые записи могли хранить только текст в {@link #equipmentWish}. */
+	
 	@ManyToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name = "equipment_id")
 	private Equipment equipment;
@@ -45,7 +45,7 @@ public class CallbackRequest {
 
 	private LocalDateTime dateTo;
 
-	/** Когда перезвонить клиенту по этой заявке (необязательно). */
+	
 	private LocalDateTime remindAt;
 
 	@Column(length = 2000)
@@ -58,7 +58,7 @@ public class CallbackRequest {
 	@JoinColumn(name = "creator_user_id")
 	private User creator;
 
-	/** Логин создателя (дублируется для старых записей без creator). */
+	
 	@Column(length = 100)
 	private String createdBy;
 
@@ -134,7 +134,7 @@ public class CallbackRequest {
 		this.equipment = equipment;
 	}
 
-	/** Подпись для таблицы: выбранная техника или старый текст. */
+	
 	public String getEquipmentDisplayLabel() {
 		if (equipment != null) {
 			return equipment.getTitle() + " — S/N " + equipment.getSerialNumber();
@@ -201,9 +201,7 @@ public class CallbackRequest {
 		this.creator = creator;
 	}
 
-	/**
-	 * Срочная подсветка: перезвон запланирован на сегодня или на завтра (в т.ч. режим «за день до»).
-	 */
+	
 	public boolean isRemindUrgent() {
 		if (remindAt == null) {
 			return false;
@@ -213,7 +211,7 @@ public class CallbackRequest {
 		return d.equals(today) || d.equals(today.plusDays(1));
 	}
 
-	/** Фамилия для колонки «Создано»; если связи нет — логин. */
+	
 	public String getCreatorDisplaySurname() {
 		if (creator != null && creator.getSurname() != null && !creator.getSurname().isBlank()) {
 			return creator.getSurname().trim();
@@ -221,7 +219,7 @@ public class CallbackRequest {
 		return createdBy != null ? createdBy : "";
 	}
 
-	/** Краткое ФИО для списка: из карточки клиента или вручную введённые поля. */
+	
 	public String getDisplayFio() {
 		if (client != null) {
 			String p = client.getPatronymic() != null ? client.getPatronymic() : "";

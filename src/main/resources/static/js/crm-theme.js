@@ -1,5 +1,16 @@
 (function () {
 	var KEY = 'crm-theme';
+	var COOKIE_MAX_AGE = 365 * 24 * 60 * 60;
+
+	function persist(theme) {
+		try {
+			localStorage.setItem(KEY, theme);
+		} catch (e) {}
+		try {
+			var secure = typeof location !== 'undefined' && location.protocol === 'https:' ? ';Secure' : '';
+			document.cookie = KEY + '=' + encodeURIComponent(theme) + ';path=/;max-age=' + COOKIE_MAX_AGE + ';SameSite=Lax' + secure;
+		} catch (e2) {}
+	}
 
 	function apply(theme) {
 		var root = document.documentElement;
@@ -10,9 +21,7 @@
 			root.removeAttribute('data-theme');
 			root.setAttribute('data-bs-theme', 'light');
 		}
-		try {
-			localStorage.setItem(KEY, theme);
-		} catch (e) {}
+		persist(theme);
 		syncUi(theme);
 	}
 
@@ -38,10 +47,17 @@
 
 	function readSaved() {
 		try {
-			return localStorage.getItem(KEY);
-		} catch (e) {
-			return null;
-		}
+			var t = localStorage.getItem(KEY);
+			if (t === 'dark' || t === 'light') return t;
+		} catch (e) {}
+		try {
+			var m = document.cookie.match(new RegExp('(?:^|;\\s*)' + KEY + '=([^;]*)'));
+			if (m) {
+				var v = decodeURIComponent(m[1].trim());
+				if (v === 'dark' || v === 'light') return v;
+			}
+		} catch (e2) {}
+		return null;
 	}
 
 	function bind(btn) {
