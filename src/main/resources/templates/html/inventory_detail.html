@@ -58,7 +58,8 @@
     <span th:if="${param.error[0] == 'owners_multiple_min'}">При нескольких владельцах нужно минимум 2 с ненулевыми долями.</span>
     <span th:if="${param.error[0] == 'owners_mismatch'}">Несовпадение списков имён и процентов.</span>
     <span th:if="${param.error[0] == 'owners_percent_invalid'}">Проверьте проценты: число от 0 до 100 для каждого владельца.</span>
-    <span th:if="${param.error[0] == 'owners_percent_sum'}">Сумма долей от сдачи должна быть 100% (допуск ±0,02).</span>
+    <span th:if="${param.error[0] == 'owners_ownership_sum'}">Сумма долей владения должна быть 100% (допуск ±0,02).</span>
+    <span th:if="${param.error[0] == 'owners_profit_sum'}">Сумма долей прибыли от проката должна быть 100% (допуск ±0,02).</span>
     <span th:if="${param.error[0] == 'stale_data'}">Данные уже изменены другим пользователем. Обновите страницу и повторите действие.</span>
     <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
   </div>
@@ -250,26 +251,45 @@
             <div class="form-text">от 1 (плохое) до 10 (отличное)</div>
           </div>
           <div class="col-12 border-top pt-3 mt-1">
-            <label class="form-label fw-semibold">Владелец(и) и доля от выручки с проката *</label>
+            <label class="form-label fw-semibold">Владелец(и) *</label>
             <div class="btn-group mb-2" role="group" aria-label="Режим владельцев">
               <input type="radio" class="btn-check" name="ownerMode" id="add-owner-single" value="single" checked autocomplete="off">
-              <label class="btn btn-outline-secondary btn-sm" for="add-owner-single">Один владелец (100%)</label>
+              <label class="btn btn-outline-secondary btn-sm" for="add-owner-single">Один владелец</label>
               <input type="radio" class="btn-check" name="ownerMode" id="add-owner-multiple" value="multiple" autocomplete="off">
               <label class="btn btn-outline-secondary btn-sm" for="add-owner-multiple">Несколько владельцев</label>
             </div>
             <div id="addOwnerSingleBlock">
-              <input type="text" name="singleOwnerName" id="add-single-owner-name" class="form-control" placeholder="ФИО или название владельца">
+              <input type="text" name="singleOwnerName" id="add-single-owner-name" class="form-control mb-2" placeholder="ФИО или название владельца">
+              <div class="row g-2">
+                <div class="col-md-6">
+                  <label class="form-label small text-muted mb-0">Владение, %</label>
+                  <div class="input-group input-group-sm"><input type="text" name="singleOwnershipPercent" class="form-control" value="100" placeholder="100"><span class="input-group-text">%</span></div>
+                  <div class="form-text">Доля владения по этой единице.</div>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label small text-muted mb-0">Прибыль от проката, %</label>
+                  <div class="input-group input-group-sm"><input type="text" name="singleProfitPercent" class="form-control" value="100" placeholder="100"><span class="input-group-text">%</span></div>
+                  <div class="form-text">Доля выручки с проката (может отличаться, напр. владение 100%, прибыль 50%).</div>
+                </div>
+              </div>
             </div>
             <div id="addOwnerMultipleBlock" style="display:none;">
-              <p class="small text-muted mb-2">Минимум 2 владельца. Сумма долей должна быть 100%.</p>
+              <p class="small text-muted mb-2">Минимум 2 владельца. Сумма «владение» = 100% и отдельно сумма «прибыль» = 100%.</p>
+              <div class="row g-1 small fw-semibold text-muted mb-1 d-none d-md-flex">
+                <div class="col-md-4">Владелец</div>
+                <div class="col-md-4">Владение %</div>
+                <div class="col-md-4">Прибыль %</div>
+              </div>
               <div id="addOwnerRows">
                 <div class="row g-2 mb-2 align-items-end">
-                  <div class="col-md-7"><input type="text" name="ownerNames" class="form-control form-control-sm" placeholder="Владелец"></div>
-                  <div class="col-md-5"><div class="input-group input-group-sm"><input type="text" name="ownerPercents" class="form-control" placeholder="50"><span class="input-group-text">%</span></div></div>
+                  <div class="col-md-4"><input type="text" name="ownerNames" class="form-control form-control-sm" placeholder="Владелец"></div>
+                  <div class="col-md-4"><div class="input-group input-group-sm"><input type="text" name="ownerOwnershipPercents" class="form-control" placeholder="50"><span class="input-group-text">%</span></div></div>
+                  <div class="col-md-4"><div class="input-group input-group-sm"><input type="text" name="ownerProfitPercents" class="form-control" placeholder="50"><span class="input-group-text">%</span></div></div>
                 </div>
                 <div class="row g-2 mb-2 align-items-end">
-                  <div class="col-md-7"><input type="text" name="ownerNames" class="form-control form-control-sm" placeholder="Владелец"></div>
-                  <div class="col-md-5"><div class="input-group input-group-sm"><input type="text" name="ownerPercents" class="form-control" placeholder="50"><span class="input-group-text">%</span></div></div>
+                  <div class="col-md-4"><input type="text" name="ownerNames" class="form-control form-control-sm" placeholder="Владелец"></div>
+                  <div class="col-md-4"><div class="input-group input-group-sm"><input type="text" name="ownerOwnershipPercents" class="form-control" placeholder="50"><span class="input-group-text">%</span></div></div>
+                  <div class="col-md-4"><div class="input-group input-group-sm"><input type="text" name="ownerProfitPercents" class="form-control" placeholder="50"><span class="input-group-text">%</span></div></div>
                 </div>
               </div>
               <button type="button" class="btn btn-sm btn-outline-primary" id="btnAddOwnerRowAdd">+ Ещё владелец</button>
@@ -364,18 +384,33 @@
                    class="form-control" min="1" max="10">
           </div>
           <div class="col-12 border-top pt-3 mt-1">
-            <label class="form-label fw-semibold">Владелец(и) и доля от выручки с проката *</label>
+            <label class="form-label fw-semibold">Владелец(и) *</label>
             <div class="btn-group mb-2" role="group">
               <input type="radio" class="btn-check" name="ownerMode" id="edit-owner-single" value="single" checked autocomplete="off">
-              <label class="btn btn-outline-secondary btn-sm" for="edit-owner-single">Один владелец (100%)</label>
+              <label class="btn btn-outline-secondary btn-sm" for="edit-owner-single">Один владелец</label>
               <input type="radio" class="btn-check" name="ownerMode" id="edit-owner-multiple" value="multiple" autocomplete="off">
               <label class="btn btn-outline-secondary btn-sm" for="edit-owner-multiple">Несколько владельцев</label>
             </div>
             <div id="editOwnerSingleBlock">
-              <input type="text" name="singleOwnerName" id="edit-single-owner-name" class="form-control" placeholder="ФИО или название владельца">
+              <input type="text" name="singleOwnerName" id="edit-single-owner-name" class="form-control mb-2" placeholder="ФИО или название владельца">
+              <div class="row g-2">
+                <div class="col-md-6">
+                  <label class="form-label small text-muted mb-0">Владение, %</label>
+                  <div class="input-group input-group-sm"><input type="text" name="singleOwnershipPercent" id="edit-single-ownership" class="form-control" value="100"><span class="input-group-text">%</span></div>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label small text-muted mb-0">Прибыль от проката, %</label>
+                  <div class="input-group input-group-sm"><input type="text" name="singleProfitPercent" id="edit-single-profit" class="form-control" value="100"><span class="input-group-text">%</span></div>
+                </div>
+              </div>
             </div>
             <div id="editOwnerMultipleBlock" style="display:none;">
-              <p class="small text-muted mb-2">Минимум 2 владельца. Сумма долей должна быть 100%.</p>
+              <p class="small text-muted mb-2">Минимум 2 владельца. Сумма «владение» = 100% и отдельно сумма «прибыль» = 100%.</p>
+              <div class="row g-1 small fw-semibold text-muted mb-1 d-none d-md-flex">
+                <div class="col-md-4">Владелец</div>
+                <div class="col-md-4">Владение %</div>
+                <div class="col-md-4">Прибыль %</div>
+              </div>
               <div id="editOwnerRows"></div>
               <button type="button" class="btn btn-sm btn-outline-primary" id="btnAddOwnerRowEdit">+ Ещё владелец</button>
             </div>
@@ -437,11 +472,14 @@
     if (s == null || s === '') return '—';
     return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   }
-  function appendOwnerRow(container, name, pct) {
+  function appendOwnerRow(container, name, ownPct, profitPct) {
     var div = document.createElement('div');
     div.className = 'row g-2 mb-2 align-items-end';
-    div.innerHTML = '<div class="col-md-7"><input type="text" name="ownerNames" class="form-control form-control-sm" placeholder="Владелец" value="' + escAttr(name || '') + '"></div>' +
-      '<div class="col-md-5"><div class="input-group input-group-sm"><input type="text" name="ownerPercents" class="form-control" placeholder="%" value="' + escAttr(pct != null ? String(pct) : '') + '"><span class="input-group-text">%</span></div></div>';
+    var o = ownPct != null ? String(ownPct) : '';
+    var p = profitPct != null ? String(profitPct) : '';
+    div.innerHTML = '<div class="col-md-4"><input type="text" name="ownerNames" class="form-control form-control-sm" placeholder="Владелец" value="' + escAttr(name || '') + '"></div>' +
+      '<div class="col-md-4"><div class="input-group input-group-sm"><input type="text" name="ownerOwnershipPercents" class="form-control" placeholder="%" value="' + escAttr(o) + '"><span class="input-group-text">%</span></div></div>' +
+      '<div class="col-md-4"><div class="input-group input-group-sm"><input type="text" name="ownerProfitPercents" class="form-control" placeholder="%" value="' + escAttr(p) + '"><span class="input-group-text">%</span></div></div>';
     container.appendChild(div);
   }
   function fillEditOwnersFromJson(jsonStr) {
@@ -453,18 +491,30 @@
     var mBlock = document.getElementById('editOwnerMultipleBlock');
     var rows = document.getElementById('editOwnerRows');
     document.getElementById('edit-single-owner-name').value = '';
+    var eo = document.getElementById('edit-single-ownership');
+    var ep = document.getElementById('edit-single-profit');
+    if (eo) eo.value = '100';
+    if (ep) ep.value = '100';
     if (rows) rows.innerHTML = '';
     if (arr.length === 1) {
       single.checked = true;
       sBlock.style.display = 'block';
       mBlock.style.display = 'none';
       document.getElementById('edit-single-owner-name').value = arr[0].name || '';
+      var leg = arr[0].percent;
+      var own = arr[0].ownership != null ? arr[0].ownership : leg;
+      var prof = arr[0].profit != null ? arr[0].profit : leg;
+      if (eo) eo.value = own != null ? String(own) : '100';
+      if (ep) ep.value = prof != null ? String(prof) : '100';
     } else if (arr.length >= 2) {
       multi.checked = true;
       sBlock.style.display = 'none';
       mBlock.style.display = 'block';
       for (var i = 0; i < arr.length; i++) {
-        appendOwnerRow(rows, arr[i].name, arr[i].percent);
+        var legM = arr[i].percent;
+        var ownM = arr[i].ownership != null ? arr[i].ownership : legM;
+        var profM = arr[i].profit != null ? arr[i].profit : legM;
+        appendOwnerRow(rows, arr[i].name, ownM, profM);
       }
     } else {
       single.checked = true;
@@ -517,12 +567,7 @@
     syncAddOwnerMode();
     var btnAddA = document.getElementById('btnAddOwnerRowAdd');
     if (btnAddA) btnAddA.addEventListener('click', function() {
-      var c = document.getElementById('addOwnerRows');
-      var div = document.createElement('div');
-      div.className = 'row g-2 mb-2 align-items-end';
-      div.innerHTML = '<div class="col-md-7"><input type="text" name="ownerNames" class="form-control form-control-sm" placeholder="Владелец"></div>' +
-        '<div class="col-md-5"><div class="input-group input-group-sm"><input type="text" name="ownerPercents" class="form-control" placeholder="%"><span class="input-group-text">%</span></div></div>';
-      c.appendChild(div);
+      appendOwnerRow(document.getElementById('addOwnerRows'), '', '', '');
     });
     document.querySelectorAll('#modalEditUnit input[name="ownerMode"]').forEach(function(r) {
       r.addEventListener('change', function() {
@@ -533,7 +578,7 @@
     });
     var btnAddE = document.getElementById('btnAddOwnerRowEdit');
     if (btnAddE) btnAddE.addEventListener('click', function() {
-      appendOwnerRow(document.getElementById('editOwnerRows'), '', '');
+      appendOwnerRow(document.getElementById('editOwnerRows'), '', '', '');
     });
   })();
 

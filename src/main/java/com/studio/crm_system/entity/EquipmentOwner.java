@@ -4,8 +4,8 @@ import jakarta.persistence.*;
 import java.math.BigDecimal;
 
 /**
- * Владелец доли в доходе от сдачи экземпляра в прокат.
- * У одного экземпляра — один владелец (100%) или несколько (доли в сумме 100%).
+ * Владелец экземпляра: доля владения (юридически/учётно) и отдельно доля прибыли от сдачи в прокат.
+ * Сумма владений по экземпляру — 100%; сумма долей прибыли — 100%.
  */
 @Entity
 @Table(name = "equipment_owners")
@@ -26,7 +26,11 @@ public class EquipmentOwner {
 	@Column(nullable = false, length = 200)
 	private String ownerName;
 
-	/** Доля от выручки с проката, % (0–100). */
+	/** Доля владения по экземпляру, % (сумма по всем владельцам = 100). */
+	@Column(name = "ownership_percent", precision = 6, scale = 2)
+	private BigDecimal ownershipPercent;
+
+	/** Доля от выручки с проката (прибыли), % — на неё начисляются выплаты; сумма по владельцам = 100. */
 	@Column(name = "rental_share_percent", nullable = false, precision = 6, scale = 2)
 	private BigDecimal rentalSharePercent;
 
@@ -44,6 +48,17 @@ public class EquipmentOwner {
 
 	public String getOwnerName() { return ownerName; }
 	public void setOwnerName(String ownerName) { this.ownerName = ownerName; }
+
+	public BigDecimal getOwnershipPercent() {
+		if (ownershipPercent != null) {
+			return ownershipPercent;
+		}
+		return rentalSharePercent != null ? rentalSharePercent : new BigDecimal("100");
+	}
+
+	public void setOwnershipPercent(BigDecimal ownershipPercent) {
+		this.ownershipPercent = ownershipPercent;
+	}
 
 	public BigDecimal getRentalSharePercent() { return rentalSharePercent; }
 	public void setRentalSharePercent(BigDecimal rentalSharePercent) { this.rentalSharePercent = rentalSharePercent; }

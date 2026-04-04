@@ -33,6 +33,9 @@ public interface ClientRepository extends JpaRepository<Client, Long> {
 
 	/** Есть ли активный (не удалённый) клиент с таким телефоном. */
 	boolean existsByPhoneNumberAndIsDeletedFalse(String phoneNumber);
+
+	/** Первый активный клиент с точным номером телефона (для перезвона и проверки дублей). */
+	Optional<Client> findFirstByPhoneNumberAndIsDeletedFalse(String phoneNumber);
 	boolean existsByPassportNumberAndIsDeletedFalse(String passportNumber);
 	boolean existsByIdentificationNumberAndIsDeletedFalse(String identificationNumber);
 

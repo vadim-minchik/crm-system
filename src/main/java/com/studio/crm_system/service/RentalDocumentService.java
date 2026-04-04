@@ -4,6 +4,7 @@ import com.studio.crm_system.entity.Client;
 import com.studio.crm_system.entity.Equipment;
 import com.studio.crm_system.entity.Rental;
 import com.studio.crm_system.entity.User;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.io.ByteArrayInputStream;
@@ -34,6 +35,9 @@ import com.studio.crm_system.util.RussianNumberWords;
  */
 @Service
 public class RentalDocumentService {
+
+	@Autowired
+	private RentalService rentalService;
 
 	private static final DateTimeFormatter DATE_TIME_FMT = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm");
 	private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("dd.MM.yyyy");
@@ -133,6 +137,7 @@ public class RentalDocumentService {
 				{ "PRICE_FIRST_MONTH", "тариф: первый месяц (Br)" },
 				{ "PRICE_SECOND_MONTH", "тариф: второй месяц (Br)" },
 				{ "PRICE_SUBSEQUENT_MONTHS", "тариф: последующие месяцы (Br)" },
+				{ "RENT_TOTAL", "сумма аренды этой позиции за период проката по дневному тарифу (1-я + 2-я + последующие сутки), Br — как при автосумме проката" },
 		};
 		List<String[]> list = new ArrayList<>(MAX_EQUIPMENT_SLOTS * meta.length);
 		for (int n = 1; n <= MAX_EQUIPMENT_SLOTS; n++) {
@@ -312,6 +317,7 @@ public class RentalDocumentService {
 			String priceFirstMonth = "";
 			String priceSecondMonth = "";
 			String priceSubsequentMonths = "";
+			String rentTotal = "—";
 			if (n <= count) {
 				Equipment eq = eqList.get(n - 1);
 				if (eq != null) {
@@ -326,6 +332,10 @@ public class RentalDocumentService {
 					priceFirstMonth = eq.getPriceFirstMonth() != null ? eq.getPriceFirstMonth().toString() : "";
 					priceSecondMonth = eq.getPriceSecondMonth() != null ? eq.getPriceSecondMonth().toString() : "";
 					priceSubsequentMonths = eq.getPriceSubsequentMonths() != null ? eq.getPriceSubsequentMonths().toString() : "";
+					if (rental != null && rental.getDateFrom() != null && rental.getDateTo() != null) {
+						BigDecimal calc = rentalService.calculateTotal(rental.getDateFrom(), rental.getDateTo(), eq);
+						rentTotal = calc != null ? calc.setScale(2, RoundingMode.HALF_UP).toPlainString() : "—";
+					}
 				}
 			}
 			m.put("{{EQUIPMENT_" + n + "_TITLE}}", emptyToDash(title));
@@ -339,6 +349,7 @@ public class RentalDocumentService {
 			m.put("{{EQUIPMENT_" + n + "_PRICE_FIRST_MONTH}}", emptyToDash(priceFirstMonth));
 			m.put("{{EQUIPMENT_" + n + "_PRICE_SECOND_MONTH}}", emptyToDash(priceSecondMonth));
 			m.put("{{EQUIPMENT_" + n + "_PRICE_SUBSEQUENT_MONTHS}}", emptyToDash(priceSubsequentMonths));
+			m.put("{{EQUIPMENT_" + n + "_RENT_TOTAL}}", rentTotal);
 		}
 		m.put("{{POINT_NAME}}", emptyToDash(rental != null && rental.getPoint() != null ? nullToEmpty(rental.getPoint().getName()) : ""));
 		User createdBy = rental != null ? rental.getCreatedByStaff() : null;

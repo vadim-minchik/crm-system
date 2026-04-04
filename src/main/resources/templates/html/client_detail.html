@@ -60,7 +60,7 @@
     <i class="bi bi-exclamation-triangle-fill me-2"></i>
     <span th:if="${param.error[0] == 'no_file'}">Выберите файл для загрузки.</span>
     <span th:if="${param.error[0] == 'not_image'}">Разрешены только изображения (jpg, png).</span>
-    <span th:if="${param.error[0] == 'upload_failed'}">Ошибка загрузки. Проверьте настройки Supabase Storage.</span>
+    <span th:if="${param.error[0] == 'upload_failed'}">Не удалось сохранить фото. Попробуйте другой файл (JPG, PNG) или повторите позже.</span>
     <span th:if="${param.error[0] == 'invalid_score'}">Оценка должна быть от 1 до 10.</span>
     <span th:if="${param.error[0] == 'review_not_found'}">Отзыв не найден.</span>
     <span th:if="${param.error[0] == 'review_delete_denied'}">Удалить можно только свой отзыв.</span>
@@ -145,7 +145,7 @@
         </div>
         <div class="info-row">
           <span class="info-label">Кем выдан</span>
-          <span class="info-value" th:text="${client.passportIssuedBy != null && !#strings.isEmpty(client.passportIssuedBy)} ? client.passportIssuedBy : '—'">—</span>
+          <span class="info-value" th:text="${client.passportIssuedBy != null && !#strings.isEmpty(client.passportIssuedBy) ? client.passportIssuedBy : '—'}">—</span>
         </div>
         <div class="info-row">
           <span class="info-label">Срок действия</span>
@@ -328,10 +328,6 @@
               <i class="bi bi-cloud-upload me-1"></i>Загрузить фото
             </button>
           </form>
-        </div>
-
-        <div class="form-text text-center mt-2">
-          <i class="bi bi-shield-lock me-1"></i>Фото хранится в защищённом Supabase Storage
         </div>
       </div>
 

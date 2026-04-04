@@ -139,6 +139,7 @@ public class OwnerShareService {
 		row.setEquipmentOwnerId(o.getId());
 		row.setEquipmentOwnerVersion(o.getVersion());
 		row.setOwnerName(o.getOwnerName());
+		row.setOwnershipPercent(o.getOwnershipPercent());
 		row.setSharePercent(o.getRentalSharePercent());
 		BigDecimal acc = accruedForEquipmentOwner(o);
 		BigDecimal paid = paidForEquipmentOwner(o);

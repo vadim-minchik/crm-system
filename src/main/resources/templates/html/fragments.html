@@ -27,6 +27,11 @@
 				<i class="bi bi-person-badge"></i>
 				<span>Штат сотрудников</span>
 			</a>
+
+			<a href="/callbacks" class="nav-link" th:classappend="${activeTab == 'callbacks' ? 'active' : ''}">
+				<i class="bi bi-telephone-forward"></i>
+				<span>Перезвон</span>
+			</a>
 			
 			<a href="/clients" class="nav-link" th:classappend="${activeTab == 'clients' ? 'active' : ''}">
 				<i class="bi bi-people"></i>

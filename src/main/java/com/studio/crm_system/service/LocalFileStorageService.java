@@ -65,6 +65,8 @@ public class LocalFileStorageService implements FileStorageService {
 		if (original == null) {
 			throw new IOException("Не удалось прочитать изображение: " + file.getOriginalFilename());
 		}
+		// CMYK / нестандартный профиль → иначе JPEGImageWriter: Bogus input colorspace
+		original = toRgbBufferedImage(original);
 		BufferedImage scaled = scaleDown(original);
 		byte[] result = encodeJpeg(scaled, JPEG_QUALITY);
 		if (result.length > MAX_OUTPUT_BYTES) {
@@ -75,6 +77,22 @@ public class LocalFileStorageService implements FileStorageService {
 			result = encodeJpeg(scaled, 0.65f);
 		}
 		return result;
+	}
+
+	/** Рисует кадр в TYPE_INT_RGB — совместимо с {@link #encodeJpeg}. */
+	private static BufferedImage toRgbBufferedImage(BufferedImage src) {
+		int w = src.getWidth();
+		int h = src.getHeight();
+		BufferedImage rgb = new BufferedImage(w, h, BufferedImage.TYPE_INT_RGB);
+		Graphics2D g = rgb.createGraphics();
+		try {
+			g.setColor(Color.WHITE);
+			g.fillRect(0, 0, w, h);
+			g.drawImage(src, 0, 0, null);
+		} finally {
+			g.dispose();
+		}
+		return rgb;
 	}
 
 	private BufferedImage scaleDown(BufferedImage img) {
@@ -101,6 +119,9 @@ public class LocalFileStorageService implements FileStorageService {
 	}
 
 	private byte[] encodeJpeg(BufferedImage img, float quality) throws IOException {
+		if (img.getType() != BufferedImage.TYPE_INT_RGB) {
+			img = toRgbBufferedImage(img);
+		}
 		java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
 		ImageWriter writer = ImageIO.getImageWritersByFormatName("jpeg").next();
 		ImageWriteParam param = writer.getDefaultWriteParam();

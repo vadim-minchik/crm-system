@@ -68,53 +68,79 @@ public class EquipmentController {
 	private static final BigDecimal COEF_08 = new BigDecimal("0.8");
 	private static final BigDecimal COEF_06 = new BigDecimal("0.6");
 
+	private static BigDecimal parseOwnerPercent(String raw) {
+		if (raw == null || raw.isBlank())
+			return null;
+		try {
+			return new BigDecimal(raw.trim().replace(',', '.')).setScale(2, RoundingMode.HALF_UP);
+		} catch (Exception e) {
+			return null;
+		}
+	}
+
+	private static boolean isValidPercentRange(BigDecimal p) {
+		return p != null && p.compareTo(BigDecimal.ZERO) > 0 && p.compareTo(HUNDRED) <= 0;
+	}
+
 	/** @return null если ок, иначе код ошибки для ?error= */
 	private String validateAndBuildOwners(String ownerMode, String singleOwnerName,
-	                                      List<String> ownerNames, List<String> ownerPercents,
-	                                      List<EquipmentOwner> out) {
+			String singleOwnershipPercent, String singleProfitPercent,
+			List<String> ownerNames, List<String> ownerOwnershipPercents, List<String> ownerProfitPercents,
+			List<EquipmentOwner> out) {
 		out.clear();
 		boolean multiple = ownerMode != null && "multiple".equalsIgnoreCase(ownerMode.trim());
 		if (multiple) {
-			if (ownerNames == null || ownerPercents == null)
+			if (ownerNames == null || ownerOwnershipPercents == null || ownerProfitPercents == null)
 				return "owners_multiple_min";
-			if (ownerNames.size() != ownerPercents.size())
+			if (ownerNames.size() != ownerOwnershipPercents.size() || ownerNames.size() != ownerProfitPercents.size())
 				return "owners_mismatch";
-			BigDecimal sum = BigDecimal.ZERO;
+			BigDecimal sumOwn = BigDecimal.ZERO;
+			BigDecimal sumProfit = BigDecimal.ZERO;
 			int order = 0;
 			for (int i = 0; i < ownerNames.size(); i++) {
 				String n = ownerNames.get(i) != null ? ownerNames.get(i).trim() : "";
-				String pRaw = ownerPercents.get(i) != null ? ownerPercents.get(i).trim().replace(',', '.') : "";
-				if (n.isEmpty() && pRaw.isEmpty())
+				String ownRaw = ownerOwnershipPercents.get(i) != null ? ownerOwnershipPercents.get(i).trim() : "";
+				String profRaw = ownerProfitPercents.get(i) != null ? ownerProfitPercents.get(i).trim() : "";
+				if (n.isEmpty() && ownRaw.isEmpty() && profRaw.isEmpty())
 					continue;
-				if (n.isEmpty() || pRaw.isEmpty())
+				if (n.isEmpty() || ownRaw.isEmpty() || profRaw.isEmpty())
 					return "owner_name_required";
-				BigDecimal p;
-				try {
-					p = new BigDecimal(pRaw).setScale(2, RoundingMode.HALF_UP);
-				} catch (Exception e) {
+				BigDecimal ownP = parseOwnerPercent(ownRaw);
+				BigDecimal profP = parseOwnerPercent(profRaw);
+				if (!isValidPercentRange(ownP) || !isValidPercentRange(profP))
 					return "owners_percent_invalid";
-				}
-				if (p.compareTo(BigDecimal.ZERO) <= 0 || p.compareTo(HUNDRED) > 0)
-					return "owners_percent_invalid";
-				sum = sum.add(p);
+				sumOwn = sumOwn.add(ownP);
+				sumProfit = sumProfit.add(profP);
 				EquipmentOwner o = new EquipmentOwner();
 				o.setOwnerName(n);
-				o.setRentalSharePercent(p);
+				o.setOwnershipPercent(ownP);
+				o.setRentalSharePercent(profP);
 				o.setSortOrder(order++);
 				out.add(o);
 			}
 			if (out.size() < 2)
 				return "owners_multiple_min";
-			if (sum.subtract(HUNDRED).abs().compareTo(OWNERS_SUM_TOLERANCE) > 0)
-				return "owners_percent_sum";
+			if (sumOwn.subtract(HUNDRED).abs().compareTo(OWNERS_SUM_TOLERANCE) > 0)
+				return "owners_ownership_sum";
+			if (sumProfit.subtract(HUNDRED).abs().compareTo(OWNERS_SUM_TOLERANCE) > 0)
+				return "owners_profit_sum";
 			return null;
 		}
 		String n = singleOwnerName != null ? singleOwnerName.trim() : "";
 		if (n.isEmpty())
 			return "owner_name_required";
+		BigDecimal own = parseOwnerPercent(singleOwnershipPercent);
+		BigDecimal prof = parseOwnerPercent(singleProfitPercent);
+		if (own == null)
+			own = HUNDRED;
+		if (prof == null)
+			prof = HUNDRED;
+		if (!isValidPercentRange(own) || !isValidPercentRange(prof))
+			return "owners_percent_invalid";
 		EquipmentOwner o = new EquipmentOwner();
 		o.setOwnerName(n);
-		o.setRentalSharePercent(HUNDRED);
+		o.setOwnershipPercent(own);
+		o.setRentalSharePercent(prof);
 		o.setSortOrder(0);
 		out.add(o);
 		return null;
@@ -148,11 +174,10 @@ public class EquipmentController {
 				if (!first)
 					sb.append(',');
 				first = false;
-				sb.append("{\"name\":\"").append(jsonEscape(o.getOwnerName())).append("\",\"percent\":");
-				if (o.getRentalSharePercent() != null)
-					sb.append(o.getRentalSharePercent().stripTrailingZeros().toPlainString());
-				else
-					sb.append('0');
+				sb.append("{\"name\":\"").append(jsonEscape(o.getOwnerName())).append("\",\"ownership\":");
+				sb.append(o.getOwnershipPercent().stripTrailingZeros().toPlainString());
+				sb.append(",\"profit\":");
+				sb.append(o.getRentalSharePercent() != null ? o.getRentalSharePercent().stripTrailingZeros().toPlainString() : "0");
 				sb.append('}');
 			}
 		}
@@ -164,7 +189,8 @@ public class EquipmentController {
 		if (e.getOwners() == null || e.getOwners().isEmpty())
 			return "—";
 		return e.getOwners().stream()
-				.map(o -> o.getOwnerName() + " " + o.getRentalSharePercent().stripTrailingZeros().toPlainString() + "%")
+				.map(o -> o.getOwnerName() + " вл." + o.getOwnershipPercent().stripTrailingZeros().toPlainString()
+						+ "% пр." + o.getRentalSharePercent().stripTrailingZeros().toPlainString() + "%")
 				.collect(Collectors.joining(" · "));
 	}
 
@@ -718,8 +744,11 @@ public class EquipmentController {
 	                      @RequestParam(required = false) Integer condition,
 	                      @RequestParam(required = false, defaultValue = "single") String ownerMode,
 	                      @RequestParam(required = false) String singleOwnerName,
+	                      @RequestParam(required = false) String singleOwnershipPercent,
+	                      @RequestParam(required = false) String singleProfitPercent,
 	                      @RequestParam(required = false) List<String> ownerNames,
-	                      @RequestParam(required = false) List<String> ownerPercents) {
+	                      @RequestParam(required = false) List<String> ownerOwnershipPercents,
+	                      @RequestParam(required = false) List<String> ownerProfitPercents) {
 
 		ToolName toolName = toolNameRepository.findById(toolNameId).orElse(null);
 		if (toolName == null) return "redirect:/inventory?error=not_found";
@@ -743,7 +772,8 @@ public class EquipmentController {
 			return "redirect:/inventory/" + toolNameId + "?error=base_value_required";
 
 		List<EquipmentOwner> builtOwners = new ArrayList<>();
-		String ownerErr = validateAndBuildOwners(ownerMode, singleOwnerName, ownerNames, ownerPercents, builtOwners);
+		String ownerErr = validateAndBuildOwners(ownerMode, singleOwnerName, singleOwnershipPercent, singleProfitPercent,
+				ownerNames, ownerOwnershipPercents, ownerProfitPercents, builtOwners);
 		if (ownerErr != null)
 			return "redirect:/inventory/" + toolNameId + "?error=" + ownerErr;
 
@@ -780,8 +810,11 @@ public class EquipmentController {
 	                       @RequestParam(required = false) Integer condition,
 	                       @RequestParam(required = false, defaultValue = "single") String ownerMode,
 	                       @RequestParam(required = false) String singleOwnerName,
+	                       @RequestParam(required = false) String singleOwnershipPercent,
+	                       @RequestParam(required = false) String singleProfitPercent,
 	                       @RequestParam(required = false) List<String> ownerNames,
-	                       @RequestParam(required = false) List<String> ownerPercents) {
+	                       @RequestParam(required = false) List<String> ownerOwnershipPercents,
+	                       @RequestParam(required = false) List<String> ownerProfitPercents) {
 
 		Equipment eq = equipmentRepository.findByIdAndIsDeletedFalse(id).orElse(null);
 		if (eq == null) return "redirect:/inventory?error=not_found";
@@ -801,7 +834,8 @@ public class EquipmentController {
 		if (equipmentRepository.existsBySerialNumberAndIsDeletedFalseAndIdNot(serialNumber.trim(), eq.getId()))
 			return "redirect:/inventory/" + toolNameId + "?error=serial_exists";
 		List<EquipmentOwner> builtOwners = new ArrayList<>();
-		String ownerErr = validateAndBuildOwners(ownerMode, singleOwnerName, ownerNames, ownerPercents, builtOwners);
+		String ownerErr = validateAndBuildOwners(ownerMode, singleOwnerName, singleOwnershipPercent, singleProfitPercent,
+				ownerNames, ownerOwnershipPercents, ownerProfitPercents, builtOwners);
 		if (ownerErr != null)
 			return "redirect:/inventory/" + toolNameId + "?error=" + ownerErr;
 

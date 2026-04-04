@@ -65,7 +65,7 @@
     <span th:if="${param.error[0] == 'passport_issuer_required'}">Укажите орган, выдавший паспорт.</span>
     <span th:if="${param.error[0] == 'photo_too_large'}">Фото слишком большое. Максимальный размер — 25 МБ. Сожмите изображение.</span>
     <span th:if="${param.error[0] == 'not_image'}">Разрешены только изображения (jpg, png).</span>
-    <span th:if="${param.error[0] == 'upload_failed'}">Ошибка загрузки фото. Проверьте настройки Supabase Storage.</span>
+    <span th:if="${param.error[0] == 'upload_failed'}">Не удалось сохранить фото. Попробуйте другой файл (JPG, PNG) или повторите позже.</span>
     <span th:if="${param.error[0] == 'server_error'}">Внутренняя ошибка сервера. Проверьте консоль приложения для подробностей.</span>
     <span th:if="${param.error[0] == 'stale_data'}">Данные уже изменены другим пользователем. Обновите страницу и повторите действие.</span>
     <button type="button" class="btn-close" data-bs-dismiss="alert"></button>

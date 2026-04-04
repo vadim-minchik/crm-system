@@ -328,7 +328,7 @@
     <div class="tab-pane fade" th:classappend="${activeFullStatsTab == 'owners' ? 'show active' : ''}" id="tabFullOwners">
       <div class="card border-0 shadow-sm mb-3">
         <div class="card-body small text-muted">
-          <p class="mb-2"><strong>Как считается доля владельца:</strong> учитываются прокаты со статусами <strong>завершён</strong>, <strong>должник</strong>, <strong>скоро должник</strong>. Сумма проката распределяется между единицами пропорционально расчётной стоимости аренды по тарифу каждой единицы; затем к доле единицы применяется процент владельца. Это <strong>не меняет</strong> общую выручку в графиках выше — отдельный учёт выплат собственникам техники.</p>
+          <p class="mb-2"><strong>Как считается начисление:</strong> учитываются прокаты со статусами <strong>завершён</strong>, <strong>должник</strong>, <strong>скоро должник</strong>. Сумма проката распределяется между единицами пропорционально расчётной стоимости аренды по тарифу каждой единицы; затем к доле единицы применяется <strong>процент прибыли от проката</strong> (не путать с долей владения на складе). Это <strong>не меняет</strong> общую выручку в графиках выше — отдельный учёт выплат собственникам техники.</p>
           <div class="d-flex flex-wrap gap-4">
             <span>Начислено всего: <strong class="text-dark" th:text="${#numbers.formatDecimal(ownersTotalAccrued, 1, 2)}">0</strong> Br</span>
             <span>Выплачено: <strong class="text-success" th:text="${#numbers.formatDecimal(ownersTotalPaid, 1, 2)}">0</strong> Br</span>
@@ -340,13 +340,14 @@
         <div class="card-header bg-body border-0 fw-semibold">По каждому владельцу</div>
         <div class="table-responsive">
           <table class="table table-hover table-sm mb-0 sortable-table" data-table="owners">
-            <thead><tr><th data-sort="string">Экземпляр</th><th data-sort="string">S/N</th><th data-sort="string">Владелец</th><th data-sort="num">Доля %</th><th data-sort="num">Начислено</th><th data-sort="num">Выплачено</th><th data-sort="num">К выплате</th><th></th></tr></thead>
+            <thead><tr><th data-sort="string">Экземпляр</th><th data-sort="string">S/N</th><th data-sort="string">Владелец</th><th data-sort="num">Владение %</th><th data-sort="num">Прибыль %</th><th data-sort="num">Начислено</th><th data-sort="num">Выплачено</th><th data-sort="num">К выплате</th><th></th></tr></thead>
             <tbody>
               <tr th:each="row : ${ownerBalanceRows}">
                 <td th:text="${row.modelTitle}">—</td>
                 <td><code class="small" th:text="${row.serialNumber}">—</code></td>
                 <td th:text="${row.ownerName}">—</td>
-                <td th:text="${#numbers.formatDecimal(row.sharePercent, 1, 2)}" th:attr="data-num=${row.sharePercent != null ? row.sharePercent.doubleValue() : 0}">—</td>
+                <td th:text="${row.ownershipPercent != null ? #numbers.formatDecimal(row.ownershipPercent, 1, 2) : '—'}" th:attr="data-num=${row.ownershipPercent != null ? row.ownershipPercent.doubleValue() : 0}">—</td>
+                <td th:text="${row.sharePercent != null ? #numbers.formatDecimal(row.sharePercent, 1, 2) : '—'}" th:attr="data-num=${row.sharePercent != null ? row.sharePercent.doubleValue() : 0}">—</td>
                 <td th:text="${#numbers.formatDecimal(row.accrued, 1, 2)}" th:attr="data-num=${row.accrued != null ? row.accrued.doubleValue() : 0}">—</td>
                 <td th:text="${#numbers.formatDecimal(row.paid, 1, 2)}" th:attr="data-num=${row.paid != null ? row.paid.doubleValue() : 0}">—</td>
                 <td th:text="${#numbers.formatDecimal(row.toPay, 1, 2)}" th:attr="data-num=${row.toPay != null ? row.toPay.doubleValue() : 0}">—</td>

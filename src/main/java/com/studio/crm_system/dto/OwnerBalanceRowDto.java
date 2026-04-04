@@ -11,6 +11,9 @@ public class OwnerBalanceRowDto {
 	private Long equipmentOwnerId;
 	private Long equipmentOwnerVersion;
 	private String ownerName;
+	/** Доля владения по экземпляру, %. */
+	private BigDecimal ownershipPercent;
+	/** Доля прибыли от проката (начисления), %. */
 	private BigDecimal sharePercent;
 	private BigDecimal accrued;
 	private BigDecimal paid;
@@ -28,6 +31,8 @@ public class OwnerBalanceRowDto {
 	public void setEquipmentOwnerVersion(Long equipmentOwnerVersion) { this.equipmentOwnerVersion = equipmentOwnerVersion; }
 	public String getOwnerName() { return ownerName; }
 	public void setOwnerName(String ownerName) { this.ownerName = ownerName; }
+	public BigDecimal getOwnershipPercent() { return ownershipPercent; }
+	public void setOwnershipPercent(BigDecimal ownershipPercent) { this.ownershipPercent = ownershipPercent; }
 	public BigDecimal getSharePercent() { return sharePercent; }
 	public void setSharePercent(BigDecimal sharePercent) { this.sharePercent = sharePercent; }
 	public BigDecimal getAccrued() { return accrued; }

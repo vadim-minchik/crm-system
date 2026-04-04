@@ -1007,6 +1007,13 @@ textarea.form-control {
 	max-width: 100%;
 }
 
+/* Точка в штате: в тёмной теме .text-dark даёт светлый шрифт, а bg-light остаётся светлым — текст не виден */
+html[data-theme="dark"] .card-table .table.staff-table .badge.bg-light.text-dark {
+	background-color: var(--surface-muted) !important;
+	color: var(--text-dark) !important;
+	border-color: var(--border-color) !important;
+}
+
 /* Переключатель темы (сайдбар / вход) */
 .theme-toggle-btn {
 	border: 1px solid var(--border-color);

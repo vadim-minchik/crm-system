@@ -95,13 +95,14 @@
   </div>
 
   <h5 class="mb-2 mt-4"><i class="bi bi-wallet2 me-2"></i>Владельцы: начисления и выплаты</h5>
-  <p class="small text-muted mb-3">Учитываются прокаты со статусами «завершён», «должник», «скоро должник». Сумма проката делится между единицами пропорционально расчётной аренде; затем — доля владельца. Общая выручка в «Статистике» не меняется.</p>
+  <p class="small text-muted mb-3">Учитываются прокаты со статусами «завершён», «должник», «скоро должник». Сумма проката делится между единицами пропорционально расчётной аренде; затем — <strong>доля прибыли</strong> (не путать с долей владения). Общая выручка в «Статистике» не меняется.</p>
   <div class="card-table mb-4" th:if="${ownerBalanceRows != null and !ownerBalanceRows.isEmpty()}">
     <table class="table table-hover mb-0">
       <thead>
         <tr>
           <th>Владелец</th>
-          <th>Доля</th>
+          <th>Владение</th>
+          <th>Прибыль</th>
           <th>Начислено</th>
           <th>Выплачено</th>
           <th>К выплате</th>
@@ -128,7 +129,7 @@
           </td>
         </tr>
         <tr th:if="${ownerAccrualLinesByOwnerId != null and ownerAccrualLinesByOwnerId.containsKey(row.equipmentOwnerId) and !ownerAccrualLinesByOwnerId.get(row.equipmentOwnerId).isEmpty()}">
-          <td colspan="6" class="bg-light small py-2">
+          <td colspan="7" class="bg-light small py-2">
             <details>
               <summary class="text-muted" style="cursor:pointer;">Начисления по прокатам</summary>
               <table class="table table-sm mb-0 mt-2">
