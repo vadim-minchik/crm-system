@@ -2,46 +2,68 @@
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
 <meta charset="UTF-8">
+<th:block th:fragment="viewport-meta">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#ffffff">
+<script>
+(function(){try{var K='crm-theme';var t=null;try{t=localStorage.getItem(K);}catch(a){}if(t!=='dark'&&t!=='light'){var c=document.cookie.match(new RegExp('(?:^|;\\s*)'+K+'=([^;]*)'));if(c)t=decodeURIComponent(c[1].trim());}var m=document.querySelector('meta[name="theme-color"]');if(t==='dark'){document.documentElement.setAttribute('data-theme','dark');document.documentElement.setAttribute('data-bs-theme','dark');if(m)m.setAttribute('content','#08080a');}else{document.documentElement.removeAttribute('data-theme');document.documentElement.setAttribute('data-bs-theme','light');if(m)m.setAttribute('content','#ffffff');}}catch(e){}})();
+</script>
+</th:block>
 </head>
 <body>
 
-	<div th:fragment="sidebar(activeTab)" class="sidebar">
-		
-		<!-- LOGO -->
+	<div th:fragment="sidebar(activeTab)" class="crm-shell" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+		<div class="sidebar-backdrop" id="sidebarBackdrop" aria-hidden="true"></div>
+
+		<aside class="sidebar" id="appSidebar" aria-label="Главное меню">
+
 		<div class="logo">
 			<h3><i class="bi bi-camera-reels-fill"></i> STUDIO.CRM</h3>
 			<p>SYSTEM v3.0</p>
 		</div>
 
-		<!-- НАВИГАЦИЯ -->
 		<nav class="sidebar-nav">
-			<a href="/staff" class="nav-link" th:classappend="${activeTab == 'staff' ? 'active' : ''}">
+			<a href="/staff" class="nav-link" sec:authorize="hasAuthority('MENU_STAFF')" th:classappend="${activeTab == 'staff' ? 'active' : ''}">
 				<i class="bi bi-person-badge"></i>
 				<span>Штат сотрудников</span>
 			</a>
+
+			<a href="/callbacks" class="nav-link" sec:authorize="hasAuthority('MENU_CALLBACKS')" th:classappend="${activeTab == 'callbacks' ? 'active' : ''}">
+				<i class="bi bi-telephone-forward"></i>
+				<span>Перезвон</span>
+			</a>
 			
-			<a href="/clients" class="nav-link" th:classappend="${activeTab == 'clients' ? 'active' : ''}">
+			<a href="/clients" class="nav-link" sec:authorize="hasAuthority('MENU_CLIENTS')" th:classappend="${activeTab == 'clients' ? 'active' : ''}">
 				<i class="bi bi-people"></i>
 				<span>База клиентов</span>
 			</a>
 			
-			<a href="/inventory" class="nav-link" th:classappend="${activeTab == 'inventory' ? 'active' : ''}">
+			<a href="/inventory" class="nav-link" sec:authorize="hasAuthority('MENU_INVENTORY')" th:classappend="${activeTab == 'inventory' ? 'active' : ''}">
 				<i class="bi bi-box-seam"></i>
 				<span>Склад техники</span>
 			</a>
 
-			<a href="/points" class="nav-link" th:classappend="${activeTab == 'points' ? 'active' : ''}">
+			<a href="/points" class="nav-link" sec:authorize="hasAuthority('MENU_POINTS')" th:classappend="${activeTab == 'points' ? 'active' : ''}">
 				<i class="bi bi-geo-alt"></i>
 				<span>Точки выдачи</span>
 			</a>
 			
-			<a href="/rentals" class="nav-link" th:classappend="${activeTab == 'rentals' ? 'active' : ''}">
+			<a href="/rentals" class="nav-link" sec:authorize="hasAuthority('MENU_RENTALS')" th:classappend="${activeTab == 'rentals' ? 'active' : ''}">
 				<i class="bi bi-journal-text"></i>
 				<span>Журнал прокатов</span>
 			</a>
+
+			<a href="/documents" class="nav-link" sec:authorize="hasAuthority('MENU_DOCUMENTS')" th:classappend="${activeTab == 'documents' ? 'active' : ''}">
+				<i class="bi bi-folder2-open"></i>
+				<span>Документы</span>
+			</a>
+
+			<a href="/statistics" class="nav-link" sec:authorize="hasAuthority('MENU_STATISTICS')" th:classappend="${activeTab == 'statistics' ? 'active' : ''}">
+				<i class="bi bi-bar-chart-line"></i>
+				<span>Статистика</span>
+			</a>
 		</nav>
 
-		<!-- ПРОФИЛЬ ПОЛЬЗОВАТЕЛЯ -->
 		<div class="sidebar-footer">
 			<div class="user-info">
 				<div class="user-avatar">
@@ -49,19 +71,205 @@
 				</div>
 				<div class="user-details">
 					<strong th:text="${username}">User</strong>
-					<small th:if="${currentUserRole == 'SUPER_ADMIN'}" class="role-super">SUPER ADMIN</small>
-					<small th:if="${currentUserRole == 'ADMIN'}" class="role-admin">ADMIN</small>
-					<small th:if="${currentUserRole == 'WORKER'}" class="role-worker">WORKER</small>
+					<small th:if="${currentUserRole != null and currentUserRole.name() == 'SUPER_ADMIN'}" class="role-super">SUPER ADMIN</small>
+					<small th:if="${currentUserRole != null and currentUserRole.name() == 'ADMIN'}" class="role-admin">ADMIN</small>
+					<small th:if="${currentUserRole != null and currentUserRole.name() == 'WORKER'}" class="role-worker">WORKER</small>
 				</div>
-		</div>
-		
-		<form th:action="@{/logout}" method="post" class="mt-3">
-			<button type="submit" class="btn btn-danger w-100">
-				<i class="bi bi-box-arrow-left"></i>
-				<span>Завершить сеанс</span>
+			</div>
+			<div th:if="${profileSuccess}" class="alert alert-success py-2 px-2 small mb-2" role="status">
+				<i class="bi bi-check-circle-fill me-1"></i>Профиль сохранён
+			</div>
+			<button type="button" class="btn btn-sm btn-outline-primary w-100 mb-2" data-bs-toggle="modal"
+				data-bs-target="#profileEditModal" th:if="${crmProfileUser != null}">
+				<i class="bi bi-person-lines-fill me-1"></i>Мой профиль
 			</button>
-		</form>
-	</div>
+			<div class="theme-toggle-wrap mb-2">
+				<button type="button" class="btn btn-sm w-100 theme-toggle-btn" id="crmThemeToggle" aria-pressed="false">
+					<i class="bi bi-moon-stars-fill me-1 theme-ico-when-light" aria-hidden="true"></i>
+					<i class="bi bi-sun-fill me-1 theme-ico-when-dark d-none" aria-hidden="true"></i>
+					<span class="theme-toggle-text">Тёмная тема</span>
+				</button>
+			</div>
+			<form th:action="@{/logout}" method="post" class="mt-3">
+				<button type="submit" class="btn btn-danger w-100">
+					<i class="bi bi-box-arrow-left"></i>
+					<span>Завершить сеанс</span>
+				</button>
+			</form>
+		</div>
+		</aside>
+
+		<div class="modal fade" id="profileEditModal" tabindex="-1" aria-labelledby="profileEditModalLabel" aria-hidden="true"
+			th:if="${crmProfileUser != null}">
+			<div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+				<form th:action="@{/profile}" method="post" class="modal-content">
+					<input type="hidden" name="id" th:value="${crmProfileUser.id}">
+					<input type="hidden" name="version" th:value="${crmProfileUser.version}">
+					<div class="modal-header">
+						<h5 class="modal-title" id="profileEditModalLabel">Мой профиль</h5>
+						<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+					</div>
+					<div class="modal-body">
+						<div th:if="${profileError != null}" class="alert alert-danger small" role="alert">
+							<span th:if="${profileError == 'bad_chars'}">ФИО: только русские буквы.</span>
+							<span th:if="${profileError == 'name_too_long'}">ФИО не длиннее 50 символов.</span>
+							<span th:if="${profileError == 'invalid_login'}">Логин: только латиница и цифры.</span>
+							<span th:if="${profileError == 'login_exists'}">Такой логин уже занят.</span>
+							<span th:if="${profileError == 'email_exists'}">Такой email уже занят.</span>
+							<span th:if="${profileError == 'password_too_short'}">Пароль не короче 6 символов.</span>
+							<span th:if="${profileError == 'point_invalid'}">Указана неверная точка.</span>
+							<span th:if="${profileError == 'stale_data'}">Данные устарели — обновите страницу.</span>
+							<span th:if="${profileError == 'save_failed'}">Не удалось сохранить.</span>
+						</div>
+						<div class="row g-3">
+							<div class="col-md-6">
+								<label class="form-label">Логин</label>
+								<input type="text" name="login" class="form-control" autocomplete="username"
+									th:value="${crmProfileUser.login}"
+									th:readonly="${currentUserRole == null or currentUserRole.name() != 'SUPER_ADMIN'}">
+								<small class="text-muted" th:if="${currentUserRole != null and currentUserRole.name() != 'SUPER_ADMIN'}">Смена логина — через главного администратора.</small>
+							</div>
+							<div class="col-md-6">
+								<label class="form-label">Новый пароль</label>
+								<div class="input-group">
+									<input type="password" name="newPassword" id="profile-new-password" class="form-control"
+										placeholder="Пусто — не менять" minlength="6" autocomplete="new-password">
+									<button class="btn btn-outline-secondary" type="button" onclick="crmToggleProfilePassword(this)">
+										<i class="bi bi-eye"></i>
+									</button>
+								</div>
+							</div>
+							<div class="col-md-4">
+								<label class="form-label">Фамилия</label>
+								<input type="text" name="surname" class="form-control" required maxlength="50" th:value="${crmProfileUser.surname}">
+							</div>
+							<div class="col-md-4">
+								<label class="form-label">Имя</label>
+								<input type="text" name="name" class="form-control" required maxlength="50" th:value="${crmProfileUser.name}">
+							</div>
+							<div class="col-md-4">
+								<label class="form-label">Отчество</label>
+								<input type="text" name="patronymic" class="form-control" maxlength="50" th:value="${crmProfileUser.patronymic}">
+							</div>
+							<div class="col-md-6">
+								<label class="form-label">Email</label>
+								<input type="email" name="email" class="form-control" th:value="${crmProfileUser.email}">
+							</div>
+							<div class="col-md-6">
+								<label class="form-label">Телефон</label>
+								<input type="text" name="phoneNumber" class="form-control" required th:value="${crmProfileUser.phoneNumber}">
+							</div>
+							<div class="col-md-6">
+								<label class="form-label">Телефон доверенного лица</label>
+								<input type="text" name="trustedPersonPhone" class="form-control" maxlength="20" th:value="${crmProfileUser.trustedPersonPhone}">
+							</div>
+							<div class="col-12">
+								<label class="form-label">Точка (локация) *</label>
+								<select name="pointId" class="form-select" required>
+									<option th:each="p : ${profilePoints}" th:value="${p.id}" th:text="${p.name}"
+										th:selected="${crmProfileUser.point != null and crmProfileUser.point.id == p.id}">Точка</option>
+								</select>
+							</div>
+							<div class="col-12 mt-2">
+								<div class="fw-semibold text-uppercase text-muted small mb-2">Паспорт <span class="fw-normal">(не обязательно)</span></div>
+								<div class="row g-2">
+									<div class="col-md-2">
+										<label class="form-label">Серия</label>
+										<input type="text" name="passportSeries" class="form-control text-uppercase" maxlength="2" th:value="${crmProfileUser.passportSeries}">
+									</div>
+									<div class="col-md-3">
+										<label class="form-label">Номер</label>
+										<input type="text" name="passportNumber" class="form-control" maxlength="7" th:value="${crmProfileUser.passportNumber}">
+									</div>
+									<div class="col-md-4">
+										<label class="form-label">Идент. номер</label>
+										<input type="text" name="identificationNumber" class="form-control text-uppercase" maxlength="14" th:value="${crmProfileUser.identificationNumber}">
+									</div>
+									<div class="col-md-3">
+										<label class="form-label">Дата выдачи</label>
+										<input type="text" name="passportIssueDate" class="form-control" placeholder="ДД.ММ.ГГГГ"
+											th:value="${crmProfileUser.passportIssueDate != null ? #temporals.format(crmProfileUser.passportIssueDate, 'dd.MM.yyyy') : ''}">
+									</div>
+									<div class="col-md-3">
+										<label class="form-label">Срок действия</label>
+										<input type="text" name="passportExpiryDate" class="form-control" placeholder="ДД.ММ.ГГГГ"
+											th:value="${crmProfileUser.passportExpiryDate != null ? #temporals.format(crmProfileUser.passportExpiryDate, 'dd.MM.yyyy') : ''}">
+									</div>
+								</div>
+							</div>
+							<div class="col-12 mt-2">
+								<div class="fw-semibold text-uppercase text-muted small mb-2">Прописка <span class="fw-normal">(не обязательно)</span></div>
+								<div class="row g-2">
+									<div class="col-md-6">
+										<label class="form-label">Улица</label>
+										<input type="text" name="addressStreet" class="form-control" maxlength="100" th:value="${crmProfileUser.addressStreet}">
+									</div>
+									<div class="col-md-2">
+										<label class="form-label">Дом</label>
+										<input type="text" name="addressHouse" class="form-control" maxlength="20" th:value="${crmProfileUser.addressHouse}">
+									</div>
+									<div class="col-md-2">
+										<label class="form-label">Подъезд</label>
+										<input type="text" name="addressEntrance" class="form-control" maxlength="10" th:value="${crmProfileUser.addressEntrance}">
+									</div>
+									<div class="col-md-2">
+										<label class="form-label">Корпус</label>
+										<input type="text" name="addressBuilding" class="form-control" maxlength="20" th:value="${crmProfileUser.addressBuilding}">
+									</div>
+									<div class="col-md-2">
+										<label class="form-label">Кв.</label>
+										<input type="text" name="addressApartment" class="form-control" maxlength="10" th:value="${crmProfileUser.addressApartment}">
+									</div>
+								</div>
+							</div>
+							<div class="col-12">
+								<label class="form-label">Соц сеть</label>
+								<input type="text" name="socialNetwork" class="form-control" maxlength="200" th:value="${crmProfileUser.socialNetwork}">
+							</div>
+						</div>
+					</div>
+					<div class="modal-footer">
+						<button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Отмена</button>
+						<button type="submit" class="btn btn-primary">Сохранить</button>
+					</div>
+				</form>
+			</div>
+		</div>
+
+		<header class="mobile-app-bar d-lg-none" role="banner">
+			<button type="button" class="mobile-menu-btn" id="sidebarOpenBtn"
+					aria-label="Открыть меню" aria-expanded="false" aria-controls="appSidebar">
+				<i class="bi bi-list"></i>
+			</button>
+			<span class="mobile-app-title">STUDIO.CRM</span>
+			<span class="mobile-app-bar-spacer" aria-hidden="true"></span>
+		</header>
+
+	<script defer th:src="@{/js/crm-data-sync.js}"></script>
+	<script defer th:src="@{/js/crm-mobile-nav.js}"></script>
+	<script defer th:src="@{/js/crm-theme.js}"></script>
+	<script th:if="${profileError != null}">
+		document.addEventListener('DOMContentLoaded', function () {
+			var el = document.getElementById('profileEditModal');
+			if (el && typeof bootstrap !== 'undefined') {
+				new bootstrap.Modal(el).show();
+			}
+		});
+	</script>
+	<script>
+		function crmToggleProfilePassword(btn) {
+			var input = document.getElementById('profile-new-password');
+			if (!input) return;
+			var icon = btn.querySelector('i');
+			if (input.type === 'password') {
+				input.type = 'text';
+				if (icon) { icon.classList.remove('bi-eye'); icon.classList.add('bi-eye-slash'); }
+			} else {
+				input.type = 'password';
+				if (icon) { icon.classList.remove('bi-eye-slash'); icon.classList.add('bi-eye'); }
+			}
+		}
+	</script>
 	</div>
 
 </body>

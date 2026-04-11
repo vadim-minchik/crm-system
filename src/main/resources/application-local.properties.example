@@ -1,0 +1,8 @@
+spring.datasource.url=jdbc:postgresql://aws-1-eu-north-1.pooler.supabase.com:5432/postgres?sslmode=require&prepareThreshold=0
+spring.datasource.username=postgres.PROJECT_REF
+spring.datasource.password=
+
+app.storage.type=supabase
+supabase.storage.url=https://PROJECT_REF.supabase.co
+supabase.storage.service-role-key=${SUPABASE_SERVICE_ROLE_KEY:}
+supabase.storage.bucket=CRM

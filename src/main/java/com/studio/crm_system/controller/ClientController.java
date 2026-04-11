@@ -3,10 +3,13 @@ package com.studio.crm_system.controller;
 import com.studio.crm_system.entity.Client;
 import com.studio.crm_system.entity.User;
 import com.studio.crm_system.repository.ClientRepository;
+import com.studio.crm_system.repository.RentalRepository;
 import com.studio.crm_system.repository.UserRepository;
+import com.studio.crm_system.service.ClientReviewService;
 import com.studio.crm_system.enums.Role;
 import com.studio.crm_system.security.InputValidator;
-import com.studio.crm_system.service.SupabaseStorageService;
+import com.studio.crm_system.web.OptimisticLockSupport;
+import com.studio.crm_system.service.FileStorageService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -33,7 +36,13 @@ public class ClientController {
 	private InputValidator inputValidator;
 
 	@Autowired
-	private SupabaseStorageService storageService;
+	private FileStorageService storageService;
+
+	@Autowired
+	private RentalRepository rentalRepository;
+
+	@Autowired
+	private ClientReviewService clientReviewService;
 
 	private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("dd.MM.yyyy");
 
@@ -44,7 +53,6 @@ public class ClientController {
 		return userRepository.findByLogin(username).orElse(null);
 	}
 
-	// ===== Утилита: парсинг даты с редиректом при ошибке =====
 	private LocalDate parseDate(String raw, String errorKey) {
 		if (raw == null || raw.isBlank()) return null;
 		try {
@@ -54,13 +62,11 @@ public class ClientController {
 		}
 	}
 
-	// ===== Утилита: адресное поле — пусто → "-" =====
 	private String addr(String value) {
 		if (value == null || value.trim().isEmpty()) return "-";
 		return value.trim();
 	}
 
-	// ===== Утилита: капитализация каждого слова =====
 	private String capitalize(String s) {
 		if (s == null || s.isBlank()) return s;
 		String[] words = s.trim().split("\\s+");
@@ -76,12 +82,23 @@ public class ClientController {
 	}
 
 	@GetMapping
-	public String listClients(Model model) {
+	public String listClients(Model model,
+			@RequestParam(required = false) Boolean blacklist,
+			@RequestParam(required = false) String q) {
 		User user = getCurrentUser();
 		if (user == null) return "redirect:/login";
 
 		try {
-			model.addAttribute("clients", clientRepository.findByIsDeletedFalse());
+			boolean showBlacklistOnly = Boolean.TRUE.equals(blacklist);
+			String searchQ = q != null ? q.trim() : "";
+			var clients = !searchQ.isEmpty()
+				? clientRepository.searchClients(searchQ, showBlacklistOnly ? true : null)
+				: (showBlacklistOnly
+					? clientRepository.findByIsDeletedFalseAndBlacklistedOrderBySurnameAscNameAsc(true)
+					: clientRepository.findByIsDeletedFalse());
+			model.addAttribute("clients", clients);
+			model.addAttribute("blacklistFilter", showBlacklistOnly);
+			model.addAttribute("searchQuery", searchQ);
 			model.addAttribute("currentUser", user);
 			model.addAttribute("username", user.getLogin());
 			model.addAttribute("currentUserRole", user.getRole());
@@ -103,6 +120,7 @@ public class ClientController {
 			@RequestParam String gender,
 			@RequestParam String birthDate,
 			@RequestParam String passportIssueDate,
+			@RequestParam String passportIssuedBy,
 			@RequestParam String passportExpiryDate,
 			@RequestParam String addressStreet,
 			@RequestParam String addressHouse,
@@ -114,7 +132,9 @@ public class ClientController {
 		User user = getCurrentUser();
 		if (user == null) return "redirect:/login";
 
-		// --- Парсинг дат ---
+		String issuedBy = passportIssuedBy != null ? passportIssuedBy.trim() : "";
+		if (issuedBy.isEmpty()) return "redirect:/clients?error=passport_issuer_required";
+
 		LocalDate birth = parseDate(birthDate, "birth");
 		LocalDate issue = parseDate(passportIssueDate, "issue");
 		LocalDate expiry = parseDate(passportExpiryDate, "expiry");
@@ -123,7 +143,6 @@ public class ClientController {
 		if (issue == null) return "redirect:/clients?error=invalid_issue_date";
 		if (expiry == null) return "redirect:/clients?error=invalid_expiry_date";
 
-		// --- Логическая проверка дат ---
 		LocalDate today = LocalDate.now();
 
 		if (birth.isAfter(today)) return "redirect:/clients?error=birth_future";
@@ -135,17 +154,18 @@ public class ClientController {
 		if (expiry.isBefore(issue)) return "redirect:/clients?error=expiry_before_issue";
 		if (expiry.isAfter(today.plusYears(15))) return "redirect:/clients?error=expiry_too_far";
 
-		// --- Объединяем серию и номер паспорта ---
 		String fullPassport = (passportSeries.trim() + " " + passportNum.trim()).toUpperCase();
+		String cleanPhone = inputValidator.cleanPhone(phoneNumber.trim());
+		String identUpper = identificationNumber.trim().toUpperCase();
 
-		// --- Уникальность ---
-		if (clientRepository.existsByPhoneNumber(phoneNumber.trim())) {
+		
+		if (clientRepository.existsByPhoneNumberAndIsDeletedFalse(cleanPhone)) {
 			return "redirect:/clients?error=phone_exists";
 		}
-		if (clientRepository.existsByPassportNumber(fullPassport)) {
+		if (clientRepository.existsByPassportNumberAndIsDeletedFalse(fullPassport)) {
 			return "redirect:/clients?error=passport_exists";
 		}
-		if (clientRepository.existsByIdentificationNumber(identificationNumber.trim().toUpperCase())) {
+		if (clientRepository.existsByIdentificationNumberAndIsDeletedFalse(identUpper)) {
 			return "redirect:/clients?error=ident_exists";
 		}
 
@@ -154,17 +174,18 @@ public class ClientController {
 		client.setName(capitalize(name));
 		client.setPatronymic(capitalize(patronymic));
 		client.setPassportNumber(fullPassport);
-		client.setIdentificationNumber(identificationNumber.trim().toUpperCase());
+		client.setIdentificationNumber(identUpper);
 		client.setGender(gender);
 		client.setBirthDate(birth);
 		client.setPassportIssueDate(issue);
+		client.setPassportIssuedBy(issuedBy);
 		client.setPassportExpiryDate(expiry);
 		client.setAddressStreet(addr(addressStreet));
 		client.setAddressHouse(addr(addressHouse));
 		client.setAddressEntrance(addr(addressEntrance));
 		client.setAddressBuilding(addr(addressBuilding));
 		client.setAddressApartment(addr(addressApartment));
-		client.setPhoneNumber(inputValidator.cleanPhone(phoneNumber.trim()));
+		client.setPhoneNumber(cleanPhone);
 		client.setRating(10);
 		client.setCreatedBy(user.getLogin());
 		client.setAddedBy(user);
@@ -182,6 +203,7 @@ public class ClientController {
 	@PostMapping("/edit")
 	public String editClient(
 			@RequestParam Long id,
+			@RequestParam Long version,
 			@RequestParam String surname,
 			@RequestParam String name,
 			@RequestParam String patronymic,
@@ -191,6 +213,7 @@ public class ClientController {
 			@RequestParam String gender,
 			@RequestParam String birthDate,
 			@RequestParam String passportIssueDate,
+			@RequestParam String passportIssuedBy,
 			@RequestParam String passportExpiryDate,
 			@RequestParam String addressStreet,
 			@RequestParam String addressHouse,
@@ -198,13 +221,20 @@ public class ClientController {
 			@RequestParam(defaultValue = "-") String addressBuilding,
 			@RequestParam(defaultValue = "-") String addressApartment,
 			@RequestParam String phoneNumber,
-			@RequestParam(required = false) Integer rating) {
+			@RequestParam(required = false) Boolean blacklisted) {
 
 		User user = getCurrentUser();
 		if (user == null) return "redirect:/login";
 
+		String issuedBy = passportIssuedBy != null ? passportIssuedBy.trim() : "";
+		if (issuedBy.isEmpty()) return "redirect:/clients?error=passport_issuer_required";
+
 		Client dbClient = clientRepository.findById(id).orElse(null);
 		if (dbClient == null) return "redirect:/clients?error=client_not_found";
+
+		if (OptimisticLockSupport.isStale(version, dbClient.getVersion())) {
+			return "redirect:/clients/" + id + "?error=stale_data";
+		}
 
 		if (user.getRole() == Role.WORKER && !user.getLogin().equals(dbClient.getCreatedBy())) {
 			return "redirect:/clients?error=access_denied";
@@ -227,23 +257,38 @@ public class ClientController {
 		if (expiry.isAfter(today.plusYears(15))) return "redirect:/clients?error=expiry_too_far";
 
 		String fullPassport = (passportSeries.trim() + " " + passportNum.trim()).toUpperCase();
+		String cleanPhone = inputValidator.cleanPhone(phoneNumber.trim());
+		String identUpper = identificationNumber.trim().toUpperCase();
+
+		
+		if (clientRepository.existsByPhoneNumberAndIsDeletedFalseAndIdNot(cleanPhone, dbClient.getId())) {
+			return "redirect:/clients?error=phone_exists";
+		}
+		if (clientRepository.existsByPassportNumberAndIsDeletedFalseAndIdNot(fullPassport, dbClient.getId())) {
+			return "redirect:/clients?error=passport_exists";
+		}
+		if (clientRepository.existsByIdentificationNumberAndIsDeletedFalseAndIdNot(identUpper, dbClient.getId())) {
+			return "redirect:/clients?error=ident_exists";
+		}
 
 		dbClient.setSurname(capitalize(surname));
 		dbClient.setName(capitalize(name));
 		dbClient.setPatronymic(capitalize(patronymic));
 		dbClient.setPassportNumber(fullPassport);
-		dbClient.setIdentificationNumber(identificationNumber.trim().toUpperCase());
+		dbClient.setIdentificationNumber(identUpper);
 		dbClient.setGender(gender);
 		dbClient.setBirthDate(birth);
 		dbClient.setPassportIssueDate(issue);
+		dbClient.setPassportIssuedBy(issuedBy);
 		dbClient.setPassportExpiryDate(expiry);
 		dbClient.setAddressStreet(addr(addressStreet));
 		dbClient.setAddressHouse(addr(addressHouse));
 		dbClient.setAddressEntrance(addr(addressEntrance));
 		dbClient.setAddressBuilding(addr(addressBuilding));
 		dbClient.setAddressApartment(addr(addressApartment));
-		dbClient.setPhoneNumber(phoneNumber.trim());
-		if (rating != null) dbClient.setRating(rating);
+		dbClient.setPhoneNumber(cleanPhone);
+		dbClient.setBlacklisted(Boolean.TRUE.equals(blacklisted));
+		
 
 		try {
 			clientRepository.save(dbClient);
@@ -254,7 +299,6 @@ public class ClientController {
 		return "redirect:/clients?success=client_updated";
 	}
 
-	// ===== СТРАНИЦА ДЕТАЛЕЙ КЛИЕНТА =====
 	@GetMapping("/{id}")
 	public String clientDetail(@PathVariable Long id, Model model) {
 		User user = getCurrentUser();
@@ -264,14 +308,78 @@ public class ClientController {
 		if (client == null || client.getIsDeleted()) return "redirect:/clients?error=client_not_found";
 
 		model.addAttribute("client", client);
+		model.addAttribute("rentals", rentalRepository.findByClientIdOrderByDateFromDesc(id));
+		model.addAttribute("reviews", clientReviewService.findByClientIdOrderByCreatedAtDesc(id));
 		model.addAttribute("currentUser", user);
 		model.addAttribute("currentUserRole", user.getRole());
 		return "html/client_detail";
 	}
 
-	// ===== ЗАГРУЗКА ФОТО ПАСПОРТА =====
+	@PostMapping("/{id}/toggle-blacklist")
+	public String toggleBlacklist(@PathVariable Long id, @RequestParam Long version) {
+		User user = getCurrentUser();
+		if (user == null) return "redirect:/login";
+
+		Client client = clientRepository.findById(id).orElse(null);
+		if (client == null || client.getIsDeleted()) return "redirect:/clients?error=client_not_found";
+
+		if (OptimisticLockSupport.isStale(version, client.getVersion())) {
+			return "redirect:/clients/" + id + "?error=stale_data";
+		}
+
+		if (user.getRole() == Role.WORKER && !user.getLogin().equals(client.getCreatedBy())) {
+			return "redirect:/clients?error=access_denied";
+		}
+
+		client.setBlacklisted(Boolean.FALSE.equals(client.getBlacklisted()));
+		clientRepository.save(client);
+		return "redirect:/clients/" + id + "?success=" + (client.getBlacklisted() ? "blacklisted" : "removed_from_blacklist");
+	}
+
+	@PostMapping("/{id}/reviews/add")
+	public String addReview(@PathVariable Long id,
+			@RequestParam int score,
+			@RequestParam(required = false, defaultValue = "") String comment) {
+		User user = getCurrentUser();
+		if (user == null) return "redirect:/login";
+
+		Client client = clientRepository.findById(id).orElse(null);
+		if (client == null || client.getIsDeleted()) {
+			return "redirect:/clients?error=client_not_found";
+		}
+
+		try {
+			clientReviewService.addReview(id, user, score, comment);
+		} catch (IllegalArgumentException e) {
+			return "redirect:/clients/" + id + "?error=invalid_score";
+		}
+		return "redirect:/clients/" + id + "?success=review_added";
+	}
+
+	@PostMapping("/{id}/reviews/delete")
+	public String deleteReview(@PathVariable Long id, @RequestParam Long reviewId) {
+		User user = getCurrentUser();
+		if (user == null) return "redirect:/login";
+
+		var review = clientReviewService.findById(reviewId).orElse(null);
+		if (review == null || !review.getClient().getId().equals(id)) {
+			return "redirect:/clients/" + id + "?error=review_not_found";
+		}
+
+		
+		if (user.getRole() == Role.WORKER) {
+			if (review.getAuthor() == null || !review.getAuthor().getId().equals(user.getId())) {
+				return "redirect:/clients/" + id + "?error=review_delete_denied";
+			}
+		}
+
+		clientReviewService.deleteReview(reviewId);
+		return "redirect:/clients/" + id + "?success=review_deleted";
+	}
+
 	@PostMapping("/{id}/upload-photo")
 	public String uploadPhoto(@PathVariable Long id,
+	                          @RequestParam Long version,
 	                          @RequestParam("photo") MultipartFile photo) {
 		User user = getCurrentUser();
 		if (user == null) return "redirect:/login";
@@ -279,20 +387,21 @@ public class ClientController {
 		Client client = clientRepository.findById(id).orElse(null);
 		if (client == null) return "redirect:/clients?error=client_not_found";
 
+		if (OptimisticLockSupport.isStale(version, client.getVersion())) {
+			return "redirect:/clients/" + id + "?error=stale_data";
+		}
+
 		if (photo.isEmpty()) return "redirect:/clients/" + id + "?error=no_file";
 
-		// Проверяем тип файла
 		String contentType = photo.getContentType();
 		if (contentType == null || !contentType.startsWith("image/")) {
 			return "redirect:/clients/" + id + "?error=not_image";
 		}
 
 		try {
-			// Удаляем старое фото если есть
 			if (client.getPassportPhotoUrl() != null) {
 				storageService.deleteByUrl(client.getPassportPhotoUrl());
 			}
-			// Загружаем новое
 			String url = storageService.uploadPassportPhoto(photo, id);
 			client.setPassportPhotoUrl(url);
 			clientRepository.save(client);
@@ -304,14 +413,17 @@ public class ClientController {
 		return "redirect:/clients/" + id + "?success=photo_uploaded";
 	}
 
-	// ===== УДАЛИТЬ ФОТО ПАСПОРТА =====
 	@PostMapping("/{id}/delete-photo")
-	public String deletePhoto(@PathVariable Long id) {
+	public String deletePhoto(@PathVariable Long id, @RequestParam Long version) {
 		User user = getCurrentUser();
 		if (user == null) return "redirect:/login";
 
 		Client client = clientRepository.findById(id).orElse(null);
 		if (client == null) return "redirect:/clients";
+
+		if (OptimisticLockSupport.isStale(version, client.getVersion())) {
+			return "redirect:/clients/" + id + "?error=stale_data";
+		}
 
 		if (client.getPassportPhotoUrl() != null) {
 			storageService.deleteByUrl(client.getPassportPhotoUrl());
@@ -323,12 +435,16 @@ public class ClientController {
 	}
 
 	@PostMapping("/delete")
-	public String deleteClient(@RequestParam Long id) {
+	public String deleteClient(@RequestParam Long id, @RequestParam Long version) {
 		User user = getCurrentUser();
 		if (user == null) return "redirect:/login";
 
 		Client dbClient = clientRepository.findById(id).orElse(null);
 		if (dbClient == null) return "redirect:/clients?error=client_not_found";
+
+		if (OptimisticLockSupport.isStale(version, dbClient.getVersion())) {
+			return "redirect:/clients?error=stale_data";
+		}
 
 		if (user.getRole() == Role.WORKER && !user.getLogin().equals(dbClient.getCreatedBy())) {
 			return "redirect:/clients?error=access_denied";

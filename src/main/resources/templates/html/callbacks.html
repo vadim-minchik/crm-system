@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+<meta charset="UTF-8">
+<th:block th:replace="~{html/fragments :: viewport-meta}"></th:block>
+<title>Перезвон | STUDIO.CRM</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+<link rel="stylesheet" th:href="@{/css/style.css}">
+<style>
+  .equipment-dropdown { top: 100%; margin-top: 2px; border-radius: 8px; }
+  .equipment-dropdown .list-group-item { border-left: 0; border-right: 0; }
+  .equipment-dropdown .list-group-item:first-child { border-top: 0; }
+  .callback-equipment-wrap .form-control:focus { border-color: #86b7fe; box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25); }
+  .callback-equipment-wrap .form-control { width: 100%; min-width: 280px; }
+  
+  .table tbody tr.callback-row-remind-soon td {
+    background-color: rgba(220, 53, 69, 0.08);
+    
+    border-top: 0;
+    border-bottom: 1px solid var(--table-row-border, rgba(0, 0, 0, 0.08));
+  }
+  .table tbody tr.callback-row-remind-soon td:first-child {
+    box-shadow: inset 4px 0 0 0 rgba(220, 53, 69, 0.95);
+  }
+  .table tbody tr.callback-row-remind-soon:hover td {
+    background-color: rgba(220, 53, 69, 0.13);
+  }
+  .table tbody tr.callback-row-remind-soon:hover td:first-child {
+    box-shadow: inset 4px 0 0 0 rgba(200, 35, 51, 1);
+  }
+  .table tbody tr:last-child.callback-row-remind-soon td {
+    border-bottom: 0;
+  }
+  [data-bs-theme="dark"] .table tbody tr.callback-row-remind-soon td {
+    background-color: rgba(234, 67, 53, 0.12);
+    border-bottom-color: var(--border-color, rgba(255, 255, 255, 0.08));
+  }
+  [data-bs-theme="dark"] .table tbody tr.callback-row-remind-soon td:first-child {
+    box-shadow: inset 4px 0 0 0 rgba(248, 100, 80, 0.98);
+  }
+  [data-bs-theme="dark"] .table tbody tr.callback-row-remind-soon:hover td {
+    background-color: rgba(234, 67, 53, 0.18);
+  }
+</style>
+</head>
+<body>
+
+<div th:replace="~{html/fragments :: sidebar('callbacks')}"></div>
+
+<div class="main-content">
+  <div class="page-header">
+    <div class="page-title">
+      <h2>Перезвон</h2>
+    </div>
+    <div class="d-flex flex-wrap align-items-center gap-2 justify-content-end">
+      <th:block th:if="${tomorrowFocus}">
+        <a th:href="@{/callbacks}" class="btn btn-outline-secondary">
+          <i class="bi bi-arrow-counterclockwise me-1"></i>Вернуть
+        </a>
+      </th:block>
+      <th:block th:if="${!tomorrowFocus}">
+        <a th:href="@{/callbacks(view='tomorrow')}" class="btn btn-outline-danger">
+          <i class="bi bi-alarm me-1"></i>За день до
+        </a>
+      </th:block>
+      <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addCallbackModal">
+        <i class="bi bi-plus-lg"></i> Создать перезвон
+      </button>
+    </div>
+  </div>
+
+  <div th:if="${param.error}" class="alert alert-danger alert-dismissible fade show" role="alert">
+    <i class="bi bi-exclamation-triangle-fill me-2"></i><strong>Ошибка!</strong>
+    <span th:if="${param.error[0] == 'phone_required'}">Укажите номер телефона.</span>
+    <span th:if="${param.error[0] == 'bad_period'}">Дата «по» должна быть позже даты «с».</span>
+    <span th:if="${param.error[0] == 'equipment_invalid'}">Выбранная единица техники не найдена. Обновите страницу.</span>
+    <span th:if="${param.error[0] == 'not_found'}">Запись не найдена.</span>
+    <span th:if="${param.error[0] == 'version_conflict'}">Запись изменена в другом окне. Обновите страницу.</span>
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+  </div>
+  <div th:if="${param.success}" class="alert alert-success alert-dismissible fade show" role="alert">
+    <i class="bi bi-check-circle-fill me-2"></i><strong>Готово!</strong>
+    <span th:if="${param.success[0] == 'created'}">Запись о перезвоне добавлена.</span>
+    <span th:if="${param.success[0] == 'deleted'}">Запись о перезвоне удалена.</span>
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+  </div>
+
+  <div class="card-table">
+    <div class="table-responsive">
+      <table class="table table-hover mb-0">
+        <thead>
+          <tr>
+            <th class="ps-4">Телефон</th>
+            <th>ФИО</th>
+            <th>Что интересовало</th>
+            <th>Период аренды</th>
+            <th>Перезвонить</th>
+            <th>Комментарий</th>
+            <th>Создано</th>
+            <th class="text-end pe-4">Действия</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr th:each="cb : ${callbacks}" th:classappend="${cb.remindUrgent} ? ' callback-row-remind-soon' : ''">
+            <td class="ps-4">
+              <span th:text="${cb.phoneNumber}">+375...</span>
+              <a th:if="${cb.client != null}" th:href="@{/clients/{id}(id=${cb.client.id})}"
+                 class="btn btn-sm btn-outline-primary ms-1 py-0" title="Карточка клиента">
+                <i class="bi bi-person-badge"></i>
+              </a>
+            </td>
+            <td th:text="${cb.displayFio}">ФИО</td>
+            <td class="text-muted small" style="max-width: 14rem;">
+              <span th:text="${cb.equipmentDisplayLabel != null ? cb.equipmentDisplayLabel : '—'}">—</span>
+            </td>
+            <td class="small text-nowrap">
+              <span th:if="${cb.dateFrom != null}" th:text="${#temporals.format(cb.dateFrom, 'dd.MM.yyyy HH:mm')}">—</span>
+              <span th:if="${cb.dateFrom == null}">—</span>
+              <span class="text-muted"> — </span>
+              <span th:if="${cb.dateTo != null}" th:text="${#temporals.format(cb.dateTo, 'dd.MM.yyyy HH:mm')}">—</span>
+              <span th:if="${cb.dateTo == null}">—</span>
+            </td>
+            <td class="small text-nowrap">
+              <span th:if="${cb.remindAt != null}" th:text="${#temporals.format(cb.remindAt, 'dd.MM.yyyy HH:mm')}">—</span>
+              <span th:if="${cb.remindAt == null}" class="text-muted">—</span>
+            </td>
+            <td class="text-muted small" style="max-width: 12rem;">
+              <span th:text="${cb.comment != null ? cb.comment : '—'}">—</span>
+            </td>
+            <td class="small">
+              <div th:text="${#temporals.format(cb.createdAt, 'dd.MM.yyyy HH:mm')}">01.01.2026</div>
+              <span class="text-muted" th:text="${cb.creatorDisplaySurname}">Фамилия</span>
+            </td>
+            <td class="text-end pe-4">
+              <form th:action="@{/callbacks/delete}" method="post" class="d-inline"
+                    onsubmit="return confirm('Удалить эту запись о перезвоне?');">
+                <input type="hidden" name="id" th:value="${cb.id}">
+                <input type="hidden" name="version" th:value="${cb.version}">
+                <input type="hidden" name="returnView" value="tomorrow" th:if="${tomorrowFocus}">
+                <button type="submit" class="btn btn-sm btn-outline-danger" title="Удалить">
+                  <i class="bi bi-trash"></i>
+                </button>
+              </form>
+            </td>
+          </tr>
+          <tr th:if="${#lists.isEmpty(callbacks)}">
+            <td colspan="8" class="text-center py-5 text-muted">
+              <i class="bi bi-telephone-forward fs-3 d-block mb-2"></i>
+              Пока нет записей о перезвонах
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="addCallbackModal" tabindex="-1">
+  <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+    <form th:action="@{/callbacks/add}" method="post" class="modal-content" id="callbackForm">
+      <input type="hidden" name="linkedClientId" id="linkedClientId" value="">
+      <input type="hidden" name="returnView" value="tomorrow" th:if="${tomorrowFocus}">
+      <div class="modal-header">
+        <h5><i class="bi bi-telephone-forward me-2"></i>Новый перезвон</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label class="form-label">Телефон <span class="text-danger">*</span></label>
+          <div class="input-group">
+            <input type="text" name="phoneNumber" id="callbackPhone" class="form-control"
+                   placeholder="+375..." required maxlength="50" autocomplete="tel">
+            <button type="button" class="btn btn-outline-secondary" id="btnLookupPhone" title="Проверить по базе клиентов">
+              <i class="bi bi-search"></i> Проверить
+            </button>
+          </div>
+          <div class="form-text">После ввода номера нажмите «Проверить»: если клиент есть в базе, подставятся его данные.</div>
+        </div>
+
+        <div id="clientMatchedBanner" class="alert alert-success d-none py-2 mb-3" role="status">
+          <i class="bi bi-check-circle me-1"></i>
+          <span>Клиент в базе:</span>
+          <strong id="clientMatchedFio"></strong>
+        </div>
+
+        <div id="manualFioBlock">
+          <div class="fw-semibold text-uppercase text-muted small mb-2">ФИО (если номера ещё нет в базе)</div>
+          <div class="row g-2 mb-3">
+            <div class="col-md-4">
+              <label class="form-label">Фамилия</label>
+              <input type="text" name="surname" id="manualSurname" class="form-control" maxlength="50" autocomplete="off">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">Имя</label>
+              <input type="text" name="name" id="manualName" class="form-control" maxlength="50" autocomplete="off">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">Отчество</label>
+              <input type="text" name="patronymic" id="manualPatronymic" class="form-control" maxlength="50" autocomplete="off">
+            </div>
+          </div>
+        </div>
+
+        <div class="fw-semibold text-uppercase text-muted small mb-2">Запрос</div>
+        <div class="mb-3">
+          <label class="form-label">Что интересовало (со склада)</label>
+          <div class="equipment-search-wrap position-relative callback-equipment-wrap">
+            <input type="text" id="callback-equipment-search" class="form-control" autocomplete="off"
+                   placeholder="Поиск по названию, серийному номеру или статусу…">
+            <div id="callback-equipment-dropdown" class="equipment-dropdown list-group position-absolute w-100 shadow-sm" style="display: none; max-height: 260px; overflow-y: auto; z-index: 1050;"></div>
+          </div>
+          <div id="callback-equipment-chip" class="d-flex flex-wrap gap-2 align-items-center mb-1"></div>
+          <div id="callback-equipment-hidden"></div>
+          <div class="form-text">Как в журнале прокатов: найдите и выберите позицию. Можно любую единицу из списка. Поле необязательное.</div>
+          <div th:if="${#lists.isEmpty(equipmentSelectOptions)}" class="form-text text-warning">Нет техники на складе.</div>
+          <div id="callback-equipment-list-source" style="display: none;" aria-hidden="true">
+            <div th:each="e : ${equipmentSelectOptions}" class="callback-equipment-option list-group-item list-group-item-action py-2"
+                 th:data-id="${e.id}"
+                 th:data-title="${e.title}"
+                 th:data-serial="${e.serialNumber}"
+                 th:data-status-label="${e.statusLabel}"
+                 th:data-free="${e.free}"
+                 th:classappend="${!e.free ? 'list-group-item-secondary' : 'list-group-item-light'}"
+                 role="button"
+                 th:text="${e.title + ' — S/N ' + e.serialNumber + ' · ' + e.statusLabel}">—</div>
+          </div>
+        </div>
+
+        <div class="row g-2 mb-3">
+          <div class="col-md-6">
+            <label class="form-label">Период аренды с</label>
+            <input type="datetime-local" name="dateFrom" id="dateFrom" class="form-control">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Период аренды по</label>
+            <input type="datetime-local" name="dateTo" id="dateTo" class="form-control">
+          </div>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Когда перезвонить</label>
+          <input type="datetime-local" name="remindAt" id="remindAt" class="form-control">
+          <div class="form-text">Напоминание для сотрудника по этой заявке. Необязательно.</div>
+        </div>
+        <div class="mb-0">
+          <label class="form-label">Комментарий</label>
+          <textarea name="comment" class="form-control" rows="2" maxlength="2000" placeholder="По желанию"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Отмена</button>
+        <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>Сохранить</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script th:inline="javascript">
+(function () {
+  const lookupUrl =  '/callbacks/api/lookup';
+  const phoneEl = document.getElementById('callbackPhone');
+  const btnLookup = document.getElementById('btnLookupPhone');
+  const linkedId = document.getElementById('linkedClientId');
+  const banner = document.getElementById('clientMatchedBanner');
+  const fioEl = document.getElementById('clientMatchedFio');
+  const manualBlock = document.getElementById('manualFioBlock');
+  const modalEl = document.getElementById('addCallbackModal');
+
+  function resetLookupUi() {
+    linkedId.value = '';
+    banner.classList.add('d-none');
+    manualBlock.classList.remove('d-none');
+    fioEl.textContent = '';
+  }
+
+  async function runLookup() {
+    const q = phoneEl.value.trim();
+    if (!q) {
+      resetLookupUi();
+      return;
+    }
+    try {
+      const res = await fetch(lookupUrl + '?phone=' + encodeURIComponent(q), { credentials: 'same-origin' });
+      if (!res.ok) return;
+      const data = await res.json();
+      if (data.matched && data.clientId) {
+        linkedId.value = String(data.clientId);
+        const parts = [data.surname, data.name, data.patronymic].filter(Boolean);
+        fioEl.textContent = parts.join(' ');
+        banner.classList.remove('d-none');
+        manualBlock.classList.add('d-none');
+      } else {
+        resetLookupUi();
+      }
+    } catch (e) {
+      resetLookupUi();
+    }
+  }
+
+  btnLookup.addEventListener('click', function () { runLookup(); });
+  phoneEl.addEventListener('blur', function () { runLookup(); });
+  phoneEl.addEventListener('input', function () {
+    linkedId.value = '';
+    banner.classList.add('d-none');
+    manualBlock.classList.remove('d-none');
+  });
+
+  modalEl.addEventListener('hidden.bs.modal', function () {
+    document.getElementById('callbackForm').reset();
+    resetLookupUi();
+    if (window.__callbackEquipmentReset) window.__callbackEquipmentReset();
+  });
+})();
+
+(function () {
+  var source = document.getElementById('callback-equipment-list-source');
+  var searchInput = document.getElementById('callback-equipment-search');
+  var container = document.getElementById('callback-equipment-chip');
+  var hiddenContainer = document.getElementById('callback-equipment-hidden');
+  var dropdown = document.getElementById('callback-equipment-dropdown');
+  var modal = document.getElementById('addCallbackModal');
+
+  if (!source || !searchInput || !container || !hiddenContainer || !dropdown) return;
+
+  var selected = null;
+
+  function render() {
+    hiddenContainer.innerHTML = '';
+    container.innerHTML = '';
+    if (selected) {
+      var inp = document.createElement('input');
+      inp.type = 'hidden';
+      inp.name = 'equipmentId';
+      inp.value = selected.id;
+      hiddenContainer.appendChild(inp);
+      var badge = document.createElement('span');
+      badge.className = 'badge bg-primary d-inline-flex align-items-center gap-1';
+      var textSpan = document.createElement('span');
+      textSpan.textContent = selected.title;
+      badge.appendChild(textSpan);
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'btn btn-link btn-sm p-0 text-white text-decoration-none';
+      btn.setAttribute('aria-label', 'Убрать');
+      btn.innerHTML = '&times;';
+      btn.style.lineHeight = '1';
+      btn.addEventListener('click', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        selected = null;
+        render();
+      });
+      badge.appendChild(btn);
+      container.appendChild(badge);
+    }
+  }
+
+  window.__callbackEquipmentReset = function () {
+    searchInput.value = '';
+    selected = null;
+    render();
+  };
+
+  function norm(s) { return (s || '').toLowerCase().trim(); }
+  function getSearchText(el) {
+    return norm(el.getAttribute('data-title')) + ' ' + norm(el.getAttribute('data-serial')) + ' ' + norm(el.getAttribute('data-status-label'));
+  }
+
+  function showDropdown() {
+    var q = norm(searchInput.value);
+    dropdown.innerHTML = '';
+    var count = 0;
+    source.querySelectorAll('.callback-equipment-option').forEach(function (el) {
+      var match = !q || getSearchText(el).indexOf(q) !== -1;
+      if (match) {
+        var clone = el.cloneNode(true);
+        clone.addEventListener('click', function () {
+          selected = { id: el.getAttribute('data-id'), title: el.textContent.trim() };
+          render();
+          dropdown.style.display = 'none';
+          searchInput.value = '';
+        });
+        dropdown.appendChild(clone);
+        count++;
+      }
+    });
+    if (count === 0) {
+      var empty = document.createElement('div');
+      empty.className = 'list-group-item text-muted';
+      empty.textContent = 'Ничего не найдено';
+      dropdown.appendChild(empty);
+    }
+    dropdown.style.display = 'block';
+  }
+
+  searchInput.addEventListener('focus', showDropdown);
+  searchInput.addEventListener('input', showDropdown);
+  searchInput.addEventListener('blur', function () { setTimeout(function () { dropdown.style.display = 'none'; }, 150); });
+  dropdown.addEventListener('mousedown', function (e) { e.preventDefault(); });
+
+  if (modal) {
+    modal.addEventListener('show.bs.modal', function () {
+      window.__callbackEquipmentReset();
+    });
+  }
+})();
+</script>
+</body>
+</html>

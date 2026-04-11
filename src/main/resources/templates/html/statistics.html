@@ -1,0 +1,1055 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+<meta charset="UTF-8">
+<th:block th:replace="~{html/fragments :: viewport-meta}"></th:block>
+<title>Статистика | STUDIO.CRM</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+<link rel="stylesheet" th:href="@{/css/style.css}">
+<style>
+  .stat-clickable { cursor: pointer; transition: background-color 0.15s ease; }
+  .stat-clickable:hover { background-color: rgba(13, 110, 253, 0.06) !important; }
+  .stat-clickable .card-body:hover, .stat-clickable:hover .card-body { background-color: transparent; }
+  .modal-list table { font-size: 0.9rem; }
+  .modal-list th { white-space: nowrap; }
+  .nav-tabs .nav-link .stats-tab-icon { color: currentColor; }
+  .nav-tabs .nav-link.active .stats-tab-icon { color: inherit; opacity: 1; }
+</style>
+</head>
+<body>
+
+<div th:replace="~{html/fragments :: sidebar('statistics')}"></div>
+
+<div class="main-content">
+  <div class="page-header">
+    <div class="page-title">
+      <h2><i class="bi bi-bar-chart-line me-2 text-primary"></i>Статистика</h2>
+      <p>Полная статистика: сводные показатели, графики выручки и статусов, таблицы с сортировкой. Нажмите на карточку — откроется список с переходом к карточке.</p>
+    </div>
+  </div>
+
+  <div th:if="${param.success != null && param.success[0] == 'payout_recorded'}" class="alert alert-success alert-dismissible fade show" role="alert">
+    <i class="bi bi-check-circle me-2"></i>Выплата владельцу записана.
+    <a th:href="@{/statistics(tab='owners')}" class="alert-link ms-2">Открыть вкладку «Владельцы»</a>
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+  </div>
+
+  <div class="alert alert-primary border-0 shadow-sm mb-4 py-3 d-flex flex-wrap align-items-center justify-content-between gap-3">
+    <div class="small mb-0">
+      <i class="bi bi-people me-2 fs-5 align-middle"></i>
+      <strong>Владельцы техники</strong> (учёт отдельно от графика выручки):
+      к выплате <strong class="fs-6" th:text="${#numbers.formatDecimal(ownersTotalToPay, 1, 2)}">0</strong> Br
+      <span class="text-white-50">·</span>
+      начислено <span th:text="${#numbers.formatDecimal(ownersTotalAccrued, 1, 2)}">0</span> Br
+      <span class="text-white-50">·</span>
+      выплачено <span th:text="${#numbers.formatDecimal(ownersTotalPaid, 1, 2)}">0</span> Br
+    </div>
+    <a th:href="@{/statistics(tab='owners')}" class="btn btn-sm btn-light text-primary fw-semibold"><i class="bi bi-wallet2 me-1"></i>Выплаты и история</a>
+  </div>
+
+  <div class="row g-3 mb-4">
+    <div class="col-md-6 col-xl-3">
+      <div class="card stats-card border-0 shadow-sm h-100 stat-clickable" data-bs-toggle="modal" data-bs-target="#modalStatClients">
+        <div class="card-body d-flex align-items-center">
+          <div class="stats-icon bg-primary bg-opacity-10 text-primary rounded-3 me-3 p-3">
+            <i class="bi bi-people fs-3"></i>
+          </div>
+          <div>
+            <div class="text-muted small">Клиенты</div>
+            <div class="fs-4 fw-bold" th:text="${clientsCount}">0</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-6 col-xl-3">
+      <div class="card stats-card border-0 shadow-sm h-100 stat-clickable" data-bs-toggle="modal" data-bs-target="#modalStatActiveRentals">
+        <div class="card-body d-flex align-items-center">
+          <div class="stats-icon bg-info bg-opacity-10 text-info rounded-3 me-3 p-3">
+            <i class="bi bi-play-circle fs-3"></i>
+          </div>
+          <div>
+            <div class="text-muted small">Активных прокатов</div>
+            <div class="fs-4 fw-bold" th:text="${activeRentalsCount}">0</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-6 col-xl-3">
+      <div class="card stats-card border-0 shadow-sm h-100 stat-clickable" data-bs-toggle="modal" data-bs-target="#modalStatBookings">
+        <div class="card-body d-flex align-items-center">
+          <div class="stats-icon bg-secondary bg-opacity-10 text-secondary rounded-3 me-3 p-3">
+            <i class="bi bi-bookmark fs-3"></i>
+          </div>
+          <div>
+            <div class="text-muted small">Броней всего</div>
+            <div class="fs-4 fw-bold" th:text="${bookingsCount}">0</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <h5 class="mb-3"><i class="bi bi-box-seam me-2"></i>Склад техники</h5>
+  <div class="row g-3 mb-4">
+    <div class="col-md-4">
+      <div class="card border-0 shadow-sm stat-clickable" data-bs-toggle="modal" data-bs-target="#modalStatEquipmentTotal">
+        <div class="card-body d-flex justify-content-between align-items-center">
+          <span class="text-muted">Всего единиц</span>
+          <span class="badge bg-dark fs-6" th:text="${equipmentTotal}">0</span>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card border-0 shadow-sm stat-clickable" data-bs-toggle="modal" data-bs-target="#modalStatEquipmentFree">
+        <div class="card-body d-flex justify-content-between align-items-center">
+          <span class="text-muted">Свободно</span>
+          <span class="badge bg-success fs-6" th:text="${equipmentFree}">0</span>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card border-0 shadow-sm stat-clickable" data-bs-toggle="modal" data-bs-target="#modalStatEquipmentBusy">
+        <div class="card-body d-flex justify-content-between align-items-center">
+          <span class="text-muted">Занято</span>
+          <span class="badge bg-warning text-dark fs-6" th:text="${equipmentBusy}">0</span>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card border-0 shadow-sm stat-clickable" data-bs-toggle="modal" data-bs-target="#modalStatEquipmentReserved">
+        <div class="card-body d-flex justify-content-between align-items-center">
+          <span class="text-muted">Забронировано</span>
+          <span class="badge bg-info fs-6" th:text="${equipmentReserved}">0</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <h5 class="mb-3"><i class="bi bi-journal-check me-2"></i>Прокаты</h5>
+  <div class="row g-3 mb-4">
+    <div class="col-md-4">
+      <div class="card border-0 shadow-sm stat-clickable" data-bs-toggle="modal" data-bs-target="#modalStatCompletedRentals">
+        <div class="card-body d-flex justify-content-between align-items-center">
+          <span class="text-muted">Завершённых</span>
+          <span class="badge bg-secondary fs-6" th:text="${completedRentalsCount}">0</span>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card border-0 shadow-sm stat-clickable" data-bs-toggle="modal" data-bs-target="#modalStatDebtors">
+        <div class="card-body d-flex justify-content-between align-items-center">
+          <span class="text-muted">Должники</span>
+          <span class="badge bg-danger fs-6" th:text="${debtorsCount}">0</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <h5 class="mb-3"><i class="bi bi-gear me-2"></i>Система</h5>
+  <div class="row g-3">
+    <div class="col-md-4">
+      <div class="card border-0 shadow-sm stat-clickable" data-bs-toggle="modal" data-bs-target="#modalStatStaff">
+        <div class="card-body d-flex justify-content-between align-items-center">
+          <span class="text-muted">Сотрудников</span>
+          <span class="badge bg-primary fs-6" th:text="${staffCount}">0</span>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card border-0 shadow-sm stat-clickable" data-bs-toggle="modal" data-bs-target="#modalStatPoints">
+        <div class="card-body d-flex justify-content-between align-items-center">
+          <span class="text-muted">Точек выдачи</span>
+          <span class="badge bg-primary fs-6" th:text="${pointsCount}">0</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <hr class="my-4">
+  <h4 class="mb-3"><i class="bi bi-graph-up me-2"></i>Графики</h4>
+  <div class="row g-3 mb-4">
+    <div class="col-lg-6">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-header bg-body border-0 pt-3 d-flex flex-wrap align-items-center justify-content-between gap-2">
+          <h6 class="mb-0">Выручка и расходы, Br</h6>
+          <div class="d-flex flex-wrap align-items-center gap-3">
+            <span class="small text-success fw-semibold"><i class="bi bi-arrow-up-circle me-1"></i>Выручка за период: <span th:text="${#numbers.formatDecimal(chartPeriodRevenue != null ? chartPeriodRevenue : 0, 1, 2)}">0</span> Br</span>
+            <span class="small text-danger fw-semibold"><i class="bi bi-arrow-down-circle me-1"></i>Затраты за период: <span th:text="${#numbers.formatDecimal(chartPeriodExpenses != null ? chartPeriodExpenses : 0, 1, 2)}">0</span> Br</span>
+          </div>
+          <form th:action="@{/statistics}" method="get" class="d-flex flex-wrap align-items-center gap-2">
+            <input type="hidden" name="tab" th:value="${activeFullStatsTab}" th:if="${activeFullStatsTab != null}">
+            <label class="small text-muted mb-0">С:</label>
+            <input type="date" name="dateFrom" class="form-control form-control-sm" style="width: auto;"
+                   th:value="${revenueDateFrom != null ? #temporals.format(revenueDateFrom, 'yyyy-MM-dd') : ''}">
+            <label class="small text-muted mb-0">По:</label>
+            <input type="date" name="dateTo" class="form-control form-control-sm" style="width: auto;"
+                   th:value="${revenueDateTo != null ? #temporals.format(revenueDateTo, 'yyyy-MM-dd') : ''}">
+            <button type="submit" class="btn btn-sm btn-primary"><i class="bi bi-calculator me-1"></i>Показать</button>
+          </form>
+        </div>
+        <div class="card-body">
+          <p class="small text-muted mb-2" th:if="${revenueDateFrom != null and revenueDateTo != null}">
+            Период: с <span th:text="${#temporals.format(revenueDateFrom, 'dd.MM.yyyy')}"></span> по <span th:text="${#temporals.format(revenueDateTo, 'dd.MM.yyyy')}"></span>. Выручка — по дате окончания проката, расходы — по дате расхода.
+          </p>
+          <p class="small text-muted mb-2" th:unless="${revenueDateFrom != null and revenueDateTo != null}">
+            Укажите период «С» и «По» и нажмите «Показать» — график построится по выручке и расходам за выбранные дни. Без периода — последние 12 месяцев.
+          </p>
+          <p class="small text-info mb-2">
+            <i class="bi bi-info-circle me-1"></i><strong>Как считается выручка:</strong> в график попадают только <strong>завершённые</strong> прокаты (по дате окончания). Активные и забронированные прокаты — это будущие деньги, они учтутся в выручке после завершения.
+          </p>
+          <canvas id="chartRevenue" height="220"></canvas>
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-3">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-header bg-body border-0 pt-3"><h6 class="mb-0">Оборудование по статусам</h6></div>
+        <div class="card-body">
+          <canvas id="chartEquipment" height="220"></canvas>
+          <div class="mt-2 pt-2 border-top small">
+            <p class="text-muted mb-1">Доля от общего парка: <span class="text-success">свободных <strong th:text="${equipmentFreePct}">0</strong>%</span>, <span class="text-warning">занятых <strong th:text="${equipmentBusyPct}">0</strong>%</span>, <span class="text-info">в брони <strong th:text="${equipmentReservedPct}">0</strong>%</span>.</p>
+            <a th:href="@{/inventory}" class="text-decoration-none"><i class="bi bi-box-seam me-1"></i>Перейти в склад техники <i class="bi bi-arrow-right small"></i></a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-3">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-header bg-body border-0 pt-3"><h6 class="mb-0">Прокаты по статусам</h6></div>
+        <div class="card-body">
+          <canvas id="chartRentals" height="220"></canvas>
+          <div class="mt-2 pt-2 border-top small">
+            <p class="text-muted mb-1">Выручка по завершённым прокатам: <strong class="text-success"><span th:text="${#numbers.formatDecimal(totalRevenue != null ? totalRevenue : 0, 1, 2)}">0</span> Br</strong></p>
+            <a th:href="@{/rentals}" class="text-decoration-none"><i class="bi bi-journal-text me-1"></i>Перейти в журнал прокатов <i class="bi bi-arrow-right small"></i></a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <hr class="my-4">
+  <h4 class="mb-3"><i class="bi bi-table me-2"></i>Полная статистика с сортировкой</h4>
+  <p class="text-muted small mb-3">Нажмите на заголовок столбца для сортировки.</p>
+  <div th:if="${param.tab != null && param.tab[0] == 'owners'}" class="mb-3">
+    <div th:if="${param.error}" class="alert alert-danger alert-dismissible py-2" role="alert">
+      <span th:if="${param.error[0] == 'invalid_amount'}">Укажите корректную сумму выплаты.</span>
+      <span th:if="${param.error[0] == 'owner_not_found'}">Строка владельца не найдена.</span>
+      <span th:if="${param.error[0] == 'owner_required'}">Не выбран владелец.</span>
+      <span th:if="${param.error[0] == 'amount_exceeds_balance'}">Сумма больше, чем «к выплате».</span>
+      <span th:if="${param.error[0] == 'stale_data'}">Данные уже изменены другим пользователем. Обновите страницу и повторите действие.</span>
+      <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+  </div>
+  <div th:if="${param.tab != null && param.tab[0] == 'expenses'}" class="mb-3">
+    <div th:if="${param.success}" class="alert alert-success alert-dismissible py-2" role="alert">
+      <span th:if="${param.success[0] == 'expense_added'}">Расход добавлен.</span>
+      <span th:if="${param.success[0] == 'expense_updated'}">Расход сохранён.</span>
+      <span th:if="${param.success[0] == 'expense_deleted'}">Расход удалён.</span>
+      <span th:if="${param.success[0] == 'recurring_added'}">Повторяющийся расход добавлен. Записи созданы автоматически.</span>
+      <span th:if="${param.success[0] == 'recurring_updated'}">Шаблон повторяющегося расхода сохранён.</span>
+      <span th:if="${param.success[0] == 'recurring_deleted'}">Повторяющийся расход удалён.</span>
+      <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    <div th:if="${param.error}" class="alert alert-danger alert-dismissible py-2" role="alert">
+      <span th:if="${param.error[0] == 'invalid_amount'}">Укажите корректную сумму.</span>
+      <span th:if="${param.error[0] == 'description_required'}">Укажите описание.</span>
+      <span th:if="${param.error[0] == 'not_found'}">Расход не найден.</span>
+      <span th:if="${param.error[0] == 'recurring_validation'}" th:text="${recurringValidationError != null ? recurringValidationError : 'Проверьте данные повторяющегося расхода.'}">Ошибка валидации.</span>
+      <span th:if="${param.error[0] == 'stale_data'}">Данные уже изменены другим пользователем. Обновите страницу и повторите действие.</span>
+      <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+  </div>
+  <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+    <label class="small text-muted mb-0"><i class="bi bi-funnel me-1"></i>Фильтр:</label>
+    <input type="text" id="fullStatsFilter" class="form-control form-control-sm" style="max-width: 280px;" placeholder="Поиск по текущей таблице...">
+    <span class="small text-muted" id="fullStatsFilterHint">При смене вкладки фильтр применяется к новой таблице.</span>
+  </div>
+  <ul class="nav nav-tabs mb-3" role="tablist">
+    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabFullClients" type="button" th:classappend="${activeFullStatsTab == null ? 'active' : ''}">Клиенты</button></li>
+    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabFullRentals" type="button">Прокаты</button></li>
+    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabFullEquipment" type="button">Оборудование</button></li>
+    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabFullExpenses" type="button" th:classappend="${activeFullStatsTab == 'expenses' ? 'active' : ''}"><i class="bi bi-currency-ruble me-1 stats-tab-icon"></i>Затраты</button></li>
+    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabFullOwners" type="button" th:classappend="${activeFullStatsTab == 'owners' ? 'active' : ''}"><i class="bi bi-people me-1 stats-tab-icon"></i>Владельцы</button></li>
+  </ul>
+  <div class="tab-content">
+    <div class="tab-pane fade" th:classappend="${activeFullStatsTab == null ? 'show active' : ''}" id="tabFullClients">
+      <div class="card border-0 shadow-sm">
+        <div class="table-responsive">
+          <table class="table table-hover table-sm mb-0 sortable-table" data-table="clients">
+            <thead><tr><th data-sort="string">ФИО</th><th data-sort="string">Телефон</th><th></th></tr></thead>
+            <tbody>
+              <tr th:each="c : ${clientsList}">
+                <td th:text="${c.surname + ' ' + c.name + ' ' + c.patronymic}">—</td>
+                <td th:text="${c.phoneNumber}">—</td>
+                <td><a th:href="@{/clients/{id}(id=${c.id})}" class="btn btn-sm btn-outline-primary">Карточка</a></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    <div class="tab-pane fade" id="tabFullRentals">
+      <div class="card border-0 shadow-sm">
+        <div class="table-responsive">
+          <table class="table table-hover table-sm mb-0 sortable-table" data-table="rentals">
+            <thead><tr><th data-sort="string">Клиент</th><th data-sort="string">Статус</th><th data-sort="string">С</th><th data-sort="string">По</th><th data-sort="num">Сумма</th><th></th></tr></thead>
+            <tbody>
+              <tr th:each="r : ${allRentalsList}">
+                <td th:text="${r.client != null ? (r.client.surname + ' ' + r.client.name) : '—'}">—</td>
+                <td><span class="badge bg-dark" th:if="${r.status.name() == 'AWAITING_DELIVERY'}">Ожидает доставки</span><span class="badge bg-primary" th:if="${r.status.name() == 'ACTIVE'}">Активный</span><span class="badge bg-secondary" th:if="${r.status.name() == 'COMPLETED'}">Завершён</span><span class="badge bg-danger" th:if="${r.status.name() == 'DEBTOR'}">Должник</span><span class="badge bg-warning text-dark" th:if="${r.status.name() == 'CANCELLED'}">Отменён</span><span class="badge bg-info" th:if="${r.status.name() == 'BOOKED'}">Бронь</span><span class="badge bg-warning text-dark" th:if="${r.status.name() == 'SOON_DEBTOR'}">Скоро должник</span></td>
+                <td th:text="${r.dateFrom != null ? #temporals.format(r.dateFrom, 'dd.MM.yy HH:mm') : '—'}">—</td>
+                <td th:text="${r.dateTo != null ? #temporals.format(r.dateTo, 'dd.MM.yy HH:mm') : '—'}">—</td>
+                <td th:text="${r.totalAmount != null ? (#numbers.formatDecimal(r.totalAmount, 1, 2) + ' Br') : '—'}" th:attr="data-num=${r.totalAmount != null ? r.totalAmount.doubleValue() : 0}">—</td>
+                <td><a th:href="@{/rentals/{id}(id=${r.id})}" class="btn btn-sm btn-outline-primary">Прокат</a></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    <div class="tab-pane fade" id="tabFullEquipment">
+      <div class="card border-0 shadow-sm">
+        <div class="table-responsive">
+          <table class="table table-hover table-sm mb-0 sortable-table" data-table="equipment">
+            <thead><tr><th data-sort="string">Название</th><th data-sort="string">S/N</th><th data-sort="string">Статус</th><th></th></tr></thead>
+            <tbody>
+              <tr th:each="e : ${allEquipmentList}">
+                <td th:text="${e.title}">—</td>
+                <td th:text="${e.serialNumber}">—</td>
+                <td><span class="badge bg-success" th:if="${e.status.name() == 'FREE'}">Свободно</span><span class="badge bg-warning text-dark" th:if="${e.status.name() == 'BUSY'}">Занято</span><span class="badge bg-info" th:if="${e.status.name() == 'RESERVED'}">Забронировано</span></td>
+                <td><a th:href="@{/inventory/unit/{id}(id=${e.id})}" class="btn btn-sm btn-outline-primary">К экземпляру</a></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    <div class="tab-pane fade" th:classappend="${activeFullStatsTab == 'owners' ? 'show active' : ''}" id="tabFullOwners">
+      <div class="card border-0 shadow-sm mb-3">
+        <div class="card-body small text-muted">
+          <p class="mb-2"><strong>Как считается начисление:</strong> учитываются прокаты со статусами <strong>завершён</strong>, <strong>должник</strong>, <strong>скоро должник</strong>. Сумма проката распределяется между единицами пропорционально расчётной стоимости аренды по тарифу каждой единицы; затем к доле единицы применяется <strong>процент прибыли от проката</strong> (не путать с долей владения на складе). Это <strong>не меняет</strong> общую выручку в графиках выше — отдельный учёт выплат собственникам техники.</p>
+          <div class="d-flex flex-wrap gap-4">
+            <span>Начислено всего: <strong class="text-dark" th:text="${#numbers.formatDecimal(ownersTotalAccrued, 1, 2)}">0</strong> Br</span>
+            <span>Выплачено: <strong class="text-success" th:text="${#numbers.formatDecimal(ownersTotalPaid, 1, 2)}">0</strong> Br</span>
+            <span>К выплате: <strong class="text-primary" th:text="${#numbers.formatDecimal(ownersTotalToPay, 1, 2)}">0</strong> Br</span>
+          </div>
+        </div>
+      </div>
+      <div class="card border-0 shadow-sm mb-3">
+        <div class="card-header bg-body border-0 fw-semibold">По каждому владельцу</div>
+        <div class="table-responsive">
+          <table class="table table-hover table-sm mb-0 sortable-table" data-table="owners">
+            <thead><tr><th data-sort="string">Экземпляр</th><th data-sort="string">S/N</th><th data-sort="string">Владелец</th><th data-sort="num">Владение %</th><th data-sort="num">Прибыль %</th><th data-sort="num">Начислено</th><th data-sort="num">Выплачено</th><th data-sort="num">К выплате</th><th></th></tr></thead>
+            <tbody>
+              <tr th:each="row : ${ownerBalanceRows}">
+                <td th:text="${row.modelTitle}">—</td>
+                <td><code class="small" th:text="${row.serialNumber}">—</code></td>
+                <td th:text="${row.ownerName}">—</td>
+                <td th:text="${row.ownershipPercent != null ? #numbers.formatDecimal(row.ownershipPercent, 1, 2) : '—'}" th:attr="data-num=${row.ownershipPercent != null ? row.ownershipPercent.doubleValue() : 0}">—</td>
+                <td th:text="${row.sharePercent != null ? #numbers.formatDecimal(row.sharePercent, 1, 2) : '—'}" th:attr="data-num=${row.sharePercent != null ? row.sharePercent.doubleValue() : 0}">—</td>
+                <td th:text="${#numbers.formatDecimal(row.accrued, 1, 2)}" th:attr="data-num=${row.accrued != null ? row.accrued.doubleValue() : 0}">—</td>
+                <td th:text="${#numbers.formatDecimal(row.paid, 1, 2)}" th:attr="data-num=${row.paid != null ? row.paid.doubleValue() : 0}">—</td>
+                <td th:text="${#numbers.formatDecimal(row.toPay, 1, 2)}" th:attr="data-num=${row.toPay != null ? row.toPay.doubleValue() : 0}">—</td>
+                <td>
+                  <button type="button" class="btn btn-sm btn-outline-primary btn-owner-payout"
+                          th:if="${row.toPay != null and row.toPay.compareTo(T(java.math.BigDecimal).ZERO) > 0}"
+                          th:data-owner-id="${row.equipmentOwnerId}"
+                          th:data-owner-version="${row.equipmentOwnerVersion}"
+                          th:data-max="${row.toPay}"
+                          th:data-label="${row.ownerName + ' / ' + row.serialNumber}"
+                          data-bs-toggle="modal" data-bs-target="#modalOwnerPayout">Выплатить</button>
+                  <span class="text-muted small" th:if="${row.toPay == null or row.toPay.compareTo(T(java.math.BigDecimal).ZERO) <= 0}">—</span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="card-footer bg-body border-0 text-muted small" th:if="${#lists.isEmpty(ownerBalanceRows)}">Нет владельцев в базе (добавьте владельцев при создании или редактировании экземпляра на складе).</div>
+      </div>
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-body border-0 fw-semibold"><i class="bi bi-clock-history me-1"></i>История выплат</div>
+        <div class="table-responsive">
+          <table class="table table-hover table-sm mb-0">
+            <thead><tr><th>Дата</th><th>Экземпляр</th><th>Кому</th><th>Сумма, Br</th><th>Комментарий</th></tr></thead>
+            <tbody>
+              <tr th:each="p : ${ownerRecentPayouts}">
+                <td th:text="${#temporals.format(p.paidAt, 'dd.MM.yyyy HH:mm')}">—</td>
+                <td><a th:href="@{/inventory/unit/{id}(id=${p.equipment.id})}" th:text="${p.equipment.serialNumber}" class="text-decoration-none">S/N</a></td>
+                <td th:text="${p.payeeName}">—</td>
+                <td th:text="${#numbers.formatDecimal(p.amount, 1, 2)}">—</td>
+                <td class="small text-muted" th:text="${p.note != null ? p.note : '—'}">—</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="card-footer bg-body border-0 text-muted small" th:if="${#lists.isEmpty(ownerRecentPayouts)}">Пока нет записанных выплат.</div>
+      </div>
+    </div>
+    <div class="tab-pane fade" th:classappend="${activeFullStatsTab == 'expenses' ? 'show active' : ''}" id="tabFullExpenses">
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-body border-0 d-flex flex-wrap align-items-center justify-content-between gap-2">
+          <span class="fw-semibold">Всего расходов: <span th:text="${#numbers.formatDecimal(totalExpenses, 1, 2)}">0</span> Br</span>
+          <button type="button" class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#modalExpenseAdd"><i class="bi bi-plus-lg me-1"></i>Добавить расход</button>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-hover table-sm mb-0 sortable-table" data-table="expenses">
+            <thead><tr><th data-sort="string">Дата</th><th data-sort="string">Описание</th><th data-sort="string">Категория</th><th data-sort="num">Сумма, Br</th><th></th></tr></thead>
+            <tbody>
+              <tr th:each="ex : ${expensesList}">
+                <td th:text="${#temporals.format(ex.expenseDate, 'dd.MM.yyyy')}">—</td>
+                <td th:text="${ex.description}">—</td>
+                <td th:text="${ex.category != null ? ex.category : '—'}">—</td>
+                <td th:text="${#numbers.formatDecimal(ex.amount, 1, 2)}" th:attr="data-num=${ex.amount != null ? ex.amount.doubleValue() : 0}">—</td>
+                <td>
+                  <button type="button" class="btn btn-sm btn-outline-secondary me-1 btn-expense-edit" data-bs-toggle="modal" data-bs-target="#modalExpenseEdit" th:data-id="${ex.id}" th:data-version="${ex.version}" th:data-date="${#temporals.format(ex.expenseDate, 'yyyy-MM-dd')}" th:data-amount="${ex.amount}" th:data-description="${ex.description}" th:data-category="${ex.category != null ? ex.category : ''}">Изменить</button>
+                  <form th:action="@{/statistics/expenses/delete}" method="post" class="d-inline" onsubmit="return confirm('Удалить этот расход?');">
+                    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                    <input type="hidden" name="id" th:value="${ex.id}">
+                    <input type="hidden" name="version" th:value="${ex.version}">
+                    <button type="submit" class="btn btn-sm btn-outline-danger">Удалить</button>
+                  </form>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="card-footer bg-body border-0 text-muted small" th:if="${#lists.isEmpty(expensesList)}">Нет записей о расходах. Нажмите «Добавить расход».</div>
+      </div>
+      <div class="card border-0 shadow-sm mt-3">
+        <div class="card-header bg-body border-0 d-flex flex-wrap align-items-center justify-content-between gap-2">
+          <span class="fw-semibold"><i class="bi bi-arrow-repeat me-1"></i>Повторяющиеся расходы</span>
+          <span class="small text-muted">Система автоматически создаёт расходы по шаблону в указанные даты.</span>
+          <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#modalRecurringAdd"><i class="bi bi-plus-lg me-1"></i>Добавить повторяющийся расход</button>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-hover table-sm mb-0">
+            <thead><tr><th>Описание</th><th>Категория</th><th>Сумма, Br</th><th>С какого</th><th>По какое</th><th>Как часто</th><th></th></tr></thead>
+            <tbody>
+              <tr th:each="rec : ${recurringExpensesList}">
+                <td th:text="${rec.description}">—</td>
+                <td th:text="${rec.category != null ? rec.category : '—'}">—</td>
+                <td th:text="${#numbers.formatDecimal(rec.amount, 1, 2)}">—</td>
+                <td th:text="${#temporals.format(rec.startDate, 'dd.MM.yyyy')}">—</td>
+                <td th:text="${#temporals.format(rec.endDate, 'dd.MM.yyyy')}">—</td>
+                <td th:text="${rec.periodType != null ? rec.periodType.label : '—'}">—</td>
+                <td>
+                  <button type="button" class="btn btn-sm btn-outline-secondary me-1 btn-recurring-edit" data-bs-toggle="modal" data-bs-target="#modalRecurringEdit" th:data-id="${rec.id}" th:data-version="${rec.version}" th:data-amount="${rec.amount}" th:data-description="${rec.description}" th:data-category="${rec.category != null ? rec.category : ''}" th:data-start="${#temporals.format(rec.startDate, 'yyyy-MM-dd')}" th:data-end="${#temporals.format(rec.endDate, 'yyyy-MM-dd')}" th:data-period="${rec.periodType != null ? rec.periodType.name() : 'MONTHLY'}">Изменить</button>
+                  <form th:action="@{/statistics/expenses/recurring/delete}" method="post" class="d-inline" onsubmit="return confirm('Удалить этот шаблон? Уже созданные расходы останутся в списке.');">
+                    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                    <input type="hidden" name="id" th:value="${rec.id}">
+                    <input type="hidden" name="version" th:value="${rec.version}">
+                    <button type="submit" class="btn btn-sm btn-outline-danger">Удалить</button>
+                  </form>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="card-footer bg-body border-0 text-muted small" th:if="${#lists.isEmpty(recurringExpensesList)}">Нет шаблонов. Добавьте повторяющийся расход (например, аренда) — система будет создавать записи в указанные даты.</div>
+      </div>
+      <div class="modal fade" id="modalExpenseAdd" tabindex="-1">
+        <div class="modal-dialog">
+          <div class="modal-content">
+            <div class="modal-header"><h5 class="modal-title">Добавить расход</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <form th:action="@{/statistics/expenses/add}" method="post">
+              <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+              <div class="modal-body">
+                <div class="mb-2"><label class="form-label">Дата *</label><input type="date" name="expenseDate" class="form-control" required th:value="${#temporals.format(#temporals.createNow(), 'yyyy-MM-dd')}"></div>
+                <div class="mb-2"><label class="form-label">Сумма, Br *</label><input type="number" name="amount" class="form-control" step="0.01" min="0.01" required placeholder="0.00"></div>
+                <div class="mb-2"><label class="form-label">Описание *</label><input type="text" name="description" class="form-control" required maxlength="500" placeholder="На что потрачено"></div>
+                <div class="mb-2"><label class="form-label">Категория</label><input type="text" name="category" class="form-control" maxlength="100" placeholder="Например: аренда, зарплата"></div>
+              </div>
+              <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button><button type="submit" class="btn btn-success">Добавить</button></div>
+            </form>
+          </div>
+        </div>
+      </div>
+      <div class="modal fade" id="modalExpenseEdit" tabindex="-1">
+        <div class="modal-dialog">
+          <div class="modal-content">
+            <div class="modal-header"><h5 class="modal-title">Изменить расход</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <form id="formExpenseEdit" th:action="@{/statistics/expenses/edit}" method="post">
+              <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+              <input type="hidden" name="id" id="editExpenseId">
+              <input type="hidden" name="version" id="editExpenseVersion">
+              <div class="modal-body">
+                <div class="mb-2"><label class="form-label">Дата *</label><input type="date" name="expenseDate" id="editExpenseDate" class="form-control" required></div>
+                <div class="mb-2"><label class="form-label">Сумма, Br *</label><input type="number" name="amount" id="editExpenseAmount" class="form-control" step="0.01" min="0.01" required></div>
+                <div class="mb-2"><label class="form-label">Описание *</label><input type="text" name="description" id="editExpenseDescription" class="form-control" required maxlength="500"></div>
+                <div class="mb-2"><label class="form-label">Категория</label><input type="text" name="category" id="editExpenseCategory" class="form-control" maxlength="100"></div>
+              </div>
+              <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button><button type="submit" class="btn btn-primary">Сохранить</button></div>
+            </form>
+          </div>
+        </div>
+      </div>
+      <div class="modal fade" id="modalRecurringAdd" tabindex="-1">
+        <div class="modal-dialog">
+          <div class="modal-content">
+            <div class="modal-header"><h5 class="modal-title">Добавить повторяющийся расход</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <form th:action="@{/statistics/expenses/recurring/add}" method="post">
+              <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+              <div class="modal-body">
+                <p class="small text-muted">Система будет автоматически создавать расход в указанные даты по выбранной периодичности.</p>
+                <div class="mb-2"><label class="form-label">Сумма, Br *</label><input type="number" name="amount" class="form-control" step="0.01" min="0.01" required placeholder="0.00"></div>
+                <div class="mb-2"><label class="form-label">Описание *</label><input type="text" name="description" class="form-control" required maxlength="500" placeholder="Например: аренда помещения"></div>
+                <div class="mb-2"><label class="form-label">Категория</label><input type="text" name="category" class="form-control" maxlength="100" placeholder="аренда, коммунальные"></div>
+                <div class="row g-2">
+                  <div class="col-6"><label class="form-label">С какого *</label><input type="date" name="startDate" class="form-control" required th:value="${#temporals.format(#temporals.createNow().withDayOfMonth(1), 'yyyy-MM-dd')}"></div>
+                  <div class="col-6"><label class="form-label">По какое *</label><input type="date" name="endDate" class="form-control" required th:value="${#temporals.format(#temporals.createNow().withMonth(12).withDayOfMonth(31), 'yyyy-MM-dd')}"></div>
+                </div>
+                <div class="mb-2 mt-2"><label class="form-label">Как часто</label><select name="periodType" class="form-select">
+                  <option value="DAILY">Раз в день</option>
+                  <option value="WEEKLY">Раз в неделю</option>
+                  <option value="MONTHLY" selected>Раз в месяц</option>
+                </select></div>
+              </div>
+              <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button><button type="submit" class="btn btn-primary">Добавить</button></div>
+            </form>
+          </div>
+        </div>
+      </div>
+      <div class="modal fade" id="modalRecurringEdit" tabindex="-1">
+        <div class="modal-dialog">
+          <div class="modal-content">
+            <div class="modal-header"><h5 class="modal-title">Изменить повторяющийся расход</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <form id="formRecurringEdit" th:action="@{/statistics/expenses/recurring/edit}" method="post">
+              <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+              <input type="hidden" name="id" id="editRecurringId">
+              <input type="hidden" name="version" id="editRecurringVersion">
+              <div class="modal-body">
+                <div class="mb-2"><label class="form-label">Сумма, Br *</label><input type="number" name="amount" id="editRecurringAmount" class="form-control" step="0.01" min="0.01" required></div>
+                <div class="mb-2"><label class="form-label">Описание *</label><input type="text" name="description" id="editRecurringDescription" class="form-control" required maxlength="500"></div>
+                <div class="mb-2"><label class="form-label">Категория</label><input type="text" name="category" id="editRecurringCategory" class="form-control" maxlength="100"></div>
+                <div class="row g-2">
+                  <div class="col-6"><label class="form-label">С какого *</label><input type="date" name="startDate" id="editRecurringStart" class="form-control" required></div>
+                  <div class="col-6"><label class="form-label">По какое *</label><input type="date" name="endDate" id="editRecurringEnd" class="form-control" required></div>
+                </div>
+                <div class="mb-2 mt-2"><label class="form-label">Как часто</label><select name="periodType" id="editRecurringPeriod" class="form-select">
+                  <option value="DAILY">Раз в день</option>
+                  <option value="WEEKLY">Раз в неделю</option>
+                  <option value="MONTHLY">Раз в месяц</option>
+                </select></div>
+              </div>
+              <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button><button type="submit" class="btn btn-primary">Сохранить</button></div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="modalOwnerPayout" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form th:action="@{/statistics/owners/payout}" method="post">
+        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+        <input type="hidden" name="equipmentOwnerId" id="ownerPayoutOwnerId">
+        <input type="hidden" name="ownerVersion" id="ownerPayoutOwnerVersion">
+        <input type="hidden" name="redirect" id="ownerPayoutRedirect" th:value="@{/statistics(tab='owners')}">
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="bi bi-cash-coin me-2"></i>Выплата владельцу</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <p class="small text-muted mb-2" id="ownerPayoutLabel"></p>
+          <div class="mb-2">
+            <label class="form-label">Сумма, Br *</label>
+            <input type="text" name="amount" id="ownerPayoutAmount" class="form-control" required placeholder="0.00">
+            <div class="form-text">Не больше «к выплате». Макс.: <span id="ownerPayoutMaxHint">—</span> Br</div>
+          </div>
+          <div class="mb-2">
+            <label class="form-label">Комментарий</label>
+            <input type="text" name="note" class="form-control" maxlength="500" placeholder="Необязательно">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+          <button type="submit" class="btn btn-primary">Записать выплату</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+
+
+<div class="modal fade" id="modalStatClients" tabindex="-1">
+  <div class="modal-dialog modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-people me-2"></i>Клиенты</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body modal-list">
+        <p class="text-muted small" th:if="${#lists.isEmpty(clientsList)}">Нет клиентов.</p>
+        <table class="table table-sm table-hover" th:unless="${#lists.isEmpty(clientsList)}">
+          <thead><tr><th>ФИО</th><th>Телефон</th><th></th></tr></thead>
+          <tbody>
+            <tr th:each="c : ${clientsList}">
+              <td th:text="${c.surname + ' ' + c.name + ' ' + c.patronymic}">—</td>
+              <td th:text="${c.phoneNumber}">—</td>
+              <td><a th:href="@{/clients/{id}(id=${c.id})}" class="btn btn-sm btn-outline-primary">Карточка <i class="bi bi-arrow-right"></i></a></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="modalStatActiveRentals" tabindex="-1">
+  <div class="modal-dialog modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-play-circle me-2"></i>Активные прокаты</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body modal-list">
+        <p class="text-muted small" th:if="${#lists.isEmpty(activeRentalsList)}">Нет активных прокатов.</p>
+        <table class="table table-sm table-hover" th:unless="${#lists.isEmpty(activeRentalsList)}">
+          <thead><tr><th>Клиент</th><th>По</th><th></th></tr></thead>
+          <tbody>
+            <tr th:each="r : ${activeRentalsList}">
+              <td th:text="${r.client != null ? (r.client.surname + ' ' + r.client.name) : '—'}">—</td>
+              <td th:text="${#temporals.format(r.dateTo, 'dd.MM.yy HH:mm')}">—</td>
+              <td><a th:href="@{/rentals/{id}(id=${r.id})}" class="btn btn-sm btn-outline-primary">Прокат <i class="bi bi-arrow-right"></i></a></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="modalStatBookings" tabindex="-1">
+  <div class="modal-dialog modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-bookmark me-2"></i>Брони</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body modal-list">
+        <p class="text-muted small" th:if="${#lists.isEmpty(bookingsList)}">Нет броней.</p>
+        <table class="table table-sm table-hover" th:unless="${#lists.isEmpty(bookingsList)}">
+          <thead><tr><th>Телефон</th><th>По</th><th></th></tr></thead>
+          <tbody>
+            <tr th:each="b : ${bookingsList}">
+              <td th:text="${b.phoneNumber}">—</td>
+              <td th:text="${#temporals.format(b.dateTo, 'dd.MM.yy HH:mm')}">—</td>
+              <td><a th:href="@{/rentals/booking/{id}(id=${b.id})}" class="btn btn-sm btn-outline-primary">Бронь <i class="bi bi-arrow-right"></i></a></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="modalStatEquipmentTotal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-scrollable modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-box-seam me-2"></i>Вся техника</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body modal-list">
+        <p class="text-muted small" th:if="${#lists.isEmpty(allEquipmentList)}">Нет единиц.</p>
+        <table class="table table-sm table-hover" th:unless="${#lists.isEmpty(allEquipmentList)}">
+          <thead><tr><th>Название</th><th>S/N</th><th>Статус</th><th></th></tr></thead>
+          <tbody>
+            <tr th:each="e : ${allEquipmentList}">
+              <td th:text="${e.title}">—</td>
+              <td th:text="${e.serialNumber}">—</td>
+              <td><span class="badge bg-success" th:if="${e.status.name() == 'FREE'}">Свободно</span><span class="badge bg-warning text-dark" th:if="${e.status.name() == 'BUSY'}">Занято</span><span class="badge bg-info" th:if="${e.status.name() == 'RESERVED'}">Забронировано</span></td>
+              <td><a th:href="@{/inventory/unit/{id}(id=${e.id})}" class="btn btn-sm btn-outline-primary">К экземпляру <i class="bi bi-arrow-right"></i></a></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="modalStatEquipmentFree" tabindex="-1">
+  <div class="modal-dialog modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-check-circle me-2 text-success"></i>Свободная техника</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body modal-list">
+        <p class="text-muted small" th:if="${#lists.isEmpty(freeEquipmentList)}">Нет свободных единиц.</p>
+        <table class="table table-sm table-hover" th:unless="${#lists.isEmpty(freeEquipmentList)}">
+          <thead><tr><th>Название</th><th>S/N</th><th></th></tr></thead>
+          <tbody>
+            <tr th:each="e : ${freeEquipmentList}">
+              <td th:text="${e.title}">—</td>
+              <td th:text="${e.serialNumber}">—</td>
+              <td><a th:href="@{/inventory/unit/{id}(id=${e.id})}" class="btn btn-sm btn-outline-primary">К экземпляру <i class="bi bi-arrow-right"></i></a></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="modalStatEquipmentBusy" tabindex="-1">
+  <div class="modal-dialog modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-play-fill me-2 text-warning"></i>Занятая техника</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body modal-list">
+        <p class="text-muted small" th:if="${#lists.isEmpty(busyEquipmentList)}">Нет занятых единиц.</p>
+        <table class="table table-sm table-hover" th:unless="${#lists.isEmpty(busyEquipmentList)}">
+          <thead><tr><th>Название</th><th>S/N</th><th></th></tr></thead>
+          <tbody>
+            <tr th:each="e : ${busyEquipmentList}">
+              <td th:text="${e.title}">—</td>
+              <td th:text="${e.serialNumber}">—</td>
+              <td><a th:href="@{/inventory/unit/{id}(id=${e.id})}" class="btn btn-sm btn-outline-primary">К экземпляру <i class="bi bi-arrow-right"></i></a></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="modalStatEquipmentReserved" tabindex="-1">
+  <div class="modal-dialog modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-bookmark me-2 text-info"></i>Забронированная техника</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body modal-list">
+        <p class="text-muted small" th:if="${#lists.isEmpty(reservedEquipmentList)}">Нет забронированных единиц.</p>
+        <table class="table table-sm table-hover" th:unless="${#lists.isEmpty(reservedEquipmentList)}">
+          <thead><tr><th>Название</th><th>S/N</th><th></th></tr></thead>
+          <tbody>
+            <tr th:each="e : ${reservedEquipmentList}">
+              <td th:text="${e.title}">—</td>
+              <td th:text="${e.serialNumber}">—</td>
+              <td><a th:href="@{/inventory/unit/{id}(id=${e.id})}" class="btn btn-sm btn-outline-primary">К экземпляру <i class="bi bi-arrow-right"></i></a></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="modalStatCompletedRentals" tabindex="-1">
+  <div class="modal-dialog modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-journal-check me-2"></i>Завершённые прокаты</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body modal-list">
+        <p class="text-muted small" th:if="${#lists.isEmpty(completedRentalsList)}">Нет завершённых прокатов.</p>
+        <table class="table table-sm table-hover" th:unless="${#lists.isEmpty(completedRentalsList)}">
+          <thead><tr><th>Клиент</th><th>Период</th><th></th></tr></thead>
+          <tbody>
+            <tr th:each="r : ${completedRentalsList}">
+              <td th:text="${r.client != null ? (r.client.surname + ' ' + r.client.name) : '—'}">—</td>
+              <td th:text="${#temporals.format(r.dateFrom, 'dd.MM.yy') + ' – ' + #temporals.format(r.dateTo, 'dd.MM.yy')}">—</td>
+              <td><a th:href="@{/rentals/{id}(id=${r.id})}" class="btn btn-sm btn-outline-primary">Прокат <i class="bi bi-arrow-right"></i></a></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="modalStatDebtors" tabindex="-1">
+  <div class="modal-dialog modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-exclamation-triangle me-2 text-danger"></i>Должники</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body modal-list">
+        <p class="text-muted small" th:if="${#lists.isEmpty(debtorsList)}">Нет должников.</p>
+        <table class="table table-sm table-hover" th:unless="${#lists.isEmpty(debtorsList)}">
+          <thead><tr><th>Клиент</th><th>По</th><th></th></tr></thead>
+          <tbody>
+            <tr th:each="r : ${debtorsList}">
+              <td th:text="${r.client != null ? (r.client.surname + ' ' + r.client.name) : '—'}">—</td>
+              <td th:text="${#temporals.format(r.dateTo, 'dd.MM.yy HH:mm')}">—</td>
+              <td><a th:href="@{/rentals/{id}(id=${r.id})}" class="btn btn-sm btn-outline-primary">Прокат <i class="bi bi-arrow-right"></i></a></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="modalStatStaff" tabindex="-1">
+  <div class="modal-dialog modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-person-badge me-2"></i>Сотрудники</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body modal-list">
+        <p class="text-muted small" th:if="${#lists.isEmpty(staffList)}">Нет сотрудников.</p>
+        <table class="table table-sm table-hover" th:unless="${#lists.isEmpty(staffList)}">
+          <thead><tr><th>ФИО</th><th>Логин</th><th></th></tr></thead>
+          <tbody>
+            <tr th:each="u : ${staffList}">
+              <td th:text="${u.surname + ' ' + u.name + ' ' + (u.patronymic != null ? u.patronymic : '')}">—</td>
+              <td th:text="${u.login}">—</td>
+              <td><a th:href="@{/staff}" class="btn btn-sm btn-outline-primary">К штату <i class="bi bi-arrow-right"></i></a></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="modalStatPoints" tabindex="-1">
+  <div class="modal-dialog modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-geo-alt me-2"></i>Точки выдачи</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body modal-list">
+        <p class="text-muted small" th:if="${#lists.isEmpty(pointsList)}">Нет точек выдачи.</p>
+        <table class="table table-sm table-hover" th:unless="${#lists.isEmpty(pointsList)}">
+          <thead><tr><th>Название</th><th>Адрес</th><th></th></tr></thead>
+          <tbody>
+            <tr th:each="p : ${pointsList}">
+              <td th:text="${p.name}">—</td>
+              <td th:text="${p.address != null ? p.address : '—'}">—</td>
+              <td><a th:href="@{/points}" class="btn btn-sm btn-outline-primary">К точкам <i class="bi bi-arrow-right"></i></a></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script th:inline="javascript">
+
+  var revenueLabels =  [];
+  var revenueValues =  [];
+  var expenseValues =  [];
+  var eqLabels =  [];
+  var eqValues =  [];
+  var rentalLabels =  [];
+  var rentalValues =  [];
+
+  function crmChartIsDark() {
+    return document.documentElement.getAttribute('data-theme') === 'dark';
+  }
+  function crmChartGridColor() {
+    return crmChartIsDark() ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)';
+  }
+  function crmChartTickColor() {
+    return crmChartIsDark() ? '#9aa0ab' : '#64748b';
+  }
+  function crmChartLegendOpts() {
+    return { labels: { color: crmChartTickColor() } };
+  }
+  function crmChartCartesianScales() {
+    var g = crmChartGridColor();
+    var t = crmChartTickColor();
+    return {
+      x: {
+        ticks: { color: t },
+        grid: { color: g }
+      },
+      y: {
+        beginAtZero: true,
+        ticks: { color: t },
+        grid: { color: g }
+      }
+    };
+  }
+
+  document.addEventListener('DOMContentLoaded', function() {
+    if (typeof Chart !== 'undefined') {
+      if (revenueLabels.length && document.getElementById('chartRevenue')) {
+        new Chart(document.getElementById('chartRevenue'), {
+          type: 'line',
+          data: {
+            labels: revenueLabels,
+            datasets: [
+              { label: 'Выручка, Br', data: revenueValues, borderColor: '#198754', backgroundColor: 'rgba(25, 135, 84, 0.15)', borderWidth: 2, fill: true, tension: 0.2, pointStyle: 'rectRot', pointRadius: 5, pointBackgroundColor: '#198754', pointBorderColor: '#198754', pointBorderWidth: 1 },
+              { label: 'Расходы, Br', data: expenseValues.length === revenueLabels.length ? expenseValues : revenueLabels.map(function() { return 0; }), borderColor: '#dc3545', backgroundColor: 'rgba(220, 53, 69, 0.15)', borderWidth: 2, fill: true, tension: 0.2, pointStyle: 'rectRot', pointRadius: 5, pointBackgroundColor: '#dc3545', pointBorderColor: '#dc3545', pointBorderWidth: 1 }
+            ]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            scales: crmChartCartesianScales(),
+            plugins: { legend: Object.assign({ display: true, position: 'top' }, crmChartLegendOpts()) }
+          }
+        });
+      }
+      if (eqLabels.length && document.getElementById('chartEquipment')) {
+        new Chart(document.getElementById('chartEquipment'), {
+          type: 'doughnut',
+          data: {
+            labels: eqLabels,
+            datasets: [{ data: eqValues, backgroundColor: ['#198754', '#ffc107', '#0dcaf0'], borderWidth: 1 }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: { legend: Object.assign({ position: 'bottom' }, crmChartLegendOpts()) }
+          }
+        });
+      }
+      if (rentalLabels.length && document.getElementById('chartRentals')) {
+        var tickC = crmChartTickColor();
+        var gridC = crmChartGridColor();
+        new Chart(document.getElementById('chartRentals'), {
+          type: 'bar',
+          data: {
+            labels: rentalLabels,
+            datasets: [{ label: 'Кол-во', data: rentalValues, backgroundColor: 'rgba(13, 110, 253, 0.7)', borderColor: '#0d6efd', borderWidth: 1 }]
+          },
+          options: {
+            indexAxis: 'y',
+            responsive: true,
+            maintainAspectRatio: true,
+            scales: {
+              x: { beginAtZero: true, ticks: { color: tickC }, grid: { color: gridC } },
+              y: { ticks: { color: tickC }, grid: { color: gridC } }
+            },
+            plugins: { legend: { display: false } }
+          }
+        });
+      }
+    }
+  });
+
+</script>
+<script>
+(function() {
+  document.querySelectorAll('.sortable-table thead th[data-sort]').forEach(function(th) {
+    th.style.cursor = 'pointer';
+    th.title = 'Нажмите для сортировки';
+    th.addEventListener('click', function() {
+      var table = th.closest('table');
+      var tbody = table.querySelector('tbody');
+      var type = th.getAttribute('data-sort');
+      var colIndex = Array.from(th.parentElement.children).indexOf(th);
+      var rows = Array.from(tbody.querySelectorAll('tr'));
+      var dir = (th.getAttribute('data-dir') === 'asc') ? -1 : 1;
+      th.setAttribute('data-dir', dir === 1 ? 'asc' : 'desc');
+      rows.sort(function(a, b) {
+        var ac = a.children[colIndex];
+        var bc = b.children[colIndex];
+        var av = ac.getAttribute('data-num') != null ? parseFloat(ac.getAttribute('data-num')) : (ac.textContent || '').trim();
+        var bv = bc.getAttribute('data-num') != null ? parseFloat(bc.getAttribute('data-num')) : (bc.textContent || '').trim();
+        if (type === 'num') {
+          return (av - bv) * dir;
+        }
+        return (String(av).localeCompare(String(bv), 'ru')) * dir;
+      });
+      rows.forEach(function(r) { tbody.appendChild(r); });
+    });
+  });
+})();
+</script>
+<script>
+(function() {
+  var modalEdit = document.getElementById('modalExpenseEdit');
+  if (modalEdit) {
+    modalEdit.addEventListener('show.bs.modal', function(e) {
+      var btn = e.relatedTarget;
+      if (!btn || !btn.classList.contains('btn-expense-edit')) return;
+      document.getElementById('editExpenseId').value = btn.getAttribute('data-id') || '';
+      document.getElementById('editExpenseVersion').value = btn.getAttribute('data-version') || '';
+      document.getElementById('editExpenseDate').value = btn.getAttribute('data-date') || '';
+      document.getElementById('editExpenseAmount').value = btn.getAttribute('data-amount') || '';
+      document.getElementById('editExpenseDescription').value = btn.getAttribute('data-description') || '';
+      document.getElementById('editExpenseCategory').value = btn.getAttribute('data-category') || '';
+    });
+  }
+  var modalOwnerPayout = document.getElementById('modalOwnerPayout');
+  if (modalOwnerPayout) {
+    modalOwnerPayout.addEventListener('show.bs.modal', function(e) {
+      var btn = e.relatedTarget;
+      if (!btn || !btn.classList.contains('btn-owner-payout')) return;
+      document.getElementById('ownerPayoutOwnerId').value = btn.getAttribute('data-owner-id') || '';
+      document.getElementById('ownerPayoutOwnerVersion').value = btn.getAttribute('data-owner-version') || '';
+      var max = btn.getAttribute('data-max') || '0';
+      document.getElementById('ownerPayoutAmount').value = max;
+      document.getElementById('ownerPayoutMaxHint').textContent = max;
+      document.getElementById('ownerPayoutLabel').textContent = btn.getAttribute('data-label') || '';
+      var rd = btn.getAttribute('data-redirect');
+      if (rd) document.getElementById('ownerPayoutRedirect').value = rd;
+      else document.getElementById('ownerPayoutRedirect').value = '/statistics?tab=owners';
+    });
+  }
+  var modalRecurringEdit = document.getElementById('modalRecurringEdit');
+  if (modalRecurringEdit) {
+    modalRecurringEdit.addEventListener('show.bs.modal', function(e) {
+      var btn = e.relatedTarget;
+      if (!btn || !btn.classList.contains('btn-recurring-edit')) return;
+      document.getElementById('editRecurringId').value = btn.getAttribute('data-id') || '';
+      document.getElementById('editRecurringVersion').value = btn.getAttribute('data-version') || '';
+      document.getElementById('editRecurringAmount').value = btn.getAttribute('data-amount') || '';
+      document.getElementById('editRecurringDescription').value = btn.getAttribute('data-description') || '';
+      document.getElementById('editRecurringCategory').value = btn.getAttribute('data-category') || '';
+      document.getElementById('editRecurringStart').value = btn.getAttribute('data-start') || '';
+      document.getElementById('editRecurringEnd').value = btn.getAttribute('data-end') || '';
+      document.getElementById('editRecurringPeriod').value = btn.getAttribute('data-period') || 'MONTHLY';
+    });
+  }
+})();
+</script>
+<script>
+(function() {
+  var filterInput = document.getElementById('fullStatsFilter');
+  if (!filterInput) return;
+
+  function getVisibleTbody() {
+    var pane = document.querySelector('.tab-pane.active .sortable-table');
+    return pane ? pane.querySelector('tbody') : null;
+  }
+
+  function applyFilter() {
+    var tbody = getVisibleTbody();
+    if (!tbody) return;
+    var q = (filterInput.value || '').trim().toLowerCase();
+    var rows = tbody.querySelectorAll('tr');
+    var visible = 0;
+    rows.forEach(function(tr) {
+      var text = (tr.textContent || '').toLowerCase();
+      var show = q === '' || text.indexOf(q) !== -1;
+      tr.style.display = show ? '' : 'none';
+      if (show) visible++;
+    });
+    var hint = document.getElementById('fullStatsFilterHint');
+    if (hint) hint.textContent = q ? 'Показано: ' + visible + ' из ' + rows.length : 'При смене вкладки фильтр применяется к новой таблице.';
+  }
+
+  filterInput.addEventListener('input', applyFilter);
+  filterInput.addEventListener('keyup', applyFilter);
+
+  document.querySelectorAll('[data-bs-target="#tabFullClients"], [data-bs-target="#tabFullRentals"], [data-bs-target="#tabFullEquipment"], [data-bs-target="#tabFullExpenses"], [data-bs-target="#tabFullOwners"]').forEach(function(btn) {
+    btn.addEventListener('shown.bs.tab', function() { applyFilter(); });
+  });
+  applyFilter();
+})();
+</script>
+</body>
+</html>

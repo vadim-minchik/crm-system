@@ -2,6 +2,7 @@ package com.studio.crm_system.service;
 
 import com.studio.crm_system.entity.Point;
 import com.studio.crm_system.repository.PointRepository;
+import com.studio.crm_system.web.OptimisticLockSupport;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -40,9 +41,10 @@ public class PointService {
 	}
 
 	@Transactional
-	public String update(Long id, String name, String address) {
+	public String update(Long id, Long expectedVersion, String name, String address) {
 		Point p = pointRepository.findById(id).orElse(null);
 		if (p == null) return "not_found";
+		if (OptimisticLockSupport.isStale(expectedVersion, p.getVersion())) return "stale_data";
 		if (name == null || name.isBlank()) return "name_required";
 		p.setName(name.trim());
 		p.setAddress(address != null && !address.isBlank() ? address.trim() : null);
@@ -51,9 +53,10 @@ public class PointService {
 	}
 
 	@Transactional
-	public String softDelete(Long id) {
+	public String softDelete(Long id, Long expectedVersion) {
 		Point p = pointRepository.findById(id).orElse(null);
 		if (p == null) return "not_found";
+		if (OptimisticLockSupport.isStale(expectedVersion, p.getVersion())) return "stale_data";
 		p.setIsDeleted(true);
 		pointRepository.save(p);
 		return null;

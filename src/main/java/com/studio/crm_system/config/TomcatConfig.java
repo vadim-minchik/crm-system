@@ -9,16 +9,6 @@ import org.springframework.context.annotation.Configuration;
 
 import java.lang.reflect.Method;
 
-/**
- * Конфигурация лимитов загрузки файлов.
- *
- * Tomcat имеет ДВА независимых ограничения:
- *   1. maxPostSize  — ограничение коннектора (по умолчанию 2 МБ). Именно оно даёт 413.
- *   2. MultipartConfigElement — ограничение Spring (по умолчанию 1/10 МБ).
- *
- * Оба надо поднять. maxPostSize настраивается через рефлексию после старта,
- * потому что Tomcat-классы недоступны в Eclipse билде.
- */
 @Configuration
 public class TomcatConfig implements CommandLineRunner {
 
@@ -29,11 +19,6 @@ public class TomcatConfig implements CommandLineRunner {
     @Autowired
     private ApplicationContext applicationContext;
 
-    /**
-     * Запускается ПОСЛЕ старта Tomcat.
-     * Через рефлексию достаём коннектор и ставим maxPostSize = 60 МБ.
-     * Tomcat читает это значение при каждом запросе, поэтому изменение работает сразу.
-     */
     @Override
     public void run(String... args) {
         try {
@@ -55,9 +40,6 @@ public class TomcatConfig implements CommandLineRunner {
         }
     }
 
-    /**
-     * Spring-уровень: лимиты multipart для DispatcherServlet.
-     */
     @Bean
     public MultipartConfigElement multipartConfigElement() {
         return new MultipartConfigElement(

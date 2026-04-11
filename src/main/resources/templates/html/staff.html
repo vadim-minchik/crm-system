@@ -2,6 +2,7 @@
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
 <meta charset="UTF-8">
+<th:block th:replace="~{html/fragments :: viewport-meta}"></th:block>
 <title>Сотрудники | STUDIO.CRM</title>
 <link
 	href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
@@ -20,24 +21,30 @@
 				<h2>Управление персоналом</h2>
 				<p>Список сотрудников и права доступа</p>
 			</div>
-			<button th:if="${currentUserRole.name() != 'WORKER'}"
+			<button th:if="${currentUserRole.name() != 'WORKER' and !#lists.isEmpty(points)}"
 				class="btn btn-primary" data-bs-toggle="modal"
 				data-bs-target="#addModal">
 				<i class="bi bi-person-plus-fill"></i> Добавить
 			</button>
 		</div>
+		<div th:if="${currentUserRole.name() != 'WORKER' and #lists.isEmpty(points)}" class="alert alert-warning mt-2">
+			<i class="bi bi-geo-alt me-1"></i>Сначала создайте хотя бы одну <a th:href="@{/points}" class="alert-link">точку</a>, без неё нельзя добавить сотрудника.
+		</div>
 
-		<!-- Сообщения об ошибках и успехе -->
 		<div th:if="${param.error}" class="alert alert-danger alert-dismissible fade show" role="alert">
 			<i class="bi bi-exclamation-triangle-fill me-2"></i>
 			<strong>Ошибка!</strong>
 			<span th:if="${param.error[0] == 'bad_chars'}">Имя и фамилия должны содержать только русские буквы.</span>
+			<span th:if="${param.error[0] == 'name_too_long'}">Фамилия, имя и отчество не должны превышать 50 символов.</span>
 			<span th:if="${param.error[0] == 'invalid_login'}">Логин может содержать только английские буквы и цифры (a-z, A-Z, 0-9).</span>
 			<span th:if="${param.error[0] == 'login_exists'}">Пользователь с таким логином уже существует.</span>
 			<span th:if="${param.error[0] == 'email_exists'}">Пользователь с таким email уже существует.</span>
 			<span th:if="${param.error[0] == 'password_too_short'}">Пароль должен содержать минимум 6 символов.</span>
 			<span th:if="${param.error[0] == 'save_failed'}">Не удалось сохранить данные. Попробуйте еще раз.</span>
 			<span th:if="${param.error[0] == 'access_denied'}">Недостаточно прав для выполнения операции.</span>
+			<span th:if="${param.error[0] == 'point_required'}">Выберите точку (локацию).</span>
+			<span th:if="${param.error[0] == 'point_invalid'}">Указана неверная точка.</span>
+			<span th:if="${param.error[0] == 'stale_data'}">Данные уже изменены другим пользователем. Обновите страницу и повторите действие.</span>
 			<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
 		</div>
 
@@ -49,12 +56,24 @@
 			<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
 		</div>
 
+		<div class="d-flex flex-wrap gap-2 align-items-center mb-3 staff-toolbar">
+			<div class="input-group staff-search-wrap flex-grow-1" style="min-width: 200px; max-width: 360px;">
+				<span class="input-group-text" aria-hidden="true"><i class="bi bi-search"></i></span>
+				<input type="search" id="staffSearchInput" class="form-control" placeholder="Поиск: ФИО, логин, email, телефон, точка…" autocomplete="off" aria-label="Поиск сотрудника">
+			</div>
+			<button type="button" class="btn btn-outline-secondary d-flex align-items-center" id="staffSortBtn" title="Сортировка по фамилии и имени (нажмите для А→Я или Я→А)">
+				<i class="bi bi-sort-down-alt" id="staffSortIcon"></i>
+				<span class="ms-1 d-none d-sm-inline" id="staffSortLabel">По ФИО</span>
+			</button>
+		</div>
+
 		<div class="card-table">
 			<div class="table-responsive">
-				<table class="table table-hover mb-0">
+				<table class="table table-hover mb-0 staff-table">
 					<thead>
 						<tr>
 							<th class="ps-4">Сотрудник</th>
+							<th>Точка</th>
 							<th>Логин</th>
 							<th>Роль</th>
 							<th>Контакты</th>
@@ -62,11 +81,17 @@
 								th:if="${currentUserRole.name() != 'WORKER'}">Действия</th>
 						</tr>
 					</thead>
-					<tbody>
-						<tr th:each="u : ${allUsers}">
+					<tbody id="tbody-staff">
+						<tr th:each="u : ${allUsers}"
+							th:attr="data-sort-key=${u.surname + ' ' + u.name + ' ' + (u.patronymic != null ? u.patronymic : '')}">
 							<td class="ps-4">
 								<div class="fw-bold" th:text="${u.surname + ' ' + u.name}">ФИО</div>
 								<small class="text-muted" th:text="${u.email}">email</small>
+							</td>
+							<td class="align-middle" style="max-width: 12rem;">
+								<span th:if="${u.point != null}" th:text="${u.point.name}" th:title="${u.point.name}"
+									class="badge bg-light text-dark border point-cell-ellipsis">Точка</span>
+								<span th:if="${u.point == null}" class="text-muted small">—</span>
 							</td>
 							<td><code th:text="${u.login}">login</code></td>
 							<td><span class="role-badge"
@@ -74,7 +99,7 @@
 								th:text="${u.role}">ROLE</span></td>
 							<td>
 								<div th:text="${u.phoneNumber}">+7...</div>
-								<small class="text-muted" th:if="${u.telegram != null and !#strings.isEmpty(u.telegram)}" th:text="${u.telegram}">telegram</small>
+								<small class="text-muted" th:if="${u.socialNetwork != null and !#strings.isEmpty(u.socialNetwork)}" th:text="${u.socialNetwork}">соц сеть</small>
 							</td>
 							<td class="text-end pe-4"
 								th:if="${currentUserRole.name() != 'WORKER'}">
@@ -85,9 +110,19 @@
 										th:data-name="${u.name}" th:data-surname="${u.surname}"
 										th:data-patronymic="${u.patronymic}"
 										th:data-email="${u.email}" th:data-phone="${u.phoneNumber}"
-										th:data-role="${u.role}" th:data-tg="${u.telegram}"
-										th:data-wa="${u.whatsApp}" th:data-vk="${u.vk}"
-										th:data-inst="${u.instagram}" th:data-fb="${u.facebook}"
+										th:data-trusted-phone="${u.trustedPersonPhone}"
+										th:data-role="${u.role}"
+										th:data-menu-sections="${menuEffectiveCsvByUserId[u.id]}"
+										th:data-pass-series="${u.passportSeries}" th:data-pass-num="${u.passportNumber}"
+										th:data-ident="${u.identificationNumber}"
+										th:data-pass-issue="${u.passportIssueDate != null ? #temporals.format(u.passportIssueDate, 'dd.MM.yyyy') : ''}"
+										th:data-pass-expiry="${u.passportExpiryDate != null ? #temporals.format(u.passportExpiryDate, 'dd.MM.yyyy') : ''}"
+										th:data-street="${u.addressStreet}" th:data-house="${u.addressHouse}"
+										th:data-entrance="${u.addressEntrance}" th:data-building="${u.addressBuilding}"
+										th:data-apt="${u.addressApartment}"
+										th:data-social="${u.socialNetwork}"
+										th:data-point-id="${u.point != null ? u.point.id : ''}"
+										th:data-version="${u.version}"
 										onclick="fillEdit(this)" data-bs-toggle="modal"
 										data-bs-target="#editModal">
 										<i class="bi bi-pencil"></i>
@@ -110,7 +145,7 @@
 	</div>
 
 	<div class="modal fade" id="addModal" tabindex="-1">
-		<div class="modal-dialog modal-dialog-centered modal-lg">
+		<div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
 			<form th:action="@{/staff/add}" method="post"
 				class="modal-content">
 				<div class="modal-header">
@@ -138,15 +173,15 @@
 						</div>
 						<div class="col-md-4">
 							<label class="form-label">Фамилия</label>
-							<input type="text" name="surname" class="form-control" required>
+							<input type="text" name="surname" class="form-control" required maxlength="50" placeholder="До 50 символов">
 						</div>
 						<div class="col-md-4">
 							<label class="form-label">Имя</label>
-							<input type="text" name="name" class="form-control" required>
+							<input type="text" name="name" class="form-control" required maxlength="50" placeholder="До 50 символов">
 						</div>
 						<div class="col-md-4">
 							<label class="form-label">Отчество</label>
-							<input type="text" name="patronymic" class="form-control">
+							<input type="text" name="patronymic" class="form-control" maxlength="50" placeholder="До 50 символов">
 						</div>
 						<div class="col-md-6">
 							<label class="form-label">Email</label>
@@ -154,7 +189,11 @@
 						</div>
 						<div class="col-md-6">
 							<label class="form-label">Телефон</label>
-							<input type="text" name="phoneNumber" class="form-control">
+							<input type="text" name="phoneNumber" class="form-control" required>
+						</div>
+						<div class="col-md-6">
+							<label class="form-label">Второй номер телефона доверенного лица</label>
+							<input type="text" name="trustedPersonPhone" class="form-control" placeholder="Не обязательно" maxlength="20">
 						</div>
 						<div class="col-md-4">
 							<label class="form-label">Роль</label>
@@ -164,25 +203,84 @@
 									value="ADMIN">ADMIN</option>
 							</select>
 						</div>
-						<div class="col-md-4">
-							<label class="form-label">Telegram</label>
-							<input type="text" name="telegram" class="form-control">
+						<div class="col-12">
+							<label class="form-label">Точка (локация) *</label>
+							<select name="pointId" class="form-select" required>
+								<option value="" disabled selected>— выберите точку —</option>
+								<option th:each="p : ${points}" th:value="${p.id}" th:text="${p.name}">Точка</option>
+							</select>
 						</div>
-						<div class="col-md-4">
-							<label class="form-label">WhatsApp</label>
-							<input type="text" name="whatsApp" class="form-control">
+						<div class="col-12" th:if="${currentUserRole.name() != 'WORKER'}">
+							<label class="form-label">Видимые разделы меню</label>
+							<p class="text-muted small mb-2">Отметьте разделы бокового меню для этого сотрудника. Выдать можно только те разделы, которые доступны вам.</p>
+							<div class="row g-2">
+								<div class="col-md-4" th:each="s : ${editableMenuSections}">
+									<div class="form-check">
+										<input class="form-check-input add-menu-cb" type="checkbox" name="menuSection"
+											th:value="${s.code}" th:id="|add-menu-${s.code}|"
+											th:checked="${workerDefaultMenuCodes.contains(s.code)}">
+										<label class="form-check-label" th:for="|add-menu-${s.code}|" th:text="${s.titleRu}">Раздел</label>
+									</div>
+								</div>
+							</div>
 						</div>
-						<div class="col-md-4">
-							<label class="form-label">VK</label>
-							<input type="text" name="vk" class="form-control">
+						<div class="col-12 mt-2">
+							<div class="fw-semibold text-uppercase text-muted small mb-2">
+								<i class="bi bi-passport me-1"></i>Паспортные данные <span class="fw-normal">(не обязательно)</span>
+							</div>
+							<div class="row g-2">
+								<div class="col-md-2">
+									<label class="form-label">Серия</label>
+									<input type="text" name="passportSeries" class="form-control text-uppercase" placeholder="MP" maxlength="2">
+								</div>
+								<div class="col-md-3">
+									<label class="form-label">Номер</label>
+									<input type="text" name="passportNumber" class="form-control" placeholder="4362782" maxlength="7">
+								</div>
+								<div class="col-md-4">
+									<label class="form-label">Идентификационный номер</label>
+									<input type="text" name="identificationNumber" class="form-control text-uppercase" placeholder="0000900A014PB0" maxlength="14">
+								</div>
+								<div class="col-md-3">
+									<label class="form-label">Дата выдачи</label>
+									<input type="text" name="passportIssueDate" class="form-control" placeholder="ДД.ММ.ГГГГ">
+								</div>
+								<div class="col-md-3">
+									<label class="form-label">Срок действия</label>
+									<input type="text" name="passportExpiryDate" class="form-control" placeholder="ДД.ММ.ГГГГ">
+								</div>
+							</div>
 						</div>
-						<div class="col-md-4">
-							<label class="form-label">Instagram</label>
-							<input type="text" name="instagram" class="form-control">
+						<div class="col-12 mt-2">
+							<div class="fw-semibold text-uppercase text-muted small mb-2">
+								<i class="bi bi-geo-alt me-1"></i>Прописка <span class="fw-normal">(не обязательно)</span>
+							</div>
+							<div class="row g-2">
+								<div class="col-md-6">
+									<label class="form-label">Улица / переулок</label>
+									<input type="text" name="addressStreet" class="form-control" placeholder="-" maxlength="100">
+								</div>
+								<div class="col-md-2">
+									<label class="form-label">Дом</label>
+									<input type="text" name="addressHouse" class="form-control" placeholder="-" maxlength="20">
+								</div>
+								<div class="col-md-2">
+									<label class="form-label">Подъезд</label>
+									<input type="text" name="addressEntrance" class="form-control" placeholder="-" maxlength="10">
+								</div>
+								<div class="col-md-2">
+									<label class="form-label">Корпус</label>
+									<input type="text" name="addressBuilding" class="form-control" placeholder="-" maxlength="20">
+								</div>
+								<div class="col-md-2">
+									<label class="form-label">Квартира</label>
+									<input type="text" name="addressApartment" class="form-control" placeholder="-" maxlength="10">
+								</div>
+							</div>
 						</div>
-						<div class="col-md-4">
-							<label class="form-label">Facebook</label>
-							<input type="text" name="facebook" class="form-control">
+						<div class="col-12">
+							<label class="form-label">Соц сеть</label>
+							<input type="text" name="socialNetwork" class="form-control" placeholder="Ссылка на профиль (не обязательно)" maxlength="200">
 						</div>
 					</div>
 				</div>
@@ -194,10 +292,11 @@
 	</div>
 
 	<div class="modal fade" id="editModal" tabindex="-1">
-		<div class="modal-dialog modal-dialog-centered modal-lg">
+		<div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
 			<form th:action="@{/staff/edit}" method="post"
 				class="modal-content">
 				<input type="hidden" name="id" id="e-id">
+				<input type="hidden" name="version" id="e-version">
 				<div class="modal-header">
 					<h5>Редактирование сотрудника</h5>
 					<button type="button" class="btn-close"
@@ -226,15 +325,15 @@
 
 						<div class="col-md-4">
 							<label class="form-label">Фамилия</label>
-							<input type="text" name="surname" id="e-surname" class="form-control">
+							<input type="text" name="surname" id="e-surname" class="form-control" maxlength="50">
 						</div>
 						<div class="col-md-4">
 							<label class="form-label">Имя</label>
-							<input type="text" name="name" id="e-name" class="form-control">
+							<input type="text" name="name" id="e-name" class="form-control" maxlength="50">
 						</div>
 						<div class="col-md-4">
 							<label class="form-label">Отчество</label>
-							<input type="text" name="patronymic" id="e-patronymic" class="form-control">
+							<input type="text" name="patronymic" id="e-patronymic" class="form-control" maxlength="50">
 						</div>
 						<div class="col-md-6">
 							<label class="form-label">Email</label>
@@ -243,6 +342,10 @@
 						<div class="col-md-6">
 							<label class="form-label">Телефон</label>
 							<input type="text" name="phoneNumber" id="e-phone" class="form-control">
+						</div>
+						<div class="col-md-6">
+							<label class="form-label">Второй номер телефона доверенного лица</label>
+							<input type="text" name="trustedPersonPhone" id="e-trusted-phone" class="form-control" maxlength="20">
 						</div>
 						<div class="col-md-4">
 							<label class="form-label">Роль</label>
@@ -253,25 +356,82 @@
 								<option value="SUPER_ADMIN">SUPER_ADMIN</option>
 							</select>
 						</div>
-						<div class="col-md-4">
-							<label class="form-label">Telegram</label>
-							<input type="text" name="telegram" id="e-tg" class="form-control">
+						<div class="col-12">
+							<label class="form-label">Точка (локация) *</label>
+							<select name="pointId" id="e-point-id" class="form-select" required>
+								<option th:each="p : ${points}" th:value="${p.id}" th:text="${p.name}">Точка</option>
+							</select>
 						</div>
-						<div class="col-md-4">
-							<label class="form-label">WhatsApp</label>
-							<input type="text" name="whatsApp" id="e-wa" class="form-control">
+						<div class="col-12" th:if="${currentUserRole.name() != 'WORKER'}">
+							<label class="form-label">Видимые разделы меню</label>
+							<p class="text-muted small mb-2">Сотрудник увидит в меню только отмеченные разделы (в пределах его роли и ваших прав).</p>
+							<div class="row g-2">
+								<div class="col-md-4" th:each="s : ${editableMenuSections}">
+									<div class="form-check">
+										<input class="form-check-input edit-menu-cb" type="checkbox" name="menuSection"
+											th:value="${s.code}" th:id="|edit-menu-${s.code}|">
+										<label class="form-check-label" th:for="|edit-menu-${s.code}|" th:text="${s.titleRu}">Раздел</label>
+									</div>
+								</div>
+							</div>
 						</div>
-						<div class="col-md-4">
-							<label class="form-label">VK</label>
-							<input type="text" name="vk" id="e-vk" class="form-control">
+						<div class="col-12 mt-2">
+							<div class="fw-semibold text-uppercase text-muted small mb-2">
+								<i class="bi bi-passport me-1"></i>Паспортные данные <span class="fw-normal">(не обязательно)</span>
+							</div>
+							<div class="row g-2">
+								<div class="col-md-2">
+									<label class="form-label">Серия</label>
+									<input type="text" name="passportSeries" id="e-pass-series" class="form-control text-uppercase" maxlength="2">
+								</div>
+								<div class="col-md-3">
+									<label class="form-label">Номер</label>
+									<input type="text" name="passportNumber" id="e-pass-num" class="form-control" maxlength="7">
+								</div>
+								<div class="col-md-4">
+									<label class="form-label">Идентификационный номер</label>
+									<input type="text" name="identificationNumber" id="e-ident" class="form-control text-uppercase" maxlength="14">
+								</div>
+								<div class="col-md-3">
+									<label class="form-label">Дата выдачи</label>
+									<input type="text" name="passportIssueDate" id="e-pass-issue" class="form-control" placeholder="ДД.ММ.ГГГГ">
+								</div>
+								<div class="col-md-3">
+									<label class="form-label">Срок действия</label>
+									<input type="text" name="passportExpiryDate" id="e-pass-expiry" class="form-control" placeholder="ДД.ММ.ГГГГ">
+								</div>
+							</div>
 						</div>
-						<div class="col-md-4">
-							<label class="form-label">Instagram</label>
-							<input type="text" name="instagram" id="e-inst" class="form-control">
+						<div class="col-12 mt-2">
+							<div class="fw-semibold text-uppercase text-muted small mb-2">
+								<i class="bi bi-geo-alt me-1"></i>Прописка <span class="fw-normal">(не обязательно)</span>
+							</div>
+							<div class="row g-2">
+								<div class="col-md-6">
+									<label class="form-label">Улица / переулок</label>
+									<input type="text" name="addressStreet" id="e-street" class="form-control" maxlength="100">
+								</div>
+								<div class="col-md-2">
+									<label class="form-label">Дом</label>
+									<input type="text" name="addressHouse" id="e-house" class="form-control" maxlength="20">
+								</div>
+								<div class="col-md-2">
+									<label class="form-label">Подъезд</label>
+									<input type="text" name="addressEntrance" id="e-entrance" class="form-control" maxlength="10">
+								</div>
+								<div class="col-md-2">
+									<label class="form-label">Корпус</label>
+									<input type="text" name="addressBuilding" id="e-building" class="form-control" maxlength="20">
+								</div>
+								<div class="col-md-2">
+									<label class="form-label">Квартира</label>
+									<input type="text" name="addressApartment" id="e-apt" class="form-control" maxlength="10">
+								</div>
+							</div>
 						</div>
-						<div class="col-md-4">
-							<label class="form-label">Facebook</label>
-							<input type="text" name="facebook" id="e-fb" class="form-control">
+						<div class="col-12">
+							<label class="form-label">Соц сеть</label>
+							<input type="text" name="socialNetwork" id="e-social" class="form-control" maxlength="200">
 						</div>
 					</div>
 				</div>
@@ -286,34 +446,107 @@
 
 	<script
 		src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+	<script th:inline="javascript">
+		const CRM_MENU_DEFAULTS_WORKER =  [];
+		const CRM_MENU_DEFAULTS_ADMIN =  [];
+	</script>
 	<script>
     function fillEdit(btn) {
-        document.getElementById('e-id').value = btn.getAttribute('data-id');
-        document.getElementById('e-login').value = btn.getAttribute('data-login');
-        document.getElementById('e-name').value = btn.getAttribute('data-name');
-        document.getElementById('e-surname').value = btn.getAttribute('data-surname');
-        document.getElementById('e-patronymic').value = btn.getAttribute('data-patronymic');
-        document.getElementById('e-email').value = btn.getAttribute('data-email');
-        document.getElementById('e-phone').value = btn.getAttribute('data-phone');
-        document.getElementById('e-role').value = btn.getAttribute('data-role');
-        document.getElementById('e-tg').value = btn.getAttribute('data-tg');
-        document.getElementById('e-wa').value = btn.getAttribute('data-wa');
-        document.getElementById('e-vk').value = btn.getAttribute('data-vk');
-        document.getElementById('e-inst').value = btn.getAttribute('data-inst');
-        document.getElementById('e-fb').value = btn.getAttribute('data-fb');
+        document.getElementById('e-id').value = btn.getAttribute('data-id') || '';
+        document.getElementById('e-version').value = btn.getAttribute('data-version') || '';
+        document.getElementById('e-login').value = btn.getAttribute('data-login') || '';
+        document.getElementById('e-name').value = btn.getAttribute('data-name') || '';
+        document.getElementById('e-surname').value = btn.getAttribute('data-surname') || '';
+        document.getElementById('e-patronymic').value = btn.getAttribute('data-patronymic') || '';
+        document.getElementById('e-email').value = btn.getAttribute('data-email') || '';
+        document.getElementById('e-phone').value = btn.getAttribute('data-phone') || '';
+        document.getElementById('e-trusted-phone').value = btn.getAttribute('data-trusted-phone') || '';
+        document.getElementById('e-role').value = btn.getAttribute('data-role') || '';
+        document.getElementById('e-pass-series').value = btn.getAttribute('data-pass-series') || '';
+        document.getElementById('e-pass-num').value = btn.getAttribute('data-pass-num') || '';
+        document.getElementById('e-ident').value = btn.getAttribute('data-ident') || '';
+        document.getElementById('e-pass-issue').value = btn.getAttribute('data-pass-issue') || '';
+        document.getElementById('e-pass-expiry').value = btn.getAttribute('data-pass-expiry') || '';
+        document.getElementById('e-street').value = btn.getAttribute('data-street') || '';
+        document.getElementById('e-house').value = btn.getAttribute('data-house') || '';
+        document.getElementById('e-entrance').value = btn.getAttribute('data-entrance') || '';
+        document.getElementById('e-building').value = btn.getAttribute('data-building') || '';
+        document.getElementById('e-apt').value = btn.getAttribute('data-apt') || '';
+        document.getElementById('e-social').value = btn.getAttribute('data-social') || '';
+        var pid = btn.getAttribute('data-point-id');
+        var sel = document.getElementById('e-point-id');
+        if (sel && pid) sel.value = pid;
+        var csv = btn.getAttribute('data-menu-sections') || '';
+        var codes = csv.split(',').map(function (c) { return c.trim(); }).filter(Boolean);
+        document.querySelectorAll('.edit-menu-cb').forEach(function (cb) {
+            cb.checked = codes.indexOf(cb.value) >= 0;
+        });
     }
 
-    // Валидация кириллицы для ФИО (авто-капитализация первой буквы)
+    function applyAddMenuDefaults(codes) {
+        document.querySelectorAll('.add-menu-cb').forEach(function (cb) {
+            cb.checked = codes.indexOf(cb.value) >= 0;
+        });
+    }
+    document.getElementById('addModal')?.addEventListener('show.bs.modal', function () {
+        var roleSel = this.querySelector('select[name="role"]');
+        var codes = (roleSel && roleSel.value === 'ADMIN') ? CRM_MENU_DEFAULTS_ADMIN : CRM_MENU_DEFAULTS_WORKER;
+        applyAddMenuDefaults(codes);
+    });
+    document.querySelector('#addModal select[name="role"]')?.addEventListener('change', function () {
+        applyAddMenuDefaults(this.value === 'ADMIN' ? CRM_MENU_DEFAULTS_ADMIN : CRM_MENU_DEFAULTS_WORKER);
+    });
+
+    (function initStaffTableFilterSort() {
+        var tbody = document.getElementById('tbody-staff');
+        var searchInput = document.getElementById('staffSearchInput');
+        var sortBtn = document.getElementById('staffSortBtn');
+        var sortIcon = document.getElementById('staffSortIcon');
+        var sortLabel = document.getElementById('staffSortLabel');
+        if (!tbody || !searchInput || !sortBtn) return;
+
+        var rows = Array.prototype.slice.call(tbody.querySelectorAll('tr'));
+        
+        var sortAsc = false;
+
+        function applySearch() {
+            var q = searchInput.value.trim().toLowerCase();
+            rows.forEach(function (tr) {
+                var show = !q || tr.innerText.toLowerCase().indexOf(q) !== -1;
+                tr.style.display = show ? '' : 'none';
+            });
+        }
+
+        searchInput.addEventListener('input', applySearch);
+
+        sortBtn.addEventListener('click', function () {
+            sortAsc = !sortAsc;
+            var sorted = rows.slice().sort(function (a, b) {
+                var ka = (a.getAttribute('data-sort-key') || '').toLowerCase();
+                var kb = (b.getAttribute('data-sort-key') || '').toLowerCase();
+                var c = ka.localeCompare(kb, 'ru');
+                return sortAsc ? c : -c;
+            });
+            sorted.forEach(function (tr) { tbody.appendChild(tr); });
+            if (sortIcon) {
+                sortIcon.className = 'bi ' + (sortAsc ? 'bi-sort-alpha-down' : 'bi-sort-alpha-up');
+            }
+            if (sortLabel) sortLabel.textContent = sortAsc ? 'А → Я' : 'Я → А';
+            applySearch();
+        });
+    })();
+
+    
     function validateCyrillic(input) {
-        // Удаляем все, кроме русских букв
+        
         input.value = input.value.replace(/[^А-Яа-яЁё\s-]/g, '');
-        // Капитализируем первую букву
+        
         if (input.value.length > 0) {
             input.value = input.value.charAt(0).toUpperCase() + input.value.slice(1).toLowerCase();
         }
     }
 
-    // Проверка пароля (только латиница, цифры и спецсимволы)
+    
     function validatePassword(input) {
         input.value = input.value.replace(/[^a-zA-Z0-9!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/g, '');
         

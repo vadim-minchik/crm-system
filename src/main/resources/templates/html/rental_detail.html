@@ -2,6 +2,7 @@
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
 <meta charset="UTF-8">
+<th:block th:replace="~{html/fragments :: viewport-meta}"></th:block>
 <title th:text="'Прокат #' + ${rental.id} + ' | STUDIO.CRM'">Прокат | STUDIO.CRM</title>
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
@@ -23,7 +24,6 @@
 
 <div class="main-content">
 
-  <!-- Хлебные крошки -->
   <nav aria-label="breadcrumb" class="mb-3">
     <ol class="breadcrumb" style="font-size:0.85rem;">
       <li class="breadcrumb-item"><a th:href="@{/rentals}" class="text-decoration-none">Журнал прокатов</a></li>
@@ -31,24 +31,25 @@
     </ol>
   </nav>
 
-  <!-- Уведомления -->
   <div th:if="${param.error}" class="alert alert-danger alert-dismissible fade show" role="alert">
     <i class="bi bi-exclamation-triangle-fill me-2"></i><strong>Ошибка: </strong>
     <span th:if="${param.error[0] == 'not_found'}">Прокат не найден.</span>
     <span th:if="${param.error[0] == 'date_from_required'}">Укажите дату и время начала.</span>
     <span th:if="${param.error[0] == 'date_to_required'}">Укажите дату и время окончания.</span>
     <span th:if="${param.error[0] == 'date_to_before_from'}">Окончание не может быть раньше начала.</span>
+    <span th:if="${param.error[0] == 'not_awaiting_delivery'}">Прокат не в статусе «ожидает доставки».</span>
+    <span th:if="${param.error[0] == 'stale_data'}">Данные уже изменены другим пользователем. Обновите страницу и повторите действие.</span>
     <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
   </div>
   <div th:if="${param.success}" class="alert alert-success alert-dismissible fade show" role="alert">
     <i class="bi bi-check-circle-fill me-2"></i>
     <span th:if="${param.success[0] == 'rental_updated'}">Изменения сохранены.</span>
+    <span th:if="${param.success[0] == 'delivered'}">Доставка отмечена, прокат начался.</span>
     <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
   </div>
 
   <div class="row g-4">
     <div class="col-lg-8">
-      <!-- Заголовок -->
       <div class="d-flex align-items-center gap-3 mb-4">
         <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center"
              style="width:56px;height:56px;font-size:1.4rem;flex-shrink:0;">
@@ -57,9 +58,13 @@
         <div class="flex-grow-1">
           <h2 class="mb-0 fw-bold" th:text="'Прокат #' + ${rental.id}">Прокат</h2>
           <div class="d-flex align-items-center gap-3 mt-1">
-            <span class="badge"
-                  th:classappend="${rental.status.name() == 'ACTIVE' ? 'bg-primary' : (rental.status.name() == 'COMPLETED' ? 'bg-success' : (rental.status.name() == 'DEBTOR' ? 'bg-danger' : (rental.status.name() == 'SOON_DEBTOR' ? 'bg-warning text-dark' : (rental.status.name() == 'BOOKED' ? 'bg-info' : 'bg-secondary'))))}"
-                  th:text="${rental.status.name() == 'ACTIVE' ? 'В прокате' : (rental.status.name() == 'COMPLETED' ? 'Завершён' : (rental.status.name() == 'DEBTOR' ? 'Должник' : (rental.status.name() == 'SOON_DEBTOR' ? 'К приёмке' : (rental.status.name() == 'BOOKED' ? 'Забронирован' : 'Отменён'))))}">—</span>
+            <span class="badge bg-dark" th:if="${rental.status.name() == 'AWAITING_DELIVERY'}">Ожидает доставки</span>
+            <span class="badge bg-primary" th:if="${rental.status.name() == 'ACTIVE'}">В прокате</span>
+            <span class="badge bg-success" th:if="${rental.status.name() == 'COMPLETED'}">Завершён</span>
+            <span class="badge bg-danger" th:if="${rental.status.name() == 'DEBTOR'}">Должник</span>
+            <span class="badge bg-warning text-dark" th:if="${rental.status.name() == 'SOON_DEBTOR'}">К приёмке</span>
+            <span class="badge bg-info text-dark" th:if="${rental.status.name() == 'BOOKED'}">Забронирован</span>
+            <span class="badge bg-secondary" th:if="${rental.status.name() == 'CANCELLED'}">Отменён</span>
           </div>
         </div>
         <div class="d-flex align-items-center flex-wrap gap-2">
@@ -67,20 +72,35 @@
             <i class="bi bi-arrow-left me-1"></i> К журналу
           </a>
           <div class="d-flex align-items-center gap-2">
-            <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#editRentalModal" title="Редактировать">
+            <button th:if="${rental.status.name() == 'ACTIVE' || rental.status.name() == 'SOON_DEBTOR' || rental.status.name() == 'DEBTOR' || rental.status.name() == 'AWAITING_DELIVERY'}" type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#editRentalModal" title="Редактировать">
               <i class="bi bi-pencil me-1"></i> Редактировать
             </button>
-            <form th:if="${rental.status.name() == 'ACTIVE' || rental.status.name() == 'SOON_DEBTOR' || rental.status.name() == 'DEBTOR'}" th:action="@{/rentals/complete}" method="post" class="d-inline mb-0">
+            <form th:if="${rental.status.name() == 'AWAITING_DELIVERY'}" th:action="@{/rentals/delivered}" method="post" class="d-inline mb-0 me-1">
               <input type="hidden" name="id" th:value="${rental.id}">
+              <input type="hidden" name="version" th:value="${rental.version}">
+              <input type="hidden" name="redirectTo" value="detail">
+              <button type="submit" class="btn btn-success">
+                <i class="bi bi-truck me-1"></i> Доставлено — начать прокат
+              </button>
+            </form>
+            <form th:if="${rental.status.name() == 'SOON_DEBTOR' || rental.status.name() == 'DEBTOR'}" th:action="@{/rentals/complete}" method="post" class="d-inline mb-0">
+              <input type="hidden" name="id" th:value="${rental.id}">
+              <input type="hidden" name="version" th:value="${rental.version}">
               <button type="submit" class="btn btn-success">
                 <i class="bi bi-check-circle me-1"></i> Завершить прокат
+              </button>
+            </form>
+            <form th:if="${rental.status.name() == 'ACTIVE' || rental.status.name() == 'AWAITING_DELIVERY'}" th:action="@{/rentals/cancel}" method="post" class="d-inline mb-0" onsubmit="return confirm('Отменить прокат? Оборудование станет свободным.');">
+              <input type="hidden" name="id" th:value="${rental.id}">
+              <input type="hidden" name="version" th:value="${rental.version}">
+              <button type="submit" class="btn btn-outline-secondary">
+                <i class="bi bi-x-circle me-1"></i> Отменить прокат
               </button>
             </form>
           </div>
         </div>
       </div>
 
-      <!-- Клиент -->
       <div class="info-block">
         <div class="section-title"><i class="bi bi-person me-1"></i>Клиент</div>
         <div class="info-row">
@@ -99,7 +119,6 @@
         </div>
       </div>
 
-      <!-- Период -->
       <div class="info-block">
         <div class="section-title"><i class="bi bi-calendar-event me-1"></i>Период</div>
         <div class="info-row">
@@ -112,37 +131,76 @@
         </div>
       </div>
 
-      <!-- Оборудование -->
-      <div class="info-block">
-        <div class="section-title"><i class="bi bi-box-seam me-1"></i>Оборудование</div>
-        <div class="info-row">
-          <span class="info-label">Название</span>
-          <span class="info-value">
-            <a th:if="${rental.equipment != null && rental.equipment.toolName != null}"
-               th:href="@{/inventory/{id}(id=${rental.equipment.toolName.id})}"
-               th:text="${rental.equipment.getTitle()}">—</a>
-            <span th:if="${rental.equipment == null || rental.equipment.toolName == null}" th:text="${rental.equipment != null ? rental.equipment.getTitle() : '—'}">—</span>
-          </span>
+      <div class="info-block" th:if="${rental.createdAt != null || rental.deliveredAt != null || deliveryLeadDescription != null}">
+        <div class="section-title"><i class="bi bi-clock-history me-1"></i>Оформление и выдача</div>
+        <div class="info-row" th:if="${rental.createdAt != null}">
+          <span class="info-label">Оформлено в системе</span>
+          <span class="info-value" th:text="${#temporals.format(rental.createdAt, 'dd.MM.yyyy HH:mm')}">—</span>
         </div>
-        <div class="info-row">
-          <span class="info-label">Серийный номер</span>
-          <span class="info-value font-monospace" th:text="${rental.equipment != null ? rental.equipment.serialNumber : '—'}">—</span>
+        <div class="info-row" th:if="${rental.deliveredAt != null}">
+          <span class="info-label">Время доставки / выдачи клиенту</span>
+          <span class="info-value" th:text="${#temporals.format(rental.deliveredAt, 'dd.MM.yyyy HH:mm')}">—</span>
+        </div>
+        <div class="info-row" th:if="${rental.createdAt != null && rental.deliveredAt != null}">
+          <span class="info-label">Интервал</span>
+          <span class="info-value" th:text="|с ${#temporals.format(rental.createdAt, 'dd.MM.yyyy HH:mm')} по ${#temporals.format(rental.deliveredAt, 'dd.MM.yyyy HH:mm')}|">—</span>
+        </div>
+        <div class="info-row" th:if="${deliveryLeadDescription != null}">
+          <span class="info-label">Длительность оформление → выдача</span>
+          <span class="info-value" th:text="${deliveryLeadDescription}">—</span>
         </div>
       </div>
 
-      <!-- Итог -->
+      <div class="info-block">
+        <div class="section-title"><i class="bi bi-box-seam me-1"></i>Оборудование</div>
+        <div class="info-row">
+          <span class="info-label">Инструменты</span>
+          <span class="info-value">
+            <th:block th:with="equipmentList=${rental.equipmentList != null ? rental.equipmentList : T(java.util.Collections).emptyList()}">
+              <th:block th:each="equip, itStat : ${equipmentList}">
+                <a th:if="${equip != null}" th:href="@{/inventory/unit/{id}(id=${equip.id})}" class="text-decoration-none" th:text="${equip.title + ' — S/N ' + equip.serialNumber}">—</a><span th:if="${!itStat.last}">, </span>
+              </th:block>
+              <span th:if="${#lists.isEmpty(equipmentList)}">—</span>
+            </th:block>
+          </span>
+        </div>
+      </div>
+
       <div class="info-block">
         <div class="section-title"><i class="bi bi-currency-exchange me-1"></i>Сумма</div>
         <div class="info-row">
-          <span class="info-label">Итог (BYN)</span>
-          <span class="info-value fw-bold fs-5 text-primary" th:text="|${#numbers.formatDecimal(rental.totalAmount, 0, 'NONE', 2, 'POINT')} BYN|">—</span>
+          <span class="info-label">Итог (Br)</span>
+          <span class="info-value fw-bold fs-5 text-primary" th:text="${rental.totalAmount != null ? (#numbers.formatDecimal(rental.totalAmount, 0, 'NONE', 2, 'POINT') + ' Br') : '—'}">—</span>
+        </div>
+        <div class="info-row" th:if="${rental.additionalServicesAmount != null}">
+          <span class="info-label">Доп. услуги</span>
+          <span class="info-value" th:text="${#numbers.formatDecimal(rental.additionalServicesAmount, 0, 'NONE', 2, 'POINT') + ' Br' + (rental.additionalServicesDescription != null && !rental.additionalServicesDescription.isBlank() ? ' — ' + rental.additionalServicesDescription : '')}">—</span>
+        </div>
+        <div class="info-row" th:if="${rental.deliveryAmount != null}">
+          <span class="info-label">Доставка</span>
+          <span class="info-value" th:text="${#numbers.formatDecimal(rental.deliveryAmount, 0, 'NONE', 2, 'POINT') + ' Br'}">—</span>
+        </div>
+        <div class="info-row" th:if="${rental.deliveryAddress != null && !rental.deliveryAddress.isBlank()}">
+          <span class="info-label">Адрес доставки</span>
+          <span class="info-value" th:text="${rental.deliveryAddress}">—</span>
+        </div>
+      </div>
+
+      <div class="info-block" th:if="${rental.createdByStaff != null || rental.handedOverByStaff != null}">
+        <div class="section-title"><i class="bi bi-person-badge me-1"></i>Сотрудники</div>
+        <div class="info-row" th:if="${rental.createdByStaff != null}">
+          <span class="info-label">Кто оформил</span>
+          <span class="info-value" th:text="${rental.createdByStaff.surname + ' ' + rental.createdByStaff.name + (rental.createdByStaff.patronymic != null ? ' ' + rental.createdByStaff.patronymic : '')}">—</span>
+        </div>
+        <div class="info-row" th:if="${rental.handedOverByStaff != null}">
+          <span class="info-label" th:text="${rental.deliveredAt != null ? 'Доставил / отдал клиенту' : 'Кто отдал'}">Кто отдал</span>
+          <span class="info-value" th:text="${rental.handedOverByStaff.surname + ' ' + rental.handedOverByStaff.name + (rental.handedOverByStaff.patronymic != null ? ' ' + rental.handedOverByStaff.patronymic : '')}">—</span>
         </div>
       </div>
     </div>
   </div>
 </div>
 
-<!-- Модальное окно: редактирование проката -->
 <div class="modal fade" id="editRentalModal" tabindex="-1">
   <div class="modal-dialog modal-dialog-centered">
     <form th:action="@{/rentals/edit}" method="post" class="modal-content">
@@ -152,11 +210,13 @@
       </div>
       <div class="modal-body">
         <input type="hidden" name="id" th:value="${rental.id}">
+        <input type="hidden" name="version" th:value="${rental.version}">
         <div class="row g-3">
           <div class="col-12">
             <label class="form-label fw-semibold">С какого числа и времени *</label>
             <input type="datetime-local" name="dateFrom" class="form-control" required step="60"
                    th:value="${rentalDateFromInput}">
+            <div class="form-text text-muted">Можно указать любую дату, в том числе позже текущей — ограничение только: «по какое» должно быть позже «с какого».</div>
           </div>
           <div class="col-12">
             <label class="form-label fw-semibold">По какое число и время *</label>
@@ -164,13 +224,47 @@
                    th:value="${rentalDateToInput}">
           </div>
           <div class="col-12">
-            <label class="form-label fw-semibold">Итог (BYN) *</label>
+            <label class="form-label fw-semibold">Итог (Br) *</label>
             <div class="input-group">
               <input type="text" name="totalAmount" class="form-control" required
                      pattern="[0-9]+(\.[0-9]{1,2})?"
                      th:value="${#numbers.formatDecimal(rental.totalAmount, 0, 'NONE', 2, 'POINT')}">
-              <span class="input-group-text">BYN</span>
+              <span class="input-group-text">Br</span>
             </div>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Доп. услуги (Br)</label>
+            <input type="text" name="additionalServicesAmount" class="form-control" pattern="[0-9]+([.,][0-9]{1,2})?"
+                   th:value="${rental.additionalServicesAmount != null ? #numbers.formatDecimal(rental.additionalServicesAmount, 0, 'NONE', 2, 'POINT') : ''}" placeholder="0">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Описание доп. услуги</label>
+            <input type="text" name="additionalServicesDescription" class="form-control" maxlength="500"
+                   th:value="${rental.additionalServicesDescription}" placeholder="Что входит">
+          </div>
+          <div class="col-12">
+            <label class="form-label">Доставка (Br)</label>
+            <input type="text" name="deliveryAmount" class="form-control" pattern="[0-9]+([.,][0-9]{1,2})?"
+                   th:value="${rental.deliveryAmount != null ? #numbers.formatDecimal(rental.deliveryAmount, 0, 'NONE', 2, 'POINT') : ''}" placeholder="0">
+          </div>
+          <div class="col-12">
+            <label class="form-label">Адрес доставки</label>
+            <input type="text" name="deliveryAddress" class="form-control" maxlength="500" placeholder="Улица, дом, квартира..."
+                   th:value="${rental.deliveryAddress}">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Кто оформил прокат</label>
+            <select name="createdByStaffId" class="form-select">
+              <option value="">— Не указано —</option>
+              <option th:each="s : ${staffList}" th:value="${s.id}" th:selected="${rental.createdByStaff != null && rental.createdByStaff.id == s.id}" th:text="${s.surname + ' ' + s.name + (s.patronymic != null ? ' ' + s.patronymic : '')}">Сотрудник</option>
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Кто отдал оборудование</label>
+            <select name="handedOverByStaffId" class="form-select">
+              <option value="">— Не указано —</option>
+              <option th:each="s : ${staffList}" th:value="${s.id}" th:selected="${rental.handedOverByStaff != null && rental.handedOverByStaff.id == s.id}" th:text="${s.surname + ' ' + s.name + (s.patronymic != null ? ' ' + s.patronymic : '')}">Сотрудник</option>
+            </select>
           </div>
         </div>
       </div>

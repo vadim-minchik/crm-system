@@ -4,6 +4,7 @@ import com.studio.crm_system.enums.Role;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.Version;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
@@ -16,6 +17,7 @@ import jakarta.persistence.Table;
 import com.studio.crm_system.entity.Point;
 import lombok.AllArgsConstructor;
 import lombok.NoArgsConstructor;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Entity
@@ -28,6 +30,10 @@ public class User {
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long id;
 
+	@Version
+	@Column(nullable = false)
+	private Long version;
+
 	@Column(nullable = false)
 	private String name;
 
@@ -37,10 +43,12 @@ public class User {
 	@Column(nullable = false)
 	private String patronymic;
 
-	@Column(nullable = false, unique = true)
+	
+	@Column(nullable = false)
 	private String email;
 
-	@Column(nullable = false, unique = true)
+	
+	@Column(nullable = false)
 	private String login;
 
 	@Column(nullable = false)
@@ -53,30 +61,67 @@ public class User {
 	@Column(nullable = false)
 	private String phoneNumber;
 
+	@Column(length = 50)
+	private String trustedPersonPhone;
+
+	@Column(length = 20)
+	private String passportSeries;
+
+	@Column(length = 20)
+	private String passportNumber;
+
+	@Column(length = 20)
+	private String identificationNumber;
+
+	@Column
+	private LocalDate passportIssueDate;
+
+	@Column
+	private LocalDate passportExpiryDate;
+
+	@Column(length = 100)
+	private String addressStreet;
+
+	@Column(length = 20)
+	private String addressHouse;
+
+	@Column(length = 10)
+	private String addressEntrance;
+
+	@Column(length = 20)
+	private String addressBuilding;
+
+	@Column(length = 10)
+	private String addressApartment;
+
+	@Column(length = 200)
+	private String socialNetwork;
+
 	private String instagram;
 	private String facebook;
 	private String telegram;
 	private String vk;
 	private String whatsApp;
-	
+
 	@ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by_id")
     private User createdBy;
 
-	/** Точка выдачи, к которой привязан сотрудник (null = без привязки / доступ ко всем для админа). */
+	
 	@ManyToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name = "point_id")
 	private Point point;
 
-	// МЯГКОЕ УДАЛЕНИЕ
+	
+	@Column(name = "menu_sections", length = 500)
+	private String menuSections;
+
 	@Column(nullable = false)
 	private Boolean isDeleted = false;
 
-	// ЗАЩИТА ОТ БРУТФОРСА
 	@Column(nullable = false)
 	private Integer failedLoginAttempts = 0;
 
-	// Аккаунт заблокирован до этого времени (null = не заблокирован)
 	@Column
 	private LocalDateTime lockUntil;
 	
@@ -90,7 +135,6 @@ public class User {
 	public LocalDateTime getLockUntil() {return lockUntil;}
 	public void setLockUntil(LocalDateTime lockUntil) {this.lockUntil = lockUntil;}
 
-	// Удобный метод: заблокирован ли сейчас
 	public boolean isLocked() {
 		return lockUntil != null && lockUntil.isAfter(LocalDateTime.now());
 	}
@@ -98,8 +142,12 @@ public class User {
 	public void setCreatedBy(User createdBy) {this.createdBy = createdBy;}
 	public Point getPoint() {return point;}
 	public void setPoint(Point point) {this.point = point;}
+	public String getMenuSections() { return menuSections; }
+	public void setMenuSections(String menuSections) { this.menuSections = menuSections; }
 	public Long getId() {return id;}
 	public void setId(Long id) {this.id = id;}
+	public Long getVersion() { return version; }
+	public void setVersion(Long version) { this.version = version; }
 	public String getName() {return name;}
 	public void setName(String name) {this.name = name;}
 	public String getSurname() {
@@ -128,4 +176,28 @@ public class User {
 	public String getWhatsApp() {return whatsApp;}
 	public void setWhatsApp(String whatsApp) {this.whatsApp = whatsApp;}
 
+	public String getTrustedPersonPhone() { return trustedPersonPhone; }
+	public void setTrustedPersonPhone(String trustedPersonPhone) { this.trustedPersonPhone = trustedPersonPhone; }
+	public String getPassportSeries() { return passportSeries; }
+	public void setPassportSeries(String passportSeries) { this.passportSeries = passportSeries; }
+	public String getPassportNumber() { return passportNumber; }
+	public void setPassportNumber(String passportNumber) { this.passportNumber = passportNumber; }
+	public String getIdentificationNumber() { return identificationNumber; }
+	public void setIdentificationNumber(String identificationNumber) { this.identificationNumber = identificationNumber; }
+	public LocalDate getPassportIssueDate() { return passportIssueDate; }
+	public void setPassportIssueDate(LocalDate passportIssueDate) { this.passportIssueDate = passportIssueDate; }
+	public LocalDate getPassportExpiryDate() { return passportExpiryDate; }
+	public void setPassportExpiryDate(LocalDate passportExpiryDate) { this.passportExpiryDate = passportExpiryDate; }
+	public String getAddressStreet() { return addressStreet; }
+	public void setAddressStreet(String addressStreet) { this.addressStreet = addressStreet; }
+	public String getAddressHouse() { return addressHouse; }
+	public void setAddressHouse(String addressHouse) { this.addressHouse = addressHouse; }
+	public String getAddressEntrance() { return addressEntrance; }
+	public void setAddressEntrance(String addressEntrance) { this.addressEntrance = addressEntrance; }
+	public String getAddressBuilding() { return addressBuilding; }
+	public void setAddressBuilding(String addressBuilding) { this.addressBuilding = addressBuilding; }
+	public String getAddressApartment() { return addressApartment; }
+	public void setAddressApartment(String addressApartment) { this.addressApartment = addressApartment; }
+	public String getSocialNetwork() { return socialNetwork; }
+	public void setSocialNetwork(String socialNetwork) { this.socialNetwork = socialNetwork; }
 }

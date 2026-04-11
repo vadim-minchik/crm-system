@@ -11,7 +11,10 @@ public class Client {
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long id;
 
-	// ===== ФИО =====
+	@Version
+	@Column(nullable = false)
+	private Long version;
+
 	@Column(nullable = false)
 	private String surname;
 
@@ -21,57 +24,53 @@ public class Client {
 	@Column(nullable = false)
 	private String patronymic;
 
-	// ===== ПАСПОРТ =====
-	// На сайте 2 поля: серия "MP" + номер "4362782" → в БД: "MP 4362782"
-	@Column(nullable = false, unique = true, length = 20)
+	
+	@Column(nullable = false, length = 20)
 	private String passportNumber;
 
-	// Идентификационный номер: 5300905A014PB7
-	@Column(nullable = false, unique = true, length = 20)
+	
+	@Column(nullable = false, length = 20)
 	private String identificationNumber;
 
-	// ===== ЛИЧНЫЕ ДАННЫЕ =====
-	// Пол: "М" или "Ж"
 	@Column(nullable = false, length = 1)
 	private String gender;
 
-	// Дата рождения: 30.09.2005
 	@Column(nullable = false)
 	private LocalDate birthDate;
 
-	// Дата выдачи паспорта: 30.05.2019
 	@Column(nullable = false)
 	private LocalDate passportIssueDate;
 
-	// Срок действия паспорта: 30.05.2029
+	
+	@Column(length = 500)
+	private String passportIssuedBy;
+
 	@Column(nullable = false)
 	private LocalDate passportExpiryDate;
 
-	// ===== АДРЕС (прописка) =====
 	@Column(nullable = false)
-	private String addressStreet;   // ул пер. Кабушкино
+	private String addressStreet;
 
 	@Column(nullable = false)
-	private String addressHouse;    // дом 31
+	private String addressHouse;
 
 	@Column(nullable = false)
-	private String addressEntrance; // подъезд 2 (или "-")
+	private String addressEntrance;
 
 	@Column(nullable = false)
-	private String addressBuilding; // корп. - (или "-")
+	private String addressBuilding;
 
 	@Column(nullable = false)
-	private String addressApartment; // кв. 2 (или "-")
+	private String addressApartment;
 
-	// ===== ФОТО ПАСПОРТА (URL в Supabase Storage) =====
 	@Column(length = 500)
 	private String passportPhotoUrl;
 
-	// ===== КОНТАКТ =====
-	@Column(nullable = false, unique = true)
+	
+	@Column(nullable = false)
 	private String phoneNumber;
 
-	// ===== СИСТЕМА =====
+	
 	@Column(nullable = false)
 	private Integer rating = 10;
 
@@ -85,10 +84,15 @@ public class Client {
 	@Column(nullable = false)
 	private Boolean isDeleted = false;
 
-	// ===== ГЕТТЕРЫ И СЕТТЕРЫ =====
+	
+	@Column(nullable = false)
+	private Boolean blacklisted = false;
 
 	public Long getId() { return id; }
 	public void setId(Long id) { this.id = id; }
+
+	public Long getVersion() { return version; }
+	public void setVersion(Long version) { this.version = version; }
 
 	public String getSurname() { return surname; }
 	public void setSurname(String surname) { this.surname = surname; }
@@ -113,6 +117,9 @@ public class Client {
 
 	public LocalDate getPassportIssueDate() { return passportIssueDate; }
 	public void setPassportIssueDate(LocalDate passportIssueDate) { this.passportIssueDate = passportIssueDate; }
+
+	public String getPassportIssuedBy() { return passportIssuedBy; }
+	public void setPassportIssuedBy(String passportIssuedBy) { this.passportIssuedBy = passportIssuedBy; }
 
 	public LocalDate getPassportExpiryDate() { return passportExpiryDate; }
 	public void setPassportExpiryDate(LocalDate passportExpiryDate) { this.passportExpiryDate = passportExpiryDate; }
@@ -150,7 +157,9 @@ public class Client {
 	public Boolean getIsDeleted() { return isDeleted; }
 	public void setIsDeleted(Boolean isDeleted) { this.isDeleted = isDeleted; }
 
-	// Удобный метод: полный адрес строкой
+	public Boolean getBlacklisted() { return blacklisted; }
+	public void setBlacklisted(Boolean blacklisted) { this.blacklisted = blacklisted; }
+
 	public String getFullAddress() {
 		return addressStreet + ", " + addressHouse + ", пд." + addressEntrance + ", корп." + addressBuilding + ", кв." + addressApartment;
 	}

@@ -3,30 +3,37 @@ package com.studio.crm_system.repository;
 import com.studio.crm_system.entity.Equipment;
 import com.studio.crm_system.entity.ToolName;
 import com.studio.crm_system.enums.EquipmentStatus;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
 public interface EquipmentRepository extends JpaRepository<Equipment, Long> {
 
-	// Все НЕудалённые
 	List<Equipment> findByIsDeletedFalse();
 
-	// Только СВОБОДНЫЕ и НЕудалённые
 	List<Equipment> findByStatusAndIsDeletedFalse(EquipmentStatus status);
 
-	// Единицы конкретного раздела, НЕудалённые
+	List<Equipment> findByStatusInAndIsDeletedFalse(Collection<EquipmentStatus> statuses);
+
+	@EntityGraph("Equipment.withOwners")
 	List<Equipment> findByToolNameAndIsDeletedFalse(ToolName toolName);
 
-	// Свободные единицы конкретного раздела
+	@EntityGraph("Equipment.withOwners")
+	Page<Equipment> findByToolNameAndIsDeletedFalse(ToolName toolName, Pageable pageable);
+
 	List<Equipment> findByToolNameAndStatusAndIsDeletedFalse(ToolName toolName, EquipmentStatus status);
 
-	// По id (НЕудалённый)
+	@EntityGraph("Equipment.withOwners")
 	Optional<Equipment> findByIdAndIsDeletedFalse(Long id);
 
-	// Подсчёт: всего единиц в разделе
+	boolean existsBySerialNumberAndIsDeletedFalse(String serialNumber);
+	boolean existsBySerialNumberAndIsDeletedFalseAndIdNot(String serialNumber, Long id);
+
 	long countByToolNameAndIsDeletedFalse(ToolName toolName);
 
-	// Подсчёт: свободных единиц в разделе
 	long countByToolNameAndStatusAndIsDeletedFalse(ToolName toolName, EquipmentStatus status);
 }

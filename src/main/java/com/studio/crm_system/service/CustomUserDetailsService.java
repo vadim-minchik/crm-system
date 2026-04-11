@@ -12,7 +12,10 @@ import org.springframework.stereotype.Service;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
-import java.util.Collections;
+import java.util.ArrayList;
+import java.util.List;
+
+import org.springframework.security.core.GrantedAuthority;
 
 @Service
 public class CustomUserDetailsService implements UserDetailsService {
@@ -20,21 +23,27 @@ public class CustomUserDetailsService implements UserDetailsService {
     @Autowired
     private UserRepository userRepository;
 
+    @Autowired
+    private MenuScopeService menuScopeService;
+
     @Override
     public UserDetails loadUserByUsername(String login) throws UsernameNotFoundException {
-        User user = userRepository.findByLogin(login)
+        User user = userRepository.findByLoginAndIsDeletedFalse(login)
                 .orElseThrow(() -> new UsernameNotFoundException("Пользователь не найден: " + login));
 
-        // Проверяем: не заблокирован ли аккаунт?
         if (user.isLocked()) {
             long minutes = Duration.between(LocalDateTime.now(), user.getLockUntil()).toMinutes() + 1;
             throw new LockedException("Аккаунт заблокирован. Повторите через " + minutes + " мин.");
         }
 
+        List<GrantedAuthority> authorities = new ArrayList<>();
+        authorities.add(new SimpleGrantedAuthority(user.getRole().name()));
+        authorities.addAll(menuScopeService.menuAuthorities(user));
+
         return new org.springframework.security.core.userdetails.User(
                 user.getLogin(),
                 user.getPassword(),
-                Collections.singletonList(new SimpleGrantedAuthority(user.getRole().name()))
+                authorities
         );
     }
 }

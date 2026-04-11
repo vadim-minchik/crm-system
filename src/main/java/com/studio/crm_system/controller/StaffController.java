@@ -1,8 +1,13 @@
 package com.studio.crm_system.controller;
 
+import com.studio.crm_system.entity.Point;
 import com.studio.crm_system.entity.User;
+import com.studio.crm_system.enums.NavSection;
+import com.studio.crm_system.repository.PointRepository;
 import com.studio.crm_system.repository.UserRepository;
 import com.studio.crm_system.enums.Role;
+import com.studio.crm_system.service.MenuScopeService;
+import com.studio.crm_system.web.OptimisticLockSupport;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -11,7 +16,15 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.EnumSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Controller
@@ -22,7 +35,13 @@ public class StaffController {
 	private UserRepository userRepository;
 
 	@Autowired
+	private PointRepository pointRepository;
+
+	@Autowired
 	private PasswordEncoder passwordEncoder;
+
+	@Autowired
+	private MenuScopeService menuScopeService;
 
 	private User getCurrentUser() {
 		Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
@@ -33,7 +52,6 @@ public class StaffController {
 		return null;
 	}
 
-	// Метод для очистки от пробелов и проверки на русские буквы
 	private String cleanCyrillic(String input) {
 		if (input == null)
 			return "";
@@ -47,7 +65,6 @@ public class StaffController {
 		return input.trim().replaceAll("\\s+", "");
 	}
 	
-	// Валидация логина: только английские буквы и цифры (как в Steam)
 	private boolean isValidLogin(String login) {
 		if (login == null || login.isEmpty()) {
 			return false;
@@ -55,12 +72,42 @@ public class StaffController {
 		return login.matches("^[a-zA-Z0-9]+$");
 	}
 	
-	// Валидация пароля: минимум 6 символов
 	private boolean isValidPassword(String password) {
 		if (password == null || password.isEmpty()) {
 			return false;
 		}
 		return password.length() >= 6;
+	}
+
+	private static final int MAX_FIO_LENGTH = 50;
+	private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("dd.MM.yyyy");
+
+	private boolean isFioLengthValid(String value) {
+		return value != null && value.length() <= MAX_FIO_LENGTH;
+	}
+
+	private LocalDate parseOptionalDate(String raw) {
+		if (raw == null || raw.trim().isEmpty()) return null;
+		try {
+			return LocalDate.parse(raw.trim(), DATE_FMT);
+		} catch (Exception e) {
+			return null;
+		}
+	}
+
+	private void setOptionalStaffFields(User from, User to) {
+		to.setTrustedPersonPhone(cleanStrict(from.getTrustedPersonPhone()));
+		to.setPassportSeries(from.getPassportSeries() != null ? from.getPassportSeries().trim().toUpperCase() : null);
+		to.setPassportNumber(from.getPassportNumber() != null ? from.getPassportNumber().trim() : null);
+		to.setIdentificationNumber(from.getIdentificationNumber() != null ? from.getIdentificationNumber().trim().toUpperCase() : null);
+		to.setPassportIssueDate(from.getPassportIssueDate());
+		to.setPassportExpiryDate(from.getPassportExpiryDate());
+		to.setAddressStreet(from.getAddressStreet() != null ? from.getAddressStreet().trim() : null);
+		to.setAddressHouse(from.getAddressHouse() != null ? from.getAddressHouse().trim() : null);
+		to.setAddressEntrance(from.getAddressEntrance() != null ? from.getAddressEntrance().trim() : null);
+		to.setAddressBuilding(from.getAddressBuilding() != null ? from.getAddressBuilding().trim() : null);
+		to.setAddressApartment(from.getAddressApartment() != null ? from.getAddressApartment().trim() : null);
+		to.setSocialNetwork(cleanStrict(from.getSocialNetwork()));
 	}
 
 	@GetMapping
@@ -69,11 +116,9 @@ public class StaffController {
 		if (actor == null)
 			return "redirect:/login";
 
-		// МЯГКОЕ УДАЛЕНИЕ: показываем только НЕудаленных пользователей
 		List<User> allUsers = userRepository.findByIsDeletedFalse();
 		List<User> filteredUsers;
 
-		// Админ видит ТОЛЬКО воркеров. Коллег и суперов — нет.
 		if (actor.getRole() == Role.SUPER_ADMIN) {
 			filteredUsers = allUsers;
 		} else {
@@ -84,41 +129,69 @@ public class StaffController {
 		model.addAttribute("currentUserRole", actor.getRole());
 		model.addAttribute("currentUserId", actor.getId());
 		model.addAttribute("allUsers", filteredUsers);
+		model.addAttribute("points", pointRepository.findByIsDeletedFalseOrderByNameAsc());
+
+		Set<NavSection> actorMenu = menuScopeService.effectiveSections(actor);
+		List<NavSection> editableMenuSections = new ArrayList<>(EnumSet.allOf(NavSection.class));
+		editableMenuSections.removeIf(s -> !actorMenu.contains(s));
+		model.addAttribute("editableMenuSections", editableMenuSections);
+
+		Map<Long, String> menuEffectiveCsvByUserId = new LinkedHashMap<>();
+		for (User u : filteredUsers) {
+			menuEffectiveCsvByUserId.put(u.getId(), menuScopeService.toCsv(menuScopeService.effectiveSections(u)));
+		}
+		model.addAttribute("menuEffectiveCsvByUserId", menuEffectiveCsvByUserId);
+
+		model.addAttribute("workerDefaultMenuCodes",
+				menuScopeService.defaultSectionsForRole(Role.WORKER).stream().map(NavSection::getCode).toList());
+		model.addAttribute("adminDefaultMenuCodes",
+				menuScopeService.defaultSectionsForRole(Role.ADMIN).stream().map(NavSection::getCode).toList());
 
 		return "html/staff";
 	}
 
 	@PostMapping("/add")
-	public String addStaff(@ModelAttribute User newUser) {
+	public String addStaff(@ModelAttribute User newUser,
+			@RequestParam(value = "pointId", required = false) Long pointId,
+			@RequestParam(value = "menuSection", required = false) String[] menuSectionCodes,
+			@RequestParam(value = "passportIssueDate", required = false) String passportIssueDate,
+			@RequestParam(value = "passportExpiryDate", required = false) String passportExpiryDate) {
 		User actor = getCurrentUser();
 		if (actor == null || actor.getRole() == Role.WORKER)
 			return "redirect:/staff";
 
-		// Валидация при создании
+		if (pointId == null)
+			return "redirect:/staff?error=point_required";
+		Point point = pointRepository.findById(pointId).orElse(null);
+		if (point == null || Boolean.TRUE.equals(point.getIsDeleted()))
+			return "redirect:/staff?error=point_invalid";
+
 		String name = cleanCyrillic(newUser.getName());
 		String surname = cleanCyrillic(newUser.getSurname());
 		if (name == null || surname == null)
 			return "redirect:/staff?error=bad_chars";
+		if (!isFioLengthValid(name) || !isFioLengthValid(surname))
+			return "redirect:/staff?error=name_too_long";
+		String patronymic = cleanCyrillic(newUser.getPatronymic());
+		if (patronymic != null && !isFioLengthValid(patronymic))
+			return "redirect:/staff?error=name_too_long";
 
 		newUser.setName(name);
 		newUser.setSurname(surname);
-		newUser.setPatronymic(cleanCyrillic(newUser.getPatronymic()));
+		newUser.setPatronymic(patronymic);
 		
 		String login = cleanStrict(newUser.getLogin());
 		String email = cleanStrict(newUser.getEmail());
 		
-		// Валидация логина (только английские буквы и цифры)
 		if (!isValidLogin(login)) {
 			return "redirect:/staff?error=invalid_login";
 		}
 		
-		// Проверка уникальности login
-		if (userRepository.findByLogin(login).isPresent()) {
+		
+		if (userRepository.findByLoginAndIsDeletedFalse(login).isPresent()) {
 			return "redirect:/staff?error=login_exists";
 		}
-		
-		// Проверка уникальности email
-		if (userRepository.findByEmail(email).isPresent()) {
+		if (userRepository.findByEmailAndIsDeletedFalse(email).isPresent()) {
 			return "redirect:/staff?error=email_exists";
 		}
 		
@@ -126,39 +199,71 @@ public class StaffController {
 		newUser.setEmail(email);
 		newUser.setPhoneNumber(cleanStrict(newUser.getPhoneNumber()));
 
-		// Валидация пароля (минимум 6 символов)
 		String password = cleanStrict(newUser.getPassword());
 		if (!isValidPassword(password)) {
 			return "redirect:/staff?error=password_too_short";
 		}
 		newUser.setPassword(passwordEncoder.encode(password));
+		newUser.setPoint(point);
+
+		Role assignedRole = newUser.getRole() != null ? newUser.getRole() : Role.WORKER;
+		if (actor.getRole() == Role.ADMIN && assignedRole != Role.WORKER)
+			return "redirect:/staff?error=access_denied";
+		newUser.setRole(assignedRole);
+		newUser.setMenuSections(menuScopeService
+				.toCsv(menuScopeService.resolveGrantedSections(actor, assignedRole, menuSectionCodes)));
+
+		newUser.setPassportIssueDate(parseOptionalDate(passportIssueDate));
+		newUser.setPassportExpiryDate(parseOptionalDate(passportExpiryDate));
+		setOptionalStaffFields(newUser, newUser);
 
 		try {
 			userRepository.save(newUser);
 		} catch (Exception e) {
 			return "redirect:/staff?error=save_failed";
 		}
-		
+
 		return "redirect:/staff?success=user_added";
 	}
 
 	@PostMapping("/edit")
 	public String editStaff(@ModelAttribute User details,
-			@RequestParam(value = "newPassword", required = false) String newPassword) {
+			@RequestParam(value = "pointId", required = false) Long pointId,
+			@RequestParam(value = "menuSection", required = false) String[] menuSectionCodes,
+			@RequestParam(value = "newPassword", required = false) String newPassword,
+			@RequestParam(value = "passportIssueDate", required = false) String passportIssueDate,
+			@RequestParam(value = "passportExpiryDate", required = false) String passportExpiryDate) {
 		User actor = getCurrentUser();
 		User dbUser = userRepository.findById(details.getId()).orElse(null);
 
 		if (actor != null && dbUser != null) {
-			// Запрет Админу трогать кого-либо, кроме Воркеров
+			if (OptimisticLockSupport.isStale(details.getVersion(), dbUser.getVersion()))
+				return "redirect:/staff?error=stale_data";
 			if (actor.getRole() == Role.ADMIN && dbUser.getRole() != Role.WORKER)
 				return "redirect:/staff";
 
+			if (pointId == null)
+				return "redirect:/staff?error=point_required";
+			Point point = pointRepository.findById(pointId).orElse(null);
+			if (point == null || Boolean.TRUE.equals(point.getIsDeleted()))
+				return "redirect:/staff?error=point_invalid";
+
 			boolean changed = false;
 
-			// 1. Проверка ФИО (только русские, без пробелов)
+			if (dbUser.getPoint() == null || !point.getId().equals(dbUser.getPoint().getId())) {
+				dbUser.setPoint(point);
+				changed = true;
+			}
+
 			String cName = cleanCyrillic(details.getName());
 			String cSurname = cleanCyrillic(details.getSurname());
 			String cPatr = cleanCyrillic(details.getPatronymic());
+			if (cName != null && !isFioLengthValid(cName))
+				return "redirect:/staff?error=name_too_long";
+			if (cSurname != null && !isFioLengthValid(cSurname))
+				return "redirect:/staff?error=name_too_long";
+			if (cPatr != null && !isFioLengthValid(cPatr))
+				return "redirect:/staff?error=name_too_long";
 
 			if (cName != null && !cName.equals(dbUser.getName())) {
 				dbUser.setName(cName);
@@ -173,12 +278,10 @@ public class StaffController {
 				changed = true;
 			}
 
-		// 2. Контакты (без пробелов)
 		String cEmail = cleanStrict(details.getEmail());
 		String cPhone = cleanStrict(details.getPhoneNumber());
 		if (!cEmail.equals(dbUser.getEmail())) {
-			// Проверка уникальности нового email
-			if (userRepository.findByEmail(cEmail).isPresent()) {
+			if (userRepository.findByEmailAndIsDeletedFalseAndIdNot(cEmail, dbUser.getId()).isPresent()) {
 				return "redirect:/staff?error=email_exists";
 			}
 			dbUser.setEmail(cEmail);
@@ -189,16 +292,13 @@ public class StaffController {
 			changed = true;
 		}
 
-		// 3. Логин и Роль (Только для Super Admin и не для самого себя)
 		if (actor.getRole() == Role.SUPER_ADMIN && !actor.getId().equals(dbUser.getId())) {
 			String cLogin = cleanStrict(details.getLogin());
 			if (!cLogin.isEmpty() && !cLogin.equals(dbUser.getLogin())) {
-				// Валидация логина (только английские буквы и цифры)
 				if (!isValidLogin(cLogin)) {
 					return "redirect:/staff?error=invalid_login";
 				}
-				// Проверка уникальности нового login
-				if (userRepository.findByLogin(cLogin).isPresent()) {
+				if (userRepository.findByLoginAndIsDeletedFalseAndIdNot(cLogin, dbUser.getId()).isPresent()) {
 					return "redirect:/staff?error=login_exists";
 				}
 				dbUser.setLogin(cLogin);
@@ -210,7 +310,6 @@ public class StaffController {
 			}
 		}
 
-			// 4. Пароль (если не пустой, минимум 6 символов)
 			String cPass = cleanStrict(newPassword);
 			if (!cPass.isEmpty()) {
 				if (!isValidPassword(cPass)) {
@@ -220,11 +319,23 @@ public class StaffController {
 				changed = true;
 			}
 
-			// Соцсети (просто чистим пробелы)
-			dbUser.setTelegram(cleanStrict(details.getTelegram()));
-			dbUser.setWhatsApp(cleanStrict(details.getWhatsApp()));
+			details.setPassportIssueDate(parseOptionalDate(passportIssueDate));
+			details.setPassportExpiryDate(parseOptionalDate(passportExpiryDate));
+			setOptionalStaffFields(details, dbUser);
 
-		if (changed) {
+			boolean canEditMenu = (actor.getRole() == Role.SUPER_ADMIN && dbUser.getRole() != Role.SUPER_ADMIN)
+					|| (actor.getRole() == Role.ADMIN && dbUser.getRole() == Role.WORKER);
+			if (canEditMenu) {
+				Set<NavSection> granted = menuScopeService.resolveGrantedSections(actor, dbUser.getRole(),
+						menuSectionCodes);
+				String newCsv = menuScopeService.toCsv(granted);
+				if (!Objects.equals(newCsv, dbUser.getMenuSections())) {
+					dbUser.setMenuSections(newCsv);
+					changed = true;
+				}
+			}
+
+			if (changed) {
 			try {
 				userRepository.save(dbUser);
 			} catch (Exception e) {
@@ -240,7 +351,6 @@ public class StaffController {
 		User actor = getCurrentUser();
 		User target = userRepository.findById(id).orElse(null);
 		if (actor != null && target != null) {
-			// Себя удалять нельзя ни при каких условиях
 			if (actor.getId().equals(target.getId()))
 				return "redirect:/staff";
 

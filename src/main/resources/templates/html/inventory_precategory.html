@@ -2,6 +2,7 @@
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
 <meta charset="UTF-8">
+<th:block th:replace="~{html/fragments :: viewport-meta}"></th:block>
 <title th:text="${preCategory.name} + ' | Склад | STUDIO.CRM'">Раздел | STUDIO.CRM</title>
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
@@ -71,13 +72,13 @@
     </button>
   </div>
 
-  <!-- Уведомления -->
   <div th:if="${param.error}" class="alert alert-danger alert-dismissible fade show" role="alert">
     <i class="bi bi-exclamation-triangle-fill me-2"></i><strong>Ошибка: </strong>
     <span th:if="${param.error[0] == 'name_required'}">Введите название.</span>
     <span th:if="${param.error[0] == 'name_exists'}">Категория с таким названием уже существует в этом разделе.</span>
-    <span th:if="${param.error[0] == 'in_use'}">Нельзя удалить: есть оборудование используется.</span>
+    <span th:if="${param.error[0] == 'in_use'}">Нельзя удалить: оборудование в прокате или в брони.</span>
     <span th:if="${param.error[0] == 'not_found'}">Запись не найдена.</span>
+    <span th:if="${param.error[0] == 'stale_data'}">Данные уже изменены другим пользователем. Обновите страницу и повторите действие.</span>
     <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
   </div>
   <div th:if="${param.success}" class="alert alert-success alert-dismissible fade show" role="alert">
@@ -88,7 +89,6 @@
     <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
   </div>
 
-  <!-- Сетка категорий -->
   <div class="row g-3 mt-1">
 
     <div class="col-md-4 col-lg-3" th:each="c : ${categories}">
@@ -117,12 +117,15 @@
                   onclick="openEditCat(this)" title="Редактировать">
             <i class="bi bi-pencil"></i>
           </button>
-          <button type="button" class="action-btn danger"
-                  th:data-id="${c.id}" th:data-name="${c.name}"
+          <button th:if="${!categoryIdsLocked.contains(c.id)}" type="button" class="action-btn danger"
+                  th:data-id="${c.id}" th:data-version="${c.version}" th:data-name="${c.name}"
                   th:data-models="${modelsCount[c.id]}" th:data-units="${unitsCount[c.id]}"
                   onclick="openDeleteCat(this)" title="Удалить">
             <i class="bi bi-trash"></i>
           </button>
+          <span th:if="${categoryIdsLocked.contains(c.id)}" class="action-btn text-muted" style="cursor: default;" title="Нельзя удалить: в прокате или в брони">
+            <i class="bi bi-lock"></i>
+          </span>
         </div>
       </div>
     </div>
@@ -143,7 +146,6 @@
   </div>
 </div>
 
-<!-- Модал: добавить категорию -->
 <div class="modal fade" id="modalAddCat" tabindex="-1">
   <div class="modal-dialog modal-dialog-centered">
     <form th:action="@{/inventory/precategory/{id}/category/add(id=${preCategory.id})}" method="post" class="modal-content">
@@ -175,7 +177,6 @@
   </div>
 </div>
 
-<!-- Модал: редактировать категорию -->
 <div class="modal fade" id="modalEditCat" tabindex="-1">
   <div class="modal-dialog modal-dialog-centered">
     <form th:action="@{/inventory/category/edit}" method="post" class="modal-content">
@@ -185,6 +186,7 @@
       </div>
       <div class="modal-body">
         <input type="hidden" name="id" id="edit-cat-id">
+        <input type="hidden" name="version" id="edit-cat-version">
         <div class="mb-3">
           <label class="form-label fw-semibold">Название *</label>
           <input type="text" name="name" id="edit-cat-name" class="form-control" maxlength="60" required>
@@ -204,7 +206,6 @@
   </div>
 </div>
 
-<!-- Модал: подтверждение удаления категории -->
 <div class="modal fade" id="modalDeleteCat" tabindex="-1">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
@@ -239,6 +240,7 @@
       <div class="modal-footer">
         <form th:action="@{/inventory/category/delete}" method="post" style="width:100%; display:flex; gap:8px;">
           <input type="hidden" name="id" id="del-cat-id">
+          <input type="hidden" name="version" id="del-cat-version">
           <button type="button" class="btn btn-outline-secondary flex-fill" data-bs-dismiss="modal">Отмена</button>
           <button type="submit" class="btn btn-danger flex-fill">
             <i class="bi bi-trash me-1"></i> Удалить всё
@@ -253,12 +255,14 @@
 <script>
   function openEditCat(btn) {
     document.getElementById('edit-cat-id').value   = btn.dataset.id;
+    document.getElementById('edit-cat-version').value = btn.dataset.version || '';
     document.getElementById('edit-cat-name').value = btn.dataset.name;
     document.getElementById('edit-cat-desc').value = btn.dataset.desc !== 'null' ? (btn.dataset.desc || '') : '';
     new bootstrap.Modal(document.getElementById('modalEditCat')).show();
   }
   function openDeleteCat(btn) {
     document.getElementById('del-cat-id').value           = btn.dataset.id;
+    document.getElementById('del-cat-version').value      = btn.dataset.version || '';
     document.getElementById('del-cat-name').textContent   = btn.dataset.name;
     document.getElementById('del-cat-models').textContent = btn.dataset.models;
     document.getElementById('del-cat-units').textContent  = btn.dataset.units;

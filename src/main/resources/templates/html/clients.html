@@ -2,7 +2,7 @@
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<th:block th:replace="~{html/fragments :: viewport-meta}"></th:block>
 <title>База клиентов | STUDIO.CRM</title>
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
@@ -18,12 +18,32 @@
       <h2>База клиентов</h2>
       <p>Паспортные данные и контакты клиентов</p>
     </div>
-    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addClientModal">
-      <i class="bi bi-person-plus-fill"></i> Новый клиент
-    </button>
+    <div class="d-flex align-items-center gap-2 flex-wrap">
+      <div class="btn-group" role="group">
+        <a th:href="@{/clients}" class="btn"
+           th:classappend="${!blacklistFilter} ? 'btn-primary' : 'btn-outline-secondary'">
+          Все клиенты
+        </a>
+        <a th:href="@{/clients(blacklist=true)}" class="btn"
+           th:classappend="${blacklistFilter} ? 'btn-dark' : 'btn-outline-secondary'">
+          <i class="bi bi-slash-circle me-1"></i>Чёрный список
+        </a>
+      </div>
+      <form th:action="@{/clients}" method="get" class="d-flex align-items-center gap-2 ms-2">
+        <input type="hidden" name="blacklist" value="true" th:if="${blacklistFilter}">
+        <div class="input-group" style="min-width: 260px;">
+          <span class="input-group-text text-muted"><i class="bi bi-search"></i></span>
+          <input type="search" name="q" th:value="${searchQuery}" class="form-control"
+                 placeholder="Фамилия, имя, телефон, паспорт, прописка..." autocomplete="off">
+        </div>
+        <button type="submit" class="btn btn-outline-primary">Найти</button>
+      </form>
+      <button class="btn btn-primary ms-auto" data-bs-toggle="modal" data-bs-target="#addClientModal">
+        <i class="bi bi-person-plus-fill"></i> Новый клиент
+      </button>
+    </div>
   </div>
 
-  <!-- Уведомления -->
   <div th:if="${param.error}" class="alert alert-danger alert-dismissible fade show" role="alert">
     <i class="bi bi-exclamation-triangle-fill me-2"></i><strong>Ошибка!</strong>
     <span th:if="${param.error[0] == 'phone_exists'}">Клиент с таким телефоном уже существует.</span>
@@ -33,7 +53,6 @@
     <span th:if="${param.error[0] == 'client_not_found'}">Клиент не найден.</span>
     <span th:if="${param.error[0] == 'access_denied'}">Нет прав для этого действия.</span>
     <span th:if="${param.error[0] == 'delete_failed'}">Не удалось удалить клиента.</span>
-    <!-- Ошибки дат -->
     <span th:if="${param.error[0] == 'invalid_birth_date'}">Неверный формат даты рождения. Используйте ДД.ММ.ГГГГ</span>
     <span th:if="${param.error[0] == 'invalid_issue_date'}">Неверный формат даты выдачи паспорта.</span>
     <span th:if="${param.error[0] == 'invalid_expiry_date'}">Неверный формат срока действия паспорта.</span>
@@ -43,10 +62,12 @@
     <span th:if="${param.error[0] == 'issue_before_birth'}">Дата выдачи паспорта не может быть раньше даты рождения.</span>
     <span th:if="${param.error[0] == 'expiry_before_issue'}">Срок действия не может быть раньше даты выдачи.</span>
     <span th:if="${param.error[0] == 'expiry_too_far'}">Срок действия паспорта не может превышать 15 лет от даты выдачи.</span>
+    <span th:if="${param.error[0] == 'passport_issuer_required'}">Укажите орган, выдавший паспорт.</span>
     <span th:if="${param.error[0] == 'photo_too_large'}">Фото слишком большое. Максимальный размер — 25 МБ. Сожмите изображение.</span>
     <span th:if="${param.error[0] == 'not_image'}">Разрешены только изображения (jpg, png).</span>
-    <span th:if="${param.error[0] == 'upload_failed'}">Ошибка загрузки фото. Проверьте настройки Supabase Storage.</span>
+    <span th:if="${param.error[0] == 'upload_failed'}">Не удалось сохранить фото. Попробуйте другой файл (JPG, PNG) или повторите позже.</span>
     <span th:if="${param.error[0] == 'server_error'}">Внутренняя ошибка сервера. Проверьте консоль приложения для подробностей.</span>
+    <span th:if="${param.error[0] == 'stale_data'}">Данные уже изменены другим пользователем. Обновите страницу и повторите действие.</span>
     <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
   </div>
   <div th:if="${param.success}" class="alert alert-success alert-dismissible fade show" role="alert">
@@ -57,30 +78,30 @@
     <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
   </div>
 
-  <!-- Таблица клиентов -->
-  <div class="card-table">
-    <table class="table table-hover mb-0">
+  <div class="card-table table-responsive-clients">
+    <table class="table table-hover mb-0 table-clients">
       <thead>
         <tr>
           <th class="ps-4">ФИО / Пол / Дата рожд.</th>
           <th>Паспорт / Идент. номер</th>
           <th>Прописка</th>
           <th>Телефон</th>
-          <th>Рейтинг</th>
+          <th>Рейтинг <span class="text-muted fw-normal small">(по отзывам)</span></th>
           <th>Добавил</th>
-          <th class="text-end pe-4">Действия</th>
+          <th class="text-end pe-4 th-actions">Действия</th>
         </tr>
       </thead>
-      <tbody>
+      <tbody id="tbody-clients">
         <tr th:each="c : ${clients}">
-          <td class="ps-4">
+          <td class="ps-4 td-ellipsis">
             <div class="fw-bold" th:text="${c.surname + ' ' + c.name + ' ' + c.patronymic}">ФИО</div>
+            <span th:if="${c.blacklisted}" class="badge bg-dark ms-1" title="В чёрном списке">ЧС</span>
             <small class="text-muted">
               <span th:text="${c.gender}">М</span> &bull;
               <span th:text="${#temporals.format(c.birthDate, 'dd.MM.yyyy')}">01.01.2000</span>
             </small>
           </td>
-          <td>
+          <td class="td-ellipsis">
             <div><i class="bi bi-passport me-1 text-muted"></i>
               <span th:text="${c.passportNumber}">MP 0000000</span>
             </div>
@@ -90,8 +111,11 @@
               выд. <span th:text="${#temporals.format(c.passportIssueDate,'dd.MM.yyyy')}">01.01.2019</span>
               &nbsp;до <span th:text="${#temporals.format(c.passportExpiryDate,'dd.MM.yyyy')}">01.01.2029</span>
             </small>
+            <br th:if="${c.passportIssuedBy != null && !#strings.isEmpty(c.passportIssuedBy)}"/>
+            <small class="text-muted" th:if="${c.passportIssuedBy != null && !#strings.isEmpty(c.passportIssuedBy)}"
+                   th:text="${c.passportIssuedBy}">РУВД</small>
           </td>
-          <td>
+          <td class="td-ellipsis">
             <small th:text="${c.addressStreet}">ул. Ленина</small><br/>
             <small class="text-muted">
               д.<span th:text="${c.addressHouse}">1</span>
@@ -100,14 +124,13 @@
               кв.<span th:text="${c.addressApartment}">1</span>
             </small>
           </td>
-          <td th:text="${c.phoneNumber}">+375...</td>
+          <td class="td-ellipsis" th:text="${c.phoneNumber}">+375...</td>
           <td><span class="badge-rating" th:text="${c.rating + ' / 10'}">10 / 10</span></td>
-          <td>
-            <div th:if="${c.addedBy != null}" th:text="${c.addedBy.surname + ' ' + c.addedBy.name}">Иванов И.</div>
+          <td class="td-ellipsis">
+            <div th:if="${c.addedBy != null}" th:text="${c.addedBy.surname}">Иванов</div>
             <small class="text-muted" th:if="${c.addedBy == null}">system</small>
           </td>
-          <td class="text-end pe-4">
-            <!-- Просмотр карточки (доступен всем) -->
+          <td class="text-end pe-4 td-actions">
             <a th:href="@{/clients/{id}(id=${c.id})}" class="btn btn-sm btn-outline-primary me-1"
                title="Открыть карточку клиента">
               <i class="bi bi-eye"></i>
@@ -120,18 +143,22 @@
                       th:data-gender="${c.gender}"
                       th:data-birth="${#temporals.format(c.birthDate,'dd.MM.yyyy')}"
                       th:data-issue="${#temporals.format(c.passportIssueDate,'dd.MM.yyyy')}"
+                      th:attr="data-passport-issued-by=${c.passportIssuedBy != null ? c.passportIssuedBy : ''}"
                       th:data-expiry="${#temporals.format(c.passportExpiryDate,'dd.MM.yyyy')}"
                       th:data-street="${c.addressStreet}" th:data-house="${c.addressHouse}"
                       th:data-entrance="${c.addressEntrance}" th:data-building="${c.addressBuilding}"
                       th:data-apt="${c.addressApartment}"
                       th:data-phone="${c.phoneNumber}" th:data-rating="${c.rating}"
+                      th:data-blacklisted="${c.blacklisted}"
                       th:data-photo="${c.passportPhotoUrl}"
+                      th:data-version="${c.version}"
                       onclick="prepareEdit(this)" title="Редактировать">
                 <i class="bi bi-pencil"></i>
               </button>
               <form th:action="@{/clients/delete}" method="post" style="display:inline;"
                     onsubmit="return confirm('Удалить клиента из базы?')">
                 <input type="hidden" name="id" th:value="${c.id}">
+                <input type="hidden" name="version" th:value="${c.version}">
                 <button type="submit" class="btn-icon"><i class="bi bi-trash"></i></button>
               </form>
             </span>
@@ -147,7 +174,6 @@
   </div>
 </div>
 
-<!-- ===== МОДАЛЬНОЕ ОКНО: ДОБАВИТЬ КЛИЕНТА ===== -->
 <div class="modal fade" id="addClientModal" tabindex="-1">
   <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
     <form th:action="@{/clients/add}" method="post" class="modal-content">
@@ -157,7 +183,6 @@
       </div>
       <div class="modal-body">
 
-        <!-- ФИО -->
         <div class="mb-3">
           <div class="fw-semibold text-uppercase text-muted small mb-2">
             <i class="bi bi-person me-1"></i>ФИО
@@ -178,7 +203,6 @@
           </div>
         </div>
 
-        <!-- Пол + Дата рождения -->
         <div class="mb-3">
           <div class="fw-semibold text-uppercase text-muted small mb-2">
             <i class="bi bi-calendar-person me-1"></i>Личные данные
@@ -200,7 +224,6 @@
           </div>
         </div>
 
-        <!-- Паспорт -->
         <div class="mb-3">
           <div class="fw-semibold text-uppercase text-muted small mb-2">
             <i class="bi bi-passport me-1"></i>Паспортные данные
@@ -220,7 +243,7 @@
             <div class="col-md-4">
               <label class="form-label">Идентификационный номер *</label>
               <input type="text" name="identificationNumber" class="form-control text-uppercase"
-                     placeholder="5300905A014PB7" maxlength="14" required>
+                     placeholder="0000900A014PB0" maxlength="14" required>
             </div>
           </div>
           <div class="row g-2 mt-1">
@@ -235,9 +258,16 @@
                      placeholder="30.05.2029" required>
             </div>
           </div>
+          <div class="row g-2 mt-1">
+            <div class="col-12">
+              <label class="form-label">Кем выдан паспорт *</label>
+              <input type="text" name="passportIssuedBy" class="form-control"
+                     placeholder="Октябрьское РУВД г. Минска" required maxlength="500" autocomplete="organization">
+              <div class="form-text">Полное наименование органа (как в паспорте)</div>
+            </div>
+          </div>
         </div>
 
-        <!-- Адрес (прописка) -->
         <div class="mb-3">
           <div class="fw-semibold text-uppercase text-muted small mb-2">
             <i class="bi bi-geo-alt me-1"></i>Прописка
@@ -272,7 +302,6 @@
           <div class="form-text text-muted"><i class="bi bi-info-circle me-1"></i>Если поле не применимо — оставьте "-"</div>
         </div>
 
-        <!-- Телефон -->
         <div class="mb-3">
           <div class="fw-semibold text-uppercase text-muted small mb-2">
             <i class="bi bi-telephone me-1"></i>Контакт
@@ -289,7 +318,7 @@
         <div class="mb-1">
           <div class="form-text text-muted">
             <i class="bi bi-camera me-1"></i>
-            Фото паспорта можно добавить после регистрации — откройте карточку клиента.
+            Фото паспорта или фото клиента можно добавить после регистрации — откройте карточку клиента. «Не обязательно».
           </div>
         </div>
 
@@ -303,11 +332,11 @@
   </div>
 </div>
 
-<!-- ===== МОДАЛЬНОЕ ОКНО: РЕДАКТИРОВАТЬ КЛИЕНТА ===== -->
 <div class="modal fade" id="editClientModal" tabindex="-1">
   <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
     <form th:action="@{/clients/edit}" method="post" class="modal-content">
       <input type="hidden" name="id" id="edit-id">
+      <input type="hidden" name="version" id="edit-version">
       <div class="modal-header">
         <h5><i class="bi bi-pencil me-2"></i>Редактирование клиента</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
@@ -381,6 +410,13 @@
                      pattern="\d{2}\.\d{2}\.\d{4}" required>
             </div>
           </div>
+          <div class="row g-2 mt-1">
+            <div class="col-12">
+              <label class="form-label">Кем выдан паспорт *</label>
+              <input type="text" name="passportIssuedBy" id="e-passport-issued-by" class="form-control"
+                     maxlength="500" required autocomplete="organization">
+            </div>
+          </div>
         </div>
 
         <div class="mb-3">
@@ -409,21 +445,22 @@
           </div>
         </div>
 
-        <div class="mb-1">
+        <div class="mb-3">
           <div class="fw-semibold text-uppercase text-muted small mb-2"><i class="bi bi-telephone me-1"></i>Контакт</div>
           <div class="row g-2">
-            <div class="col-md-4">
+            <div class="col-md-5">
               <label class="form-label">Телефон *</label>
               <input type="text" name="phoneNumber" id="e-phone" class="form-control" required maxlength="20">
             </div>
-            <div class="col-md-3">
-              <label class="form-label">Рейтинг (1-10)</label>
-              <input type="number" name="rating" id="e-rating" class="form-control" min="1" max="10">
-            </div>
           </div>
         </div>
-
-        <!-- Фото паспорта редактируется отдельно на странице клиента -->
+        <div class="mb-1">
+          <div class="form-check">
+            <input type="checkbox" name="blacklisted" id="e-blacklisted" class="form-check-input" value="true">
+            <label class="form-check-label" for="e-blacklisted">В чёрном списке</label>
+          </div>
+          <div class="form-text text-muted">Рейтинг считается по отзывам и не редактируется вручную.</div>
+        </div>
 
       </div>
       <div class="modal-footer">
@@ -437,9 +474,10 @@
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-  // ===== Открыть модал редактирования =====
+  
   function prepareEdit(btn) {
     document.getElementById('edit-id').value = btn.getAttribute('data-id');
+    document.getElementById('edit-version').value = btn.getAttribute('data-version') || '';
     document.getElementById('e-surname').value = btn.getAttribute('data-surname');
     document.getElementById('e-name').value = btn.getAttribute('data-name');
     document.getElementById('e-patr').value = btn.getAttribute('data-patr');
@@ -447,6 +485,7 @@
     document.getElementById('e-birth').value = btn.getAttribute('data-birth');
     document.getElementById('e-ident').value = btn.getAttribute('data-ident');
     document.getElementById('e-issue').value = btn.getAttribute('data-issue');
+    document.getElementById('e-passport-issued-by').value = btn.getAttribute('data-passport-issued-by') || '';
     document.getElementById('e-expiry').value = btn.getAttribute('data-expiry');
     document.getElementById('e-street').value = btn.getAttribute('data-street');
     document.getElementById('e-house').value = btn.getAttribute('data-house');
@@ -454,9 +493,10 @@
     document.getElementById('e-building').value = btn.getAttribute('data-building');
     document.getElementById('e-apt').value = btn.getAttribute('data-apt');
     document.getElementById('e-phone').value = btn.getAttribute('data-phone');
-    document.getElementById('e-rating').value = btn.getAttribute('data-rating');
+    const isBlacklisted = btn.getAttribute('data-blacklisted') === 'true';
+    document.getElementById('e-blacklisted').checked = isBlacklisted;
 
-    // Разбиваем "MP 4362782" → серия + номер
+    
     const passport = btn.getAttribute('data-passport') || '';
     const parts = passport.split(' ');
     document.getElementById('e-pass-series').value = parts[0] || '';
@@ -465,7 +505,7 @@
     new bootstrap.Modal(document.getElementById('editClientModal')).show();
   }
 
-  // ===== Автоформат дат: ДД.ММ.ГГГГ =====
+  
   document.querySelectorAll('.date-input').forEach(input => {
     input.addEventListener('input', function () {
       let v = this.value.replace(/\D/g, '');
@@ -476,12 +516,12 @@
     });
   });
 
-  // ===== Верхний регистр для серии паспорта =====
+  
   document.querySelectorAll('.text-uppercase').forEach(input => {
     input.addEventListener('input', function() { this.value = this.value.toUpperCase(); });
   });
 
-  // ===== Динамический предпросмотр номера паспорта =====
+  
   document.querySelectorAll('[name="passportSeries"], [name="passportNum"]').forEach(input => {
     input.addEventListener('input', function() {
       const form = this.closest('form');
@@ -493,23 +533,23 @@
     });
   });
 
-  // ===== ФИО: первая буква каждого слова — заглавная, остальные — строчные =====
-  // Разрешаем русские и английские буквы, пробелы, дефис
+  
+  
   document.querySelectorAll('[name="surname"],[name="name"],[name="patronymic"]').forEach(input => {
     input.addEventListener('input', function () {
-      // Удаляем всё кроме букв (рус/англ), пробелов и дефиса
+      
       let val = this.value.replace(/[^А-Яа-яЁёA-Za-z \-]/g, '');
-      // Капитализируем каждое слово
+      
       val = val.replace(/(?:^|[\s\-])./g, ch => ch.toUpperCase())
                .replace(/(?<=[\s\-])(.+?)(?=[\s\-]|$)/g, w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase());
-      // Фиксируем курсор
+      
       const pos = this.selectionStart;
       this.value = val;
       this.setSelectionRange(pos, pos);
     });
   });
 
-  // ===== Клиентская валидация дат перед отправкой =====
+  
   document.querySelectorAll('#addClientModal form, #editClientModal form').forEach(form => {
     form.addEventListener('submit', function(e) {
       const today = new Date(); today.setHours(0,0,0,0);

@@ -2,6 +2,7 @@
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
 <meta charset="UTF-8">
+<th:block th:replace="~{html/fragments :: viewport-meta}"></th:block>
 <title th:text="${toolName.name} + ' | Склад | STUDIO.CRM'">Раздел | STUDIO.CRM</title>
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
@@ -13,7 +14,6 @@
 
 <div class="main-content">
 
-  <!-- Хлебные крошки + заголовок -->
   <div class="page-header">
     <div class="page-title">
       <nav aria-label="breadcrumb">
@@ -37,12 +37,12 @@
       <h2><i class="bi bi-box-seam me-2 text-primary"></i><span th:text="${toolName.name}">Модель</span></h2>
       <p th:text="${toolName.description != null ? toolName.description : 'Единицы оборудования этой модели'}">Описание</p>
     </div>
-    <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#modalAddUnit">
+    <button th:if="${!#lists.isEmpty(points)}" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#modalAddUnit">
       <i class="bi bi-plus-circle"></i> Добавить экземпляр
     </button>
+    <span th:if="${#lists.isEmpty(points)}" class="text-warning small"><i class="bi bi-exclamation-triangle me-1"></i>Создайте <a th:href="@{/points}">точку</a>, без неё нельзя добавить экземпляр.</span>
   </div>
 
-  <!-- Уведомления -->
   <div th:if="${param.error}" class="alert alert-danger alert-dismissible fade show" role="alert">
     <i class="bi bi-exclamation-triangle-fill me-2"></i>
     <strong>Ошибка!</strong>
@@ -50,8 +50,17 @@
     <span th:if="${param.error[0] == 'price_required'}">Введите корректную цену.</span>
     <span th:if="${param.error[0] == 'base_value_required'}">Введите оценочную стоимость.</span>
     <span th:if="${param.error[0] == 'save_failed'}">Не удалось сохранить. Проверьте данные.</span>
-    <span th:if="${param.error[0] == 'unit_in_use'}">Нельзя удалить: оборудование используется.</span>
+    <span th:if="${param.error[0] == 'unit_in_use'}">Нельзя удалить: оборудование в прокате или в брони.</span>
     <span th:if="${param.error[0] == 'unit_not_found'}">Экземпляр не найден.</span>
+    <span th:if="${param.error[0] == 'point_required'}">Выберите точку (локацию).</span>
+    <span th:if="${param.error[0] == 'point_invalid'}">Указана неверная точка.</span>
+    <span th:if="${param.error[0] == 'owner_name_required'}">Укажите имя владельца и долю (или заполните все строки).</span>
+    <span th:if="${param.error[0] == 'owners_multiple_min'}">При нескольких владельцах нужно минимум 2 с ненулевыми долями.</span>
+    <span th:if="${param.error[0] == 'owners_mismatch'}">Несовпадение списков имён и процентов.</span>
+    <span th:if="${param.error[0] == 'owners_percent_invalid'}">Проверьте проценты: число от 0 до 100 для каждого владельца.</span>
+    <span th:if="${param.error[0] == 'owners_ownership_sum'}">Сумма долей владения должна быть 100% (допуск ±0,02).</span>
+    <span th:if="${param.error[0] == 'owners_profit_sum'}">Сумма долей прибыли от проката должна быть 100% (допуск ±0,02).</span>
+    <span th:if="${param.error[0] == 'stale_data'}">Данные уже изменены другим пользователем. Обновите страницу и повторите действие.</span>
     <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
   </div>
   <div th:if="${param.success}" class="alert alert-success alert-dismissible fade show" role="alert">
@@ -63,23 +72,32 @@
     <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
   </div>
 
-  <!-- Таблица единиц оборудования -->
   <div class="card-table">
     <table class="table table-hover mb-0">
       <thead>
         <tr>
           <th class="ps-4">Серийный №</th>
+          <th>Точка</th>
+          <th>Владельцы</th>
           <th>Состояние</th>
-          <th>Сутки (BYN)</th>
+          <th>1-й день (Br)</th>
           <th>Оценочная стоимость</th>
           <th>Статус</th>
           <th class="text-center">Действия</th>
         </tr>
       </thead>
-      <tbody>
+      <tbody id="units-tbody">
         <tr th:each="u : ${units}">
           <td class="ps-4">
             <code class="text-muted" th:text="${u.serialNumber}">SN-12345</code>
+          </td>
+          <td class="align-middle" style="max-width: 12rem;">
+            <span th:if="${u.point != null}" th:text="${u.point.name}" class="small point-cell-ellipsis" th:title="${u.point.name}">Точка</span>
+            <span th:if="${u.point == null}" class="text-muted small">—</span>
+          </td>
+          <td class="small" style="max-width: 14rem;">
+            <span th:text="${ownersSummaryByUnitId != null and ownersSummaryByUnitId.containsKey(u.id) ? ownersSummaryByUnitId[u.id] : '—'}"
+                  class="point-cell-ellipsis" th:title="${ownersSummaryByUnitId != null and ownersSummaryByUnitId.containsKey(u.id) ? ownersSummaryByUnitId[u.id] : ''}">—</span>
           </td>
           <td>
             <span th:text="${u.condition} + '/10'"
@@ -87,9 +105,9 @@
                   class="fw-semibold">10/10</span>
           </td>
           <td>
-            <strong class="text-primary" th:text="${#numbers.formatDecimal(u.pricePerDay, 0, 'NONE', 2, 'POINT')} + ' BYN'">0 BYN</strong>
+            <strong class="text-primary" th:text="${#numbers.formatDecimal(u.priceFirstDay, 0, 'NONE', 2, 'POINT')} + ' Br'">0 Br</strong>
           </td>
-          <td class="small text-muted" th:text="${#numbers.formatDecimal(u.baseValue, 0, 'NONE', 2, 'POINT')} + ' BYN'">0 BYN</td>
+          <td class="small text-muted" th:text="${#numbers.formatDecimal(u.baseValue, 0, 'NONE', 2, 'POINT')} + ' Br'">0 Br</td>
           <td>
             <span class="badge"
                   th:classappend="${u.status.name() == 'FREE' ? 'bg-success' : (u.status.name() == 'BUSY' ? 'bg-danger' : 'bg-warning text-dark')}"
@@ -97,50 +115,61 @@
           </td>
           <td class="text-center">
             <div class="d-flex justify-content-center gap-1">
-              <!-- Редактировать -->
+              <a th:href="@{/inventory/unit/{id}(id=${u.id})}" class="btn-icon text-primary" title="Информация и история">
+                <i class="bi bi-eye"></i>
+              </a>
               <button type="button" class="btn-icon"
                       th:data-id="${u.id}"
+                      th:data-version="${u.version}"
+                      th:data-point-id="${u.point != null ? u.point.id : firstPointId}"
                       th:data-serial="${u.serialNumber}"
-                      th:data-price-day="${u.pricePerDay}"
+                      th:data-price-first-day="${u.priceFirstDay}"
+                      th:data-price-second-day="${u.priceSecondDay}"
+                      th:data-price-subsequent-days="${u.priceSubsequentDays}"
+                      th:data-price-first-month="${u.priceFirstMonth}"
+                      th:data-price-second-month="${u.priceSecondMonth}"
+                      th:data-price-subsequent-months="${u.priceSubsequentMonths}"
                       th:data-base-value="${u.baseValue}"
                       th:data-condition="${u.condition}"
+                      th:data-owners-json="${ownersJsonByUnitId != null and ownersJsonByUnitId.containsKey(u.id) ? ownersJsonByUnitId[u.id] : '[]'}"
                       onclick="openEditModal(this)"
                       title="Редактировать">
                 <i class="bi bi-pencil"></i>
               </button>
-              <!-- Удалить: только если СВОБОДЕН -->
-              <button th:if="${u.status.name() == 'FREE'}"
+              <button th:if="${u.status.name() == 'FREE' and !equipmentIdsWithBooking.contains(u.id)}"
                       type="button" class="btn-icon text-danger"
                       th:data-id="${u.id}"
+                      th:data-version="${u.version}"
                       th:data-serial="${u.serialNumber}"
                       onclick="openDeleteUnit(this)"
                       title="Удалить">
                 <i class="bi bi-trash"></i>
               </button>
-              <!-- Заблокировано: нельзя удалить пока используется/забронировано -->
-              <span th:if="${u.status.name() != 'FREE'}"
+              <span th:if="${u.status.name() != 'FREE' or equipmentIdsWithBooking.contains(u.id)}"
                     class="btn-icon text-muted"
                     style="cursor: default;"
-                    th:title="${u.status.name() == 'BUSY' ? 'Нельзя удалить: сейчас используется' : 'Нельзя удалить: забронировано'}">
+                    title="Нельзя удалить: в прокате или в брони">
                 <i class="bi bi-lock"></i>
               </span>
             </div>
           </td>
         </tr>
-        <tr th:if="${#lists.isEmpty(units)}">
-          <td colspan="6" class="text-center py-5 text-muted">
+        <tr th:if="${totalUnits == 0}">
+          <td colspan="8" class="text-center py-5 text-muted">
             <i class="bi bi-inbox fs-3 d-block mb-2"></i>
             В этом разделе пока нет экземпляров
           </td>
         </tr>
       </tbody>
     </table>
+    <div id="infinite-sentinel" th:if="${hasMoreUnits}" class="text-center py-3">
+      <span class="infinite-loading text-muted small"><i class="bi bi-arrow-down-circle"></i> Подгрузка при прокрутке...</span>
+    </div>
   </div>
 </div>
 
-<!-- Модальное окно: добавить экземпляр (БЕЗ поля "название" — оно берётся из раздела) -->
 <div class="modal fade" id="modalAddUnit" tabindex="-1">
-  <div class="modal-dialog modal-dialog-centered">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
     <form th:action="@{/inventory/{id}/add(id=${toolName.id})}" method="post" class="modal-content">
       <div class="modal-header">
         <h5>
@@ -153,25 +182,66 @@
       <div class="modal-body">
         <div class="row g-3">
           <div class="col-12">
+            <label class="form-label fw-semibold">Точка (локация) *</label>
+            <select name="pointId" class="form-select" required>
+              <option value="" disabled selected>— выберите точку —</option>
+              <option th:each="p : ${points}" th:value="${p.id}" th:text="${p.name}">Точка</option>
+            </select>
+          </div>
+          <div class="col-12">
             <label class="form-label fw-semibold">Серийный номер *</label>
             <input type="text" name="serialNumber" class="form-control"
                    placeholder="S/N" required autofocus>
           </div>
-          <div class="col-md-6">
-            <label class="form-label fw-semibold">Стоимость/день *</label>
+          <div class="col-12"><p class="text-muted small mb-1">Обязательно: 1-й день и 1-й месяц. Остальное можно не вводить — подставятся по формуле (0,8× и 0,6×).</p></div>
+          <div class="col-md-4">
+            <label class="form-label fw-semibold">1-й день (Br) *</label>
             <div class="input-group">
-              <input type="text" name="pricePerDay" class="form-control"
-                     placeholder="0.00" pattern="[0-9]+(\.[0-9]{1,2})?" step="0.01" min="0.01" required>
-              <span class="input-group-text">BYN</span>
+              <input type="text" name="priceFirstDay" class="form-control" placeholder="0.00" pattern="[0-9]+(\.[0-9]{1,2})?" step="0.01" min="0.01" required>
+              <span class="input-group-text">Br</span>
             </div>
-            <div class="form-text">Час, неделя, месяц рассчитается автоматически</div>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label fw-semibold">2-й день (Br)</label>
+            <div class="input-group">
+              <input type="text" name="priceSecondDay" class="form-control" placeholder="0,8×" pattern="[0-9]+(\.[0-9]{1,2})?" step="0.01">
+              <span class="input-group-text">Br</span>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label fw-semibold">Послед. сутки (Br)</label>
+            <div class="input-group">
+              <input type="text" name="priceSubsequentDays" class="form-control" placeholder="0,6×" pattern="[0-9]+(\.[0-9]{1,2})?" step="0.01">
+              <span class="input-group-text">Br</span>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label fw-semibold">1-й месяц (Br) *</label>
+            <div class="input-group">
+              <input type="text" name="priceFirstMonth" class="form-control" placeholder="0.00" pattern="[0-9]+(\.[0-9]{1,2})?" step="0.01" min="0.01" required>
+              <span class="input-group-text">Br</span>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label fw-semibold">2-й месяц (Br)</label>
+            <div class="input-group">
+              <input type="text" name="priceSecondMonth" class="form-control" placeholder="0,8×" pattern="[0-9]+(\.[0-9]{1,2})?" step="0.01">
+              <span class="input-group-text">Br</span>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label fw-semibold">Послед. месяцы (Br)</label>
+            <div class="input-group">
+              <input type="text" name="priceSubsequentMonths" class="form-control" placeholder="0,6×" pattern="[0-9]+(\.[0-9]{1,2})?" step="0.01">
+              <span class="input-group-text">Br</span>
+            </div>
           </div>
           <div class="col-md-6">
             <label class="form-label fw-semibold">Оценочная стоимость *</label>
             <div class="input-group">
               <input type="text" name="baseValue" class="form-control"
                      placeholder="0.00" pattern="[0-9]+(\.[0-9]{1,2})?" step="0.01" min="0.01" required>
-              <span class="input-group-text">BYN</span>
+              <span class="input-group-text">Br</span>
             </div>
           </div>
           <div class="col-md-6">
@@ -179,6 +249,51 @@
             <input type="number" name="condition" class="form-control"
                    min="1" max="10" value="10">
             <div class="form-text">от 1 (плохое) до 10 (отличное)</div>
+          </div>
+          <div class="col-12 border-top pt-3 mt-1">
+            <label class="form-label fw-semibold">Владелец(и) *</label>
+            <div class="btn-group mb-2" role="group" aria-label="Режим владельцев">
+              <input type="radio" class="btn-check" name="ownerMode" id="add-owner-single" value="single" checked autocomplete="off">
+              <label class="btn btn-outline-secondary btn-sm" for="add-owner-single">Один владелец</label>
+              <input type="radio" class="btn-check" name="ownerMode" id="add-owner-multiple" value="multiple" autocomplete="off">
+              <label class="btn btn-outline-secondary btn-sm" for="add-owner-multiple">Несколько владельцев</label>
+            </div>
+            <div id="addOwnerSingleBlock">
+              <input type="text" name="singleOwnerName" id="add-single-owner-name" class="form-control mb-2" placeholder="ФИО или название владельца">
+              <div class="row g-2">
+                <div class="col-md-6">
+                  <label class="form-label small text-muted mb-0">Владение, %</label>
+                  <div class="input-group input-group-sm"><input type="text" name="singleOwnershipPercent" class="form-control" value="100" placeholder="100"><span class="input-group-text">%</span></div>
+                  <div class="form-text">Доля владения по этой единице.</div>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label small text-muted mb-0">Прибыль от проката, %</label>
+                  <div class="input-group input-group-sm"><input type="text" name="singleProfitPercent" class="form-control" value="100" placeholder="100"><span class="input-group-text">%</span></div>
+                  <div class="form-text">Доля выручки с проката (может отличаться, напр. владение 100%, прибыль 50%).</div>
+                </div>
+              </div>
+            </div>
+            <div id="addOwnerMultipleBlock" style="display:none;">
+              <p class="small text-muted mb-2">Минимум 2 владельца. Сумма «владение» = 100% и отдельно сумма «прибыль» = 100%.</p>
+              <div class="row g-1 small fw-semibold text-muted mb-1 d-none d-md-flex">
+                <div class="col-md-4">Владелец</div>
+                <div class="col-md-4">Владение %</div>
+                <div class="col-md-4">Прибыль %</div>
+              </div>
+              <div id="addOwnerRows">
+                <div class="row g-2 mb-2 align-items-end">
+                  <div class="col-md-4"><input type="text" name="ownerNames" class="form-control form-control-sm" placeholder="Владелец"></div>
+                  <div class="col-md-4"><div class="input-group input-group-sm"><input type="text" name="ownerOwnershipPercents" class="form-control" placeholder="50"><span class="input-group-text">%</span></div></div>
+                  <div class="col-md-4"><div class="input-group input-group-sm"><input type="text" name="ownerProfitPercents" class="form-control" placeholder="50"><span class="input-group-text">%</span></div></div>
+                </div>
+                <div class="row g-2 mb-2 align-items-end">
+                  <div class="col-md-4"><input type="text" name="ownerNames" class="form-control form-control-sm" placeholder="Владелец"></div>
+                  <div class="col-md-4"><div class="input-group input-group-sm"><input type="text" name="ownerOwnershipPercents" class="form-control" placeholder="50"><span class="input-group-text">%</span></div></div>
+                  <div class="col-md-4"><div class="input-group input-group-sm"><input type="text" name="ownerProfitPercents" class="form-control" placeholder="50"><span class="input-group-text">%</span></div></div>
+                </div>
+              </div>
+              <button type="button" class="btn btn-sm btn-outline-primary" id="btnAddOwnerRowAdd">+ Ещё владелец</button>
+            </div>
           </div>
         </div>
       </div>
@@ -191,9 +306,8 @@
   </div>
 </div>
 
-<!-- Модальное окно: редактировать экземпляр -->
 <div class="modal fade" id="modalEditUnit" tabindex="-1">
-  <div class="modal-dialog modal-dialog-centered">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
     <form th:action="@{/inventory/edit}" method="post" class="modal-content">
       <div class="modal-header">
         <h5><i class="bi bi-pencil me-2"></i>Редактировать экземпляр</h5>
@@ -201,18 +315,59 @@
       </div>
       <div class="modal-body">
         <input type="hidden" name="id" id="edit-unit-id">
+        <input type="hidden" name="version" id="edit-unit-version">
         <div class="row g-3">
+          <div class="col-12">
+            <label class="form-label fw-semibold">Точка (локация) *</label>
+            <select name="pointId" id="edit-unit-point" class="form-select" required>
+              <option th:each="p : ${points}" th:value="${p.id}" th:text="${p.name}">Точка</option>
+            </select>
+          </div>
           <div class="col-12">
             <label class="form-label fw-semibold">Серийный номер</label>
             <input type="text" name="serialNumber" id="edit-unit-serial"
                    class="form-control" required>
           </div>
-          <div class="col-md-6">
-            <label class="form-label fw-semibold">Стоимость/день</label>
+          <div class="col-md-4">
+            <label class="form-label fw-semibold">1-й день (Br)</label>
             <div class="input-group">
-              <input type="text" name="pricePerDay" id="edit-unit-price"
-                     class="form-control" pattern="[0-9]+(\.[0-9]{1,2})?" step="0.01" min="0.01" required>
-              <span class="input-group-text">BYN</span>
+              <input type="text" name="priceFirstDay" id="edit-unit-price-first-day" class="form-control" pattern="[0-9]+(\.[0-9]{1,2})?" step="0.01" min="0.01" required>
+              <span class="input-group-text">Br</span>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label fw-semibold">2-й день (Br)</label>
+            <div class="input-group">
+              <input type="text" name="priceSecondDay" id="edit-unit-price-second-day" class="form-control" pattern="[0-9]+(\.[0-9]{1,2})?" step="0.01">
+              <span class="input-group-text">Br</span>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label fw-semibold">Послед. сутки (Br)</label>
+            <div class="input-group">
+              <input type="text" name="priceSubsequentDays" id="edit-unit-price-subsequent-days" class="form-control" pattern="[0-9]+(\.[0-9]{1,2})?" step="0.01">
+              <span class="input-group-text">Br</span>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label fw-semibold">1-й месяц (Br)</label>
+            <div class="input-group">
+              <input type="text" name="priceFirstMonth" id="edit-unit-price-first-month" class="form-control" pattern="[0-9]+(\.[0-9]{1,2})?" step="0.01" min="0.01" required>
+              <span class="input-group-text">Br</span>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label fw-semibold">2-й месяц (Br)</label>
+            <div class="input-group">
+              <input type="text" name="priceSecondMonth" id="edit-unit-price-second-month" class="form-control" pattern="[0-9]+(\.[0-9]{1,2})?" step="0.01">
+              <span class="input-group-text">Br</span>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label fw-semibold">Послед. месяцы (Br)</label>
+            <div class="input-group">
+              <input type="text" name="priceSubsequentMonths" id="edit-unit-price-subsequent-months" class="form-control" pattern="[0-9]+(\.[0-9]{1,2})?" step="0.01">
+              <span class="input-group-text">Br</span>
             </div>
           </div>
           <div class="col-md-6">
@@ -220,13 +375,45 @@
             <div class="input-group">
               <input type="text" name="baseValue" id="edit-unit-base-value"
                      class="form-control" pattern="[0-9]+(\.[0-9]{1,2})?" step="0.01" min="0.01" required>
-              <span class="input-group-text">BYN</span>
+              <span class="input-group-text">Br</span>
             </div>
           </div>
           <div class="col-md-6">
             <label class="form-label fw-semibold">Состояние (1-10)</label>
             <input type="number" name="condition" id="edit-unit-condition"
                    class="form-control" min="1" max="10">
+          </div>
+          <div class="col-12 border-top pt-3 mt-1">
+            <label class="form-label fw-semibold">Владелец(и) *</label>
+            <div class="btn-group mb-2" role="group">
+              <input type="radio" class="btn-check" name="ownerMode" id="edit-owner-single" value="single" checked autocomplete="off">
+              <label class="btn btn-outline-secondary btn-sm" for="edit-owner-single">Один владелец</label>
+              <input type="radio" class="btn-check" name="ownerMode" id="edit-owner-multiple" value="multiple" autocomplete="off">
+              <label class="btn btn-outline-secondary btn-sm" for="edit-owner-multiple">Несколько владельцев</label>
+            </div>
+            <div id="editOwnerSingleBlock">
+              <input type="text" name="singleOwnerName" id="edit-single-owner-name" class="form-control mb-2" placeholder="ФИО или название владельца">
+              <div class="row g-2">
+                <div class="col-md-6">
+                  <label class="form-label small text-muted mb-0">Владение, %</label>
+                  <div class="input-group input-group-sm"><input type="text" name="singleOwnershipPercent" id="edit-single-ownership" class="form-control" value="100"><span class="input-group-text">%</span></div>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label small text-muted mb-0">Прибыль от проката, %</label>
+                  <div class="input-group input-group-sm"><input type="text" name="singleProfitPercent" id="edit-single-profit" class="form-control" value="100"><span class="input-group-text">%</span></div>
+                </div>
+              </div>
+            </div>
+            <div id="editOwnerMultipleBlock" style="display:none;">
+              <p class="small text-muted mb-2">Минимум 2 владельца. Сумма «владение» = 100% и отдельно сумма «прибыль» = 100%.</p>
+              <div class="row g-1 small fw-semibold text-muted mb-1 d-none d-md-flex">
+                <div class="col-md-4">Владелец</div>
+                <div class="col-md-4">Владение %</div>
+                <div class="col-md-4">Прибыль %</div>
+              </div>
+              <div id="editOwnerRows"></div>
+              <button type="button" class="btn btn-sm btn-outline-primary" id="btnAddOwnerRowEdit">+ Ещё владелец</button>
+            </div>
           </div>
         </div>
       </div>
@@ -240,12 +427,11 @@
 </div>
 
 
-<!-- Скрытая форма удаления единицы -->
 <form id="deleteUnitForm" th:action="@{/inventory/delete}" method="post" style="display:none;">
   <input type="hidden" name="id" id="delete-unit-id">
+  <input type="hidden" name="version" id="delete-unit-version">
 </form>
 
-<!-- Модал подтверждения удаления единицы -->
 <div class="modal fade" id="modalDeleteUnit" tabindex="-1">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
@@ -273,21 +459,92 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-<script>
+<script th:inline="javascript">
+  function setEditPrice(id, val) {
+    var v = parseFloat(val);
+    document.getElementById(id).value = (val != null && !isNaN(v)) ? v.toFixed(2) : '';
+  }
+  function escAttr(s) {
+    if (s == null) return '';
+    return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+  }
+  function escCell(s) {
+    if (s == null || s === '') return '—';
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+  function appendOwnerRow(container, name, ownPct, profitPct) {
+    var div = document.createElement('div');
+    div.className = 'row g-2 mb-2 align-items-end';
+    var o = ownPct != null ? String(ownPct) : '';
+    var p = profitPct != null ? String(profitPct) : '';
+    div.innerHTML = '<div class="col-md-4"><input type="text" name="ownerNames" class="form-control form-control-sm" placeholder="Владелец" value="' + escAttr(name || '') + '"></div>' +
+      '<div class="col-md-4"><div class="input-group input-group-sm"><input type="text" name="ownerOwnershipPercents" class="form-control" placeholder="%" value="' + escAttr(o) + '"><span class="input-group-text">%</span></div></div>' +
+      '<div class="col-md-4"><div class="input-group input-group-sm"><input type="text" name="ownerProfitPercents" class="form-control" placeholder="%" value="' + escAttr(p) + '"><span class="input-group-text">%</span></div></div>';
+    container.appendChild(div);
+  }
+  function fillEditOwnersFromJson(jsonStr) {
+    var arr = [];
+    try { arr = JSON.parse(jsonStr || '[]'); } catch (e) { arr = []; }
+    var single = document.getElementById('edit-owner-single');
+    var multi = document.getElementById('edit-owner-multiple');
+    var sBlock = document.getElementById('editOwnerSingleBlock');
+    var mBlock = document.getElementById('editOwnerMultipleBlock');
+    var rows = document.getElementById('editOwnerRows');
+    document.getElementById('edit-single-owner-name').value = '';
+    var eo = document.getElementById('edit-single-ownership');
+    var ep = document.getElementById('edit-single-profit');
+    if (eo) eo.value = '100';
+    if (ep) ep.value = '100';
+    if (rows) rows.innerHTML = '';
+    if (arr.length === 1) {
+      single.checked = true;
+      sBlock.style.display = 'block';
+      mBlock.style.display = 'none';
+      document.getElementById('edit-single-owner-name').value = arr[0].name || '';
+      var leg = arr[0].percent;
+      var own = arr[0].ownership != null ? arr[0].ownership : leg;
+      var prof = arr[0].profit != null ? arr[0].profit : leg;
+      if (eo) eo.value = own != null ? String(own) : '100';
+      if (ep) ep.value = prof != null ? String(prof) : '100';
+    } else if (arr.length >= 2) {
+      multi.checked = true;
+      sBlock.style.display = 'none';
+      mBlock.style.display = 'block';
+      for (var i = 0; i < arr.length; i++) {
+        var legM = arr[i].percent;
+        var ownM = arr[i].ownership != null ? arr[i].ownership : legM;
+        var profM = arr[i].profit != null ? arr[i].profit : legM;
+        appendOwnerRow(rows, arr[i].name, ownM, profM);
+      }
+    } else {
+      single.checked = true;
+      sBlock.style.display = 'block';
+      mBlock.style.display = 'none';
+    }
+  }
   function openEditModal(btn) {
     document.getElementById('edit-unit-id').value = btn.getAttribute('data-id');
+    document.getElementById('edit-unit-version').value = btn.getAttribute('data-version') || '';
+    var pid = btn.getAttribute('data-point-id');
+    var ptSel = document.getElementById('edit-unit-point');
+    if (ptSel && pid) ptSel.value = pid;
     document.getElementById('edit-unit-serial').value = btn.getAttribute('data-serial');
-    // Форматируем цену с 2 знаками после запятой
-    const priceDay = parseFloat(btn.getAttribute('data-price-day'));
-    document.getElementById('edit-unit-price').value = isNaN(priceDay) ? '' : priceDay.toFixed(2);
-    const baseValue = parseFloat(btn.getAttribute('data-base-value'));
+    setEditPrice('edit-unit-price-first-day', btn.getAttribute('data-price-first-day'));
+    setEditPrice('edit-unit-price-second-day', btn.getAttribute('data-price-second-day'));
+    setEditPrice('edit-unit-price-subsequent-days', btn.getAttribute('data-price-subsequent-days'));
+    setEditPrice('edit-unit-price-first-month', btn.getAttribute('data-price-first-month'));
+    setEditPrice('edit-unit-price-second-month', btn.getAttribute('data-price-second-month'));
+    setEditPrice('edit-unit-price-subsequent-months', btn.getAttribute('data-price-subsequent-months'));
+    var baseValue = parseFloat(btn.getAttribute('data-base-value'));
     document.getElementById('edit-unit-base-value').value = isNaN(baseValue) ? '' : baseValue.toFixed(2);
     document.getElementById('edit-unit-condition').value = btn.getAttribute('data-condition');
+    fillEditOwnersFromJson(btn.getAttribute('data-owners-json'));
     new bootstrap.Modal(document.getElementById('modalEditUnit')).show();
   }
 
   function openDeleteUnit(btn) {
     document.getElementById('delete-unit-id').value = btn.getAttribute('data-id');
+    document.getElementById('delete-unit-version').value = btn.getAttribute('data-version') || '';
     document.getElementById('del-unit-serial').textContent = btn.getAttribute('data-serial');
     new bootstrap.Modal(document.getElementById('modalDeleteUnit')).show();
   }
@@ -295,6 +552,119 @@
   function confirmDeleteUnit() {
     document.getElementById('deleteUnitForm').submit();
   }
+
+  (function() {
+    function syncAddOwnerMode() {
+      var m = document.querySelector('#modalAddUnit input[name="ownerMode"]:checked');
+      if (!m) return;
+      var single = m.value === 'single';
+      document.getElementById('addOwnerSingleBlock').style.display = single ? 'block' : 'none';
+      document.getElementById('addOwnerMultipleBlock').style.display = single ? 'none' : 'block';
+    }
+    document.querySelectorAll('#modalAddUnit input[name="ownerMode"]').forEach(function(r) {
+      r.addEventListener('change', syncAddOwnerMode);
+    });
+    syncAddOwnerMode();
+    var btnAddA = document.getElementById('btnAddOwnerRowAdd');
+    if (btnAddA) btnAddA.addEventListener('click', function() {
+      appendOwnerRow(document.getElementById('addOwnerRows'), '', '', '');
+    });
+    document.querySelectorAll('#modalEditUnit input[name="ownerMode"]').forEach(function(r) {
+      r.addEventListener('change', function() {
+        var single = document.querySelector('#modalEditUnit input[name="ownerMode"]:checked').value === 'single';
+        document.getElementById('editOwnerSingleBlock').style.display = single ? 'block' : 'none';
+        document.getElementById('editOwnerMultipleBlock').style.display = single ? 'none' : 'block';
+      });
+    });
+    var btnAddE = document.getElementById('btnAddOwnerRowEdit');
+    if (btnAddE) btnAddE.addEventListener('click', function() {
+      appendOwnerRow(document.getElementById('editOwnerRows'), '', '', '');
+    });
+  })();
+
+  (function() {
+    var toolNameId = /*[[${toolNameId}]]*/ 0;
+    var hasMore = /*[[${hasMoreUnits}]]*/ false;
+    if (!toolNameId || !hasMore) return;
+    var nextPage = 1;
+    var pageSize = 25;
+    var loading = false;
+    var sentinel = document.getElementById('infinite-sentinel');
+    if (!sentinel) return;
+
+    function fmtNum(v) {
+      if (v == null) return '';
+      var n = parseFloat(v);
+      return isNaN(n) ? '' : n.toFixed(2);
+    }
+    function statusClass(s) {
+      if (s === 'FREE') return 'bg-success';
+      if (s === 'BUSY') return 'bg-danger';
+      return 'bg-warning text-dark';
+    }
+    function statusLabel(s) {
+      if (s === 'FREE') return 'Свободно';
+      if (s === 'BUSY') return 'Занят';
+      return 'Забронирован';
+    }
+    function buildRow(u) {
+      var canDelete = u.status === 'FREE' && !u.inBooking;
+      var fp = /*[[${firstPointId}]]*/ null;
+      var oj = u.ownersJson != null ? String(u.ownersJson) : '[]';
+      var actions = '<div class="d-flex justify-content-center gap-1">' +
+        '<a href="/inventory/unit/' + u.id + '" class="btn-icon text-primary" title="Информация и история"><i class="bi bi-eye"></i></a>' +
+        '<button type="button" class="btn-icon" data-id="' + u.id + '" data-point-id="' + (u.pointId != null ? u.pointId : (fp != null ? fp : '')) + '" data-serial="' + (u.serialNumber || '').replace(/"/g, '&quot;') + '"' +
+        ' data-price-first-day="' + fmtNum(u.priceFirstDay) + '" data-price-second-day="' + fmtNum(u.priceSecondDay) + '"' +
+        ' data-price-subsequent-days="' + fmtNum(u.priceSubsequentDays) + '" data-price-first-month="' + fmtNum(u.priceFirstMonth) + '"' +
+        ' data-price-second-month="' + fmtNum(u.priceSecondMonth) + '" data-price-subsequent-months="' + fmtNum(u.priceSubsequentMonths) + '"' +
+        ' data-base-value="' + fmtNum(u.baseValue) + '" data-condition="' + (u.condition || '') + '"' +
+        ' data-owners-json="' + oj.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;') + '"' +
+        ' onclick="openEditModal(this)" title="Редактировать"><i class="bi bi-pencil"></i></button>';
+      if (canDelete) {
+        actions += '<button type="button" class="btn-icon text-danger" data-id="' + u.id + '" data-version="' + (u.version != null ? u.version : '') + '" data-serial="' + (u.serialNumber || '') + '" onclick="openDeleteUnit(this)" title="Удалить"><i class="bi bi-trash"></i></button>';
+      } else {
+        actions += '<span class="btn-icon text-muted" style="cursor:default;" title="Нельзя удалить: в прокате или в брони"><i class="bi bi-lock"></i></span>';
+      }
+      actions += '</div>';
+      var cond = u.condition != null ? u.condition : 10;
+      var condCl = cond >= 8 ? 'text-success' : (cond >= 5 ? 'text-warning' : 'text-danger');
+      var pn = u.pointName != null ? u.pointName : '—';
+      return '<tr><td class="ps-4"><code class="text-muted">' + (u.serialNumber || '') + '</code></td>' +
+        '<td class="align-middle" style="max-width:12rem;"><span class="small point-cell-ellipsis" title="' + (u.pointName != null ? u.pointName.replace(/"/g, '&quot;') : '') + '">' + pn + '</span></td>' +
+        '<td class="small">' + escCell(u.ownersSummary) + '</td>' +
+        '<td><span class="fw-semibold ' + condCl + '">' + cond + '/10</span></td>' +
+        '<td><strong class="text-primary">' + fmtNum(u.priceFirstDay) + ' Br</strong></td>' +
+        '<td class="small text-muted">' + fmtNum(u.baseValue) + ' Br</td>' +
+        '<td><span class="badge ' + statusClass(u.status) + '">' + statusLabel(u.status) + '</span></td>' +
+        '<td class="text-center">' + actions + '</td></tr>';
+    }
+    function loadMore() {
+      if (loading) return;
+      loading = true;
+      sentinel.querySelector('.infinite-loading').innerHTML = '<i class="bi bi-hourglass-split"></i> Загрузка...';
+      fetch('/inventory/' + toolNameId + '/units/page?page=' + nextPage + '&size=' + pageSize)
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          var tbody = document.getElementById('units-tbody');
+          (data.content || []).forEach(function(u) {
+            tbody.insertAdjacentHTML('beforeend', buildRow(u));
+          });
+          nextPage++;
+          hasMore = data.hasNext === true;
+          if (!hasMore && sentinel.parentNode) sentinel.parentNode.removeChild(sentinel);
+          else sentinel.querySelector('.infinite-loading').innerHTML = '<i class="bi bi-arrow-down-circle"></i> Подгрузка при прокрутке...';
+        })
+        .catch(function() {
+          sentinel.querySelector('.infinite-loading').innerHTML = '<span class="text-danger">Ошибка загрузки</span>';
+          hasMore = false;
+        })
+        .finally(function() { loading = false; });
+    }
+    var observer = new IntersectionObserver(function(entries) {
+      if (entries[0].isIntersecting && hasMore) loadMore();
+    }, { rootMargin: '100px', threshold: 0 });
+    observer.observe(sentinel);
+  })();
 </script>
 </body>
 </html>

@@ -2,6 +2,7 @@
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
 <meta charset="UTF-8">
+<th:block th:replace="~{html/fragments :: viewport-meta}"></th:block>
 <title>Точки выдачи | STUDIO.CRM</title>
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
@@ -26,6 +27,7 @@
 		<i class="bi bi-exclamation-triangle-fill me-2"></i><strong>Ошибка: </strong>
 		<span th:if="${param.error[0] == 'name_required'}">Укажите название точки.</span>
 		<span th:if="${param.error[0] == 'not_found'}">Точка не найдена.</span>
+		<span th:if="${param.error[0] == 'stale_data'}">Данные уже изменены другим пользователем. Обновите страницу и повторите действие.</span>
 		<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
 	</div>
 	<div th:if="${param.success}" class="alert alert-success alert-dismissible fade show" role="alert">
@@ -45,18 +47,19 @@
 					<th class="text-end pe-4">Действия</th>
 				</tr>
 			</thead>
-			<tbody>
+			<tbody id="tbody-points">
 				<tr th:each="p : ${points}">
 					<td class="ps-4"><strong th:text="${p.name}">—</strong></td>
 					<td><span class="text-muted" th:text="${p.address != null ? p.address : '—'}">—</span></td>
 					<td class="text-end pe-4">
 						<button type="button" class="btn btn-sm btn-outline-primary me-1"
-								th:data-id="${p.id}" th:data-name="${p.name}" th:data-address="${p.address != null ? p.address : ''}"
+								th:data-id="${p.id}" th:data-version="${p.version}" th:data-name="${p.name}" th:data-address="${p.address != null ? p.address : ''}"
 								onclick="fillEdit(this)" data-bs-toggle="modal" data-bs-target="#editModal">
 							<i class="bi bi-pencil"></i> Изменить
 						</button>
 						<form th:action="@{/points/delete}" method="post" class="d-inline" onsubmit="return confirm('Удалить точку? Сотрудники и старые прокаты останутся без привязки.');">
 							<input type="hidden" name="id" th:value="${p.id}">
+							<input type="hidden" name="version" th:value="${p.version}">
 							<button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
 						</form>
 					</td>
@@ -69,7 +72,6 @@
 	</div>
 </div>
 
-<!-- Добавить точку -->
 <div class="modal fade" id="addModal" tabindex="-1">
 	<div class="modal-dialog modal-dialog-centered">
 		<form th:action="@{/points/add}" method="post" class="modal-content">
@@ -94,11 +96,11 @@
 	</div>
 </div>
 
-<!-- Редактировать точку -->
 <div class="modal fade" id="editModal" tabindex="-1">
 	<div class="modal-dialog modal-dialog-centered">
 		<form th:action="@{/points/edit}" method="post" class="modal-content">
 			<input type="hidden" name="id" id="edit-id">
+			<input type="hidden" name="version" id="edit-version">
 			<div class="modal-header">
 				<h5><i class="bi bi-pencil me-2"></i>Изменить точку</h5>
 				<button type="button" class="btn-close" data-bs-dismiss="modal"></button>
@@ -124,6 +126,7 @@
 <script>
 function fillEdit(btn) {
 	document.getElementById('edit-id').value = btn.dataset.id;
+	document.getElementById('edit-version').value = btn.dataset.version || '';
 	document.getElementById('edit-name').value = btn.dataset.name || '';
 	document.getElementById('edit-address').value = btn.dataset.address || '';
 }
