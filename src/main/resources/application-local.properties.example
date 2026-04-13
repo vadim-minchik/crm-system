@@ -1,8 +1,34 @@
-spring.datasource.url=jdbc:postgresql://aws-1-eu-north-1.pooler.supabase.com:5432/postgres?sslmode=require&prepareThreshold=0
-spring.datasource.username=postgres.PROJECT_REF
-spring.datasource.password=
+# Скопируйте в application-local.properties (этот файл в Git не добавляйте).
+#
+# ========== PostgreSQL на вашем ПК (внутренняя / локальная БД) ==========
+# Если Postgres уже запущен на этой машине с БД crm_system — часто ничего не нужно:
+# в application.properties уже стоит localhost:5432. Задайте только пароль:
+#
+#   PowerShell:  $env:LOCAL_DB_PASSWORD = "ваш_пароль"
+#   или здесь:
+# spring.datasource.password=ваш_пароль
+#
+# Другой порт на этой же машине:
+# spring.datasource.url=jdbc:postgresql://127.0.0.1:5433/crm_system
+#
+# Другой компьютер в локальной сети:
+# spring.datasource.url=jdbc:postgresql://192.168.0.10:5432/crm_system
+# spring.datasource.username=postgres
+# spring.datasource.password=
+#
+# Приложение в Docker, Postgres на хосте (Windows/Mac):
+# spring.datasource.url=jdbc:postgresql://host.docker.internal:5432/crm_system
+#
+# То же через переменные окружения (удобно для IDE и CI на своём runner):
+# SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5432/crm_system
+# SPRING_DATASOURCE_USERNAME=postgres
+# SPRING_DATASOURCE_PASSWORD=...
 
-app.storage.type=supabase
-supabase.storage.url=https://PROJECT_REF.supabase.co
-supabase.storage.service-role-key=${SUPABASE_SERVICE_ROLE_KEY:}
-supabase.storage.bucket=CRM
+# ========== Supabase (облако) — раскомментируйте при необходимости ==========
+# spring.datasource.url=jdbc:postgresql://aws-1-eu-north-1.pooler.supabase.com:5432/postgres?sslmode=require&prepareThreshold=0
+# spring.datasource.username=postgres.PROJECT_REF
+# spring.datasource.password=
+# app.storage.type=supabase
+# supabase.storage.url=https://PROJECT_REF.supabase.co
+# supabase.storage.service-role-key=${SUPABASE_SERVICE_ROLE_KEY:}
+# supabase.storage.bucket=CRM
