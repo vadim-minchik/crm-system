@@ -1,3 +1,4 @@
+# Render: веб-сервис + managed Postgres. Секреты Supabase и bootstrap — через Dashboard (Environment), не в этом файле.
 services:
   - type: web
     name: crm-system
@@ -10,32 +11,18 @@ services:
       - key: SPRING_PROFILES_ACTIVE
         value: prod
       - key: DB_URL
-        value: jdbc:postgresql://aws-1-eu-west-2.pooler.supabase.com:5432/postgres?sslmode=require&prepareThreshold=0
+        fromDatabase:
+          name: crm-system-db
+          property: connectionString
       - key: DB_USER
-        value: postgres.idoogxynhgasitjkfell
+        fromDatabase:
+          name: crm-system-db
+          property: user
       - key: DB_PASSWORD
-        value: lS2w5IqVli0GpoUS
-      - key: APP_STORAGE_TYPE
-        value: supabase
-      - key: SUPABASE_STORAGE_URL
-        value: https://idoogxynhgasitjkfell.supabase.co
-      - key: SUPABASE_SERVICE_ROLE_KEY
-        value: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imlkb29neHluaGdhc2l0amtmZWxsIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NzQ0OTcyMywiZXhwIjoyMDkzMDI1NzIzfQ.L05fS8lJNo5MNl_HNdg2ZsQ8blipv5gtyUbxXGBxtqg
-      - key: SUPABASE_BUCKET
-        value: crm-uploads
-      - key: BOOTSTRAP_SUPER_ADMIN_ENABLED
-        value: "true"
-      - key: BOOTSTRAP_SUPER_ADMIN_NAME
-        value: Вадим
-      - key: BOOTSTRAP_SUPER_ADMIN_SURNAME
-        value: Минчик
-      - key: BOOTSTRAP_SUPER_ADMIN_PATRONYMIC
-        value: Андреевич
-      - key: BOOTSTRAP_SUPER_ADMIN_LOGIN
-        value: ztryuiorust
-      - key: BOOTSTRAP_SUPER_ADMIN_PASSWORD
-        value: "!22233loim"
-      - key: BOOTSTRAP_SUPER_ADMIN_EMAIL
-        value: vadim.minchik90@gmail.com
-      - key: BOOTSTRAP_SUPER_ADMIN_PHONE
-        value: "+375291573109"
+        fromDatabase:
+          name: crm-system-db
+          property: password
+
+databases:
+  - name: crm-system-db
+    plan: free

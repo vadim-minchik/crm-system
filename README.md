@@ -18,6 +18,39 @@ docker compose up --build
 
 Сайт: **http://localhost:8080** · пароль БД в контейнере: `docker-compose.yml` (`POSTGRES_PASSWORD` = `DB_PASSWORD`).
 
+## Деплой (Render)
+
+Для этого репозитория добавлен `render.yaml` (Blueprint). Коротко:
+
+1. Push изменений в GitHub.
+2. В Render: **New +** → **Blueprint** → выбрать репозиторий.
+3. Render автоматически создаст:
+   - web-service `crm-system` (из `Dockerfile`);
+   - PostgreSQL `crm-system-db`.
+4. После первого деплоя открыть URL сервиса.
+
+> Почему не Vercel: проект — это stateful Spring Boot + PostgreSQL backend, а не serverless/frontend приложение.
+
+### Прод-настройка перед первым запуском
+
+`render.yaml` уже включает профиль `SPRING_PROFILES_ACTIVE=prod`.
+
+Перед первым прод-запуском в Render добавь Environment Variables:
+
+- `BOOTSTRAP_SUPER_ADMIN_ENABLED=true`
+- `BOOTSTRAP_SUPER_ADMIN_LOGIN=<твой_логин>`
+- `BOOTSTRAP_SUPER_ADMIN_PASSWORD=<сложный_пароль>`
+- `BOOTSTRAP_SUPER_ADMIN_EMAIL=<твой_email>`
+- `BOOTSTRAP_SUPER_ADMIN_PHONE=<твой_телефон>`
+
+После первого входа и создания учётки:
+
+1. Смени пароль в интерфейсе.
+2. Поставь `BOOTSTRAP_SUPER_ADMIN_ENABLED=false`.
+3. Сделай redeploy.
+
+В `prod` профиле уже включены: secure-cookie, отключён SQL init и подробные stacktrace в ответах.
+
 ## Запуск локально (JDK + PostgreSQL)
 
 1. **JDK 21**, **PostgreSQL**, база `crm_system`.

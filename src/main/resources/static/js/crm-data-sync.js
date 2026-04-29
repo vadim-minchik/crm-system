@@ -2,6 +2,70 @@
 	var SCROLL_KEY = 'crm-reload-scroll';
 	var INTERVAL_MS = 40000;
 
+	function isScrollable(el) {
+		if (!el) return false;
+		return (
+			(el.scrollHeight || 0) > (el.clientHeight || 0) + 2 ||
+			(el.scrollWidth || 0) > (el.clientWidth || 0) + 2
+		);
+	}
+
+	function buildSelector(el) {
+		if (!el || el.nodeType !== 1) return null;
+		if (el.id) return '#' + CSS.escape(el.id);
+
+		var parts = [];
+		var cur = el;
+		while (cur && cur.nodeType === 1 && cur !== document.body) {
+			var tag = (cur.tagName || '').toLowerCase();
+			if (!tag) return null;
+
+			var parent = cur.parentElement;
+			if (!parent) return null;
+
+			var idx = 1;
+			var sib = cur;
+			while ((sib = sib.previousElementSibling)) {
+				if ((sib.tagName || '').toLowerCase() === tag) idx++;
+			}
+			parts.unshift(tag + ':nth-of-type(' + idx + ')');
+			cur = parent;
+		}
+
+		return parts.length ? 'body > ' + parts.join(' > ') : null;
+	}
+
+	function collectInnerScrollState() {
+		var out = [];
+		var all = document.querySelectorAll('*');
+		for (var i = 0; i < all.length; i++) {
+			var el = all[i];
+			if (!isScrollable(el)) continue;
+			if ((el.scrollTop || 0) === 0 && (el.scrollLeft || 0) === 0) continue;
+
+			var sel = buildSelector(el);
+			if (!sel) continue;
+
+			out.push({
+				selector: sel,
+				top: el.scrollTop || 0,
+				left: el.scrollLeft || 0
+			});
+		}
+		return out;
+	}
+
+	function restoreInnerScrollState(items) {
+		if (!Array.isArray(items) || !items.length) return;
+		items.forEach(function (item) {
+			if (!item || !item.selector) return;
+			var el = document.querySelector(item.selector);
+			if (!el) return;
+			if (typeof item.top === 'number') el.scrollTop = item.top;
+			if (typeof item.left === 'number') el.scrollLeft = item.left;
+		});
+	}
+
 	try {
 		var raw = sessionStorage.getItem(SCROLL_KEY);
 		if (raw) {
@@ -10,11 +74,14 @@
 			var here = location.pathname + location.search;
 			if (o && o.path === here && typeof o.y === 'number') {
 				window.addEventListener('load', function () {
-					requestAnimationFrame(function () {
-						requestAnimationFrame(function () {
-							window.scrollTo(o.x || 0, o.y || 0);
-						});
-					});
+					var tries = 0;
+					var maxTries = 20;
+					var t = setInterval(function () {
+						tries++;
+						window.scrollTo(o.x || 0, o.y || 0);
+						restoreInnerScrollState(o.inner);
+						if (tries >= maxTries) clearInterval(t);
+					}, 100);
 				});
 			}
 		}
@@ -98,7 +165,8 @@
 					JSON.stringify({
 						path: location.pathname + location.search,
 						x: window.scrollX || 0,
-						y: window.scrollY || 0
+						y: window.scrollY || 0,
+						inner: collectInnerScrollState()
 					}));
 		} catch (e2) {
 		}

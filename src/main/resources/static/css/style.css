@@ -917,6 +917,10 @@ textarea.form-control {
 		line-height: 1.25;
 	}
 
+	.page-title p {
+		font-size: 0.82rem;
+	}
+
 	.logo h3 {
 		font-size: 1.25rem;
 	}
@@ -924,6 +928,13 @@ textarea.form-control {
 	.nav-link {
 		min-height: 48px;
 		padding: 12px 14px;
+	}
+
+	.btn,
+	.btn-sm,
+	.form-control,
+	.form-select {
+		min-height: 42px;
 	}
 
 	.nav-link:hover:not(.active) {
@@ -934,6 +945,13 @@ textarea.form-control {
 	.table tbody td {
 		padding: 10px 12px;
 		font-size: 0.8125rem;
+	}
+
+	.table-responsive,
+	.table-responsive-clients,
+	.table-responsive-rentals {
+		border-radius: var(--radius-md);
+		-webkit-overflow-scrolling: touch;
 	}
 
 	.card-table {
@@ -962,6 +980,132 @@ textarea.form-control {
 	.alert {
 		flex-wrap: wrap;
 		font-size: 0.9rem;
+	}
+}
+
+@media (max-width: 767.98px) {
+	.main-content {
+		padding: 12px;
+		padding-top: calc(56px + env(safe-area-inset-top, 0) + 12px);
+	}
+
+	.page-header {
+		margin-bottom: 14px;
+		gap: 10px;
+	}
+
+	.page-title h2 {
+		font-size: 1.2rem;
+	}
+
+	.card-table {
+		border-radius: 10px;
+	}
+
+	.table thead th,
+	.table tbody td {
+		padding: 9px 10px;
+		font-size: 0.78rem;
+	}
+
+	.table-clients .th-actions,
+	.table-clients .td-actions,
+	.table-rentals .th-actions,
+	.table-rentals .td-actions {
+		min-width: 120px;
+	}
+
+	.btn {
+		padding: 10px 14px;
+		font-size: 0.84rem;
+	}
+
+	.btn-icon {
+		width: 38px;
+		height: 38px;
+	}
+
+	.modal-dialog {
+		margin: 8px;
+	}
+
+	.modal-content {
+		border-radius: 12px;
+	}
+
+	.modal-header {
+		padding: 14px 14px;
+	}
+
+	.modal-header h5 {
+		font-size: 1.03rem;
+	}
+
+	.modal-body {
+		padding: 14px;
+	}
+
+	.modal-footer {
+		padding: 12px 14px;
+	}
+}
+
+@media (max-width: 575.98px) {
+	.mobile-app-bar {
+		padding-left: max(10px, env(safe-area-inset-left, 0px));
+		padding-right: max(10px, env(safe-area-inset-right, 0px));
+	}
+
+	.mobile-menu-btn {
+		width: 42px;
+		height: 42px;
+	}
+
+	.mobile-app-title {
+		font-size: 0.95rem;
+	}
+
+	.sidebar {
+		width: min(320px, 92vw);
+		padding-left: 12px;
+		padding-right: 12px;
+	}
+
+	.nav-link {
+		padding: 11px 12px;
+		border-radius: 10px;
+	}
+
+	.user-info {
+		padding: 10px;
+	}
+
+	.user-avatar {
+		width: 36px;
+		height: 36px;
+		font-size: 1.05rem;
+		margin-right: 8px;
+	}
+
+	.page-title p {
+		font-size: 0.78rem;
+	}
+
+	.table thead th,
+	.table tbody td {
+		padding: 8px 9px;
+		font-size: 0.74rem;
+	}
+
+	.btn,
+	.btn-sm {
+		min-height: 40px;
+		padding: 9px 12px;
+	}
+
+	.form-control,
+	.form-select {
+		font-size: 16px;
 	}
 }
 
