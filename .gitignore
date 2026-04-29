@@ -1,7 +1,6 @@
 HELP.md
 # Локальные секреты (пароль БД и т.п.) — не коммитить
 src/main/resources/application-local.properties
-src/main/resources/application-prod.properties
 
 # Копии классов вне target (IDE)
 bin/
