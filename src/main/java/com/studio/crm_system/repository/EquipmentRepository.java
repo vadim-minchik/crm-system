@@ -29,6 +29,7 @@ public interface EquipmentRepository extends JpaRepository<Equipment, Long> {
 
 	@EntityGraph("Equipment.withOwners")
 	Optional<Equipment> findByIdAndIsDeletedFalse(Long id);
+	List<Equipment> findByIsDeletedFalseAndPointIsNull();
 
 	boolean existsBySerialNumberAndIsDeletedFalse(String serialNumber);
 	boolean existsBySerialNumberAndIsDeletedFalseAndIdNot(String serialNumber, Long id);

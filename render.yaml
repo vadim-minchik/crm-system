@@ -1,0 +1,27 @@
+services:
+  - type: web
+    name: crm-system
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: free
+    healthCheckPath: /
+    autoDeploy: true
+    envVars:
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod
+      - key: DB_URL
+        fromDatabase:
+          name: crm-system-db
+          property: connectionString
+      - key: DB_USER
+        fromDatabase:
+          name: crm-system-db
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: crm-system-db
+          property: password
+
+databases:
+  - name: crm-system-db
+    plan: free
