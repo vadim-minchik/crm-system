@@ -404,7 +404,7 @@
             </div>
             <div id="rental-equipment-ids" class="equipment-tags-row mb-2 d-flex flex-wrap gap-2 align-items-center"></div>
             <div id="rental-equipment-hidden"></div>
-            <div id="equipment-search-placeholder" class="form-text text-muted mt-1">Добавляйте инструменты из списка (свободные — кликабельны). Итог можно задать вручную ниже или оставить пустым для авторасчёта.</div>
+            <div id="equipment-search-placeholder" class="form-text text-muted mt-1">Добавляйте инструменты из списка (свободные — кликабельны). Даты и список задают сумму по тарифам; итог можно подправить вручную.</div>
             <div id="equipment-list-source" style="display: none;" aria-hidden="true">
               <div th:each="e : ${equipmentOptions}" class="equipment-option list-group-item list-group-item-action py-2"
                    th:data-id="${e.id}"
@@ -423,10 +423,10 @@
           <div class="col-12">
             <label class="form-label fw-semibold">Итог (Br)</label>
             <div class="input-group input-group-lg">
-              <input type="text" name="totalAmount" id="rental-total-amount" class="form-control" placeholder="Необязательно — рассчитается по тарифам" pattern="[0-9]+([.,][0-9]{1,2})?" inputmode="decimal" autocomplete="off">
+              <input type="text" name="totalAmount" id="rental-total-amount" class="form-control" placeholder="По тарифам или вручную" pattern="[0-9]+([.,][0-9]{1,2})?" inputmode="decimal" autocomplete="off">
               <span class="input-group-text">Br</span>
             </div>
-            <div class="form-text text-muted">Сумма по прокату (по тарифам или вручную). Ниже можно добавить доп. услуги и доставку — итог пересчитается автоматически.</div>
+            <div class="form-text text-muted">По умолчанию: <strong>тарифы выбранных единиц</strong> + доп. услуги + доставка. Поле «Итог» можно изменить вручную — при смене допов/доставки сумма пересчитается от вашей суммы по прокату (на сервер уходит полный итог).</div>
           </div>
           <div class="col-md-6">
             <label class="form-label">Доп. услуги (Br)</label>
@@ -743,6 +743,8 @@
   if (!source || !searchInput || !container || !hiddenContainer || !dropdown) return;
 
   var selected = [];
+  /** Сумма «только прокат» без допов и доставки; при ручном итоге = введённый итог − допы − доставка. */
+  var rentalBaseAmount = 0;
 
   function render() {
     hiddenContainer.innerHTML = '';
@@ -772,45 +774,52 @@
     updateRentalTotalDisplay();
   }
 
-  function updateRentalTotalDisplay() {
-    var totalInput = document.getElementById('rental-total-amount');
+  /** Календарные дни между датами (как ChronoUnit.DAYS между localDate в Java). */
+  function rentalCalendarFullDaysBetween(dateFromStr, dateToStr) {
+    var p0 = dateFromStr.split('T')[0].split('-');
+    var p1 = dateToStr.split('T')[0].split('-');
+    var a = new Date(+p0[0], +p0[1] - 1, +p0[2]);
+    var b = new Date(+p1[0], +p1[1] - 1, +p1[2]);
+    return Math.round((b - a) / (1000 * 60 * 60 * 24));
+  }
+
+  /** Сумма по тарифам выбранных единиц; -1 если даты не заданы или интервал некорректен. */
+  function computeEquipmentSubtotal() {
     var dateFromInput = document.getElementById('rental-date-from');
     var dateToInput = document.getElementById('rental-date-to');
-    if (!totalInput || selected.length === 0) {
-      if (totalInput) totalInput.value = '';
-      rentalBaseAmount = 0;
-      updateRentalTotalFromExtras();
-      return;
-    }
-    if (!dateFromInput || !dateToInput || !dateFromInput.value || !dateToInput.value) {
-      totalInput.value = '';
-      rentalBaseAmount = 0;
-      updateRentalTotalFromExtras();
-      return;
-    }
-    var from = new Date(dateFromInput.value);
-    var to = new Date(dateToInput.value);
-    if (to <= from) {
-      totalInput.value = '';
-      rentalBaseAmount = 0;
-      updateRentalTotalFromExtras();
-      return;
-    }
-    var fullDays = Math.floor((to - from) / (1000 * 60 * 60 * 24));
-    if (fullDays < 1) fullDays = 0;
+    if (!dateFromInput || !dateToInput || !dateFromInput.value || !dateToInput.value) return -1;
+    var fromMs = new Date(dateFromInput.value).getTime();
+    var toMs = new Date(dateToInput.value).getTime();
+    if (!(toMs > fromMs)) return -1;
+    var fullDays = rentalCalendarFullDaysBetween(dateFromInput.value, dateToInput.value);
+    if (fullDays <= 0) return 0;
     var sum = 0;
     selected.forEach(function(item) {
       var d1 = item.priceFirstDay || 0, d2 = item.priceSecondDay || 0, dSub = item.priceSubsequentDays || 0;
-      if (fullDays === 0) return;
       if (fullDays === 1) sum += d1;
       else if (fullDays === 2) sum += d1 + d2;
       else sum += d1 + d2 + (fullDays - 2) * dSub;
     });
-    rentalBaseAmount = Math.round(sum * 100) / 100;
-    updateRentalTotalFromExtras();
+    return Math.round(sum * 100) / 100;
   }
 
-  var rentalBaseAmount = 0;
+  function updateRentalTotalDisplay() {
+    var totalInput = document.getElementById('rental-total-amount');
+    if (!totalInput) return;
+    if (selected.length === 0) {
+      totalInput.value = '';
+      rentalBaseAmount = 0;
+      return;
+    }
+    var subs = computeEquipmentSubtotal();
+    if (subs < 0) {
+      totalInput.value = '';
+      rentalBaseAmount = 0;
+      return;
+    }
+    rentalBaseAmount = subs;
+    updateRentalTotalFromExtras();
+  }
 
   function parseNum(inputId) {
     var el = document.getElementById(inputId);
@@ -825,14 +834,22 @@
     var delCheck = document.getElementById('rental-delivery-check');
     var delInput = document.getElementById('rental-delivery-amount');
     if (!totalInput) return;
+    if (selected.length === 0) {
+      totalInput.value = '';
+      return;
+    }
+    var subs = computeEquipmentSubtotal();
+    if (subs < 0) {
+      totalInput.value = '';
+      return;
+    }
     var add = addInput ? parseNum('rental-additional-amount') : 0;
     var del = (delCheck && delCheck.checked && delInput) ? parseNum('rental-delivery-amount') : 0;
     var total = Math.round((rentalBaseAmount + add + del) * 100) / 100;
-    totalInput.value = total > 0 ? total : '';
+    totalInput.value = total > 0 ? String(total) : '';
   }
 
   function onRentalTotalManualInput() {
-    var totalInput = document.getElementById('rental-total-amount');
     var add = parseNum('rental-additional-amount');
     var delCheck = document.getElementById('rental-delivery-check');
     var delInput = document.getElementById('rental-delivery-amount');
@@ -903,6 +920,7 @@
   var deliveryAmountInput = document.getElementById('rental-delivery-amount');
   var totalAmountInput = document.getElementById('rental-total-amount');
   if (additionalAmountInput) { additionalAmountInput.addEventListener('input', updateRentalTotalFromExtras); additionalAmountInput.addEventListener('change', updateRentalTotalFromExtras); }
+  if (totalAmountInput) { totalAmountInput.addEventListener('input', onRentalTotalManualInput); totalAmountInput.addEventListener('change', onRentalTotalManualInput); }
   var deliveryAddressWrap = document.getElementById('rental-delivery-address-wrap');
   var deliveryAddressInput = document.getElementById('rental-delivery-address');
   var handedOverWrap = document.getElementById('rental-handed-over-wrap');
@@ -925,7 +943,6 @@
     });
   }
   if (deliveryAmountInput) { deliveryAmountInput.addEventListener('input', updateRentalTotalFromExtras); deliveryAmountInput.addEventListener('change', updateRentalTotalFromExtras); }
-  if (totalAmountInput) { totalAmountInput.addEventListener('input', onRentalTotalManualInput); totalAmountInput.addEventListener('change', onRentalTotalManualInput); }
 
   if (modal) {
     modal.addEventListener('show.bs.modal', function() {

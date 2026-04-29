@@ -27,7 +27,7 @@ public interface EquipmentRepository extends JpaRepository<Equipment, Long> {
 
 	List<Equipment> findByToolNameAndStatusAndIsDeletedFalse(ToolName toolName, EquipmentStatus status);
 
-	@EntityGraph("Equipment.withOwners")
+	@EntityGraph("Equipment.forUnitDetail")
 	Optional<Equipment> findByIdAndIsDeletedFalse(Long id);
 
 	boolean existsBySerialNumberAndIsDeletedFalse(String serialNumber);

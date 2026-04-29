@@ -194,16 +194,11 @@ public class RentalService {
 			toRent.add(equipment);
 		}
 
-		BigDecimal baseSum;
-		if (manualTotal != null && manualTotal.compareTo(BigDecimal.ZERO) > 0) {
-			baseSum = manualTotal.setScale(2, RoundingMode.HALF_UP);
-		} else {
-			baseSum = BigDecimal.ZERO;
-			for (Equipment e : toRent) {
-				baseSum = baseSum.add(calculateTotal(dateFrom, dateTo, e));
-			}
-			baseSum = baseSum.setScale(2, RoundingMode.HALF_UP);
+		BigDecimal computedEquipmentTotal = BigDecimal.ZERO;
+		for (Equipment e : toRent) {
+			computedEquipmentTotal = computedEquipmentTotal.add(calculateTotal(dateFrom, dateTo, e));
 		}
+		computedEquipmentTotal = computedEquipmentTotal.setScale(2, RoundingMode.HALF_UP);
 
 		BigDecimal addServ = (additionalServicesAmount != null && additionalServicesAmount.compareTo(BigDecimal.ZERO) > 0)
 				? additionalServicesAmount.setScale(2, RoundingMode.HALF_UP) : BigDecimal.ZERO;
@@ -211,7 +206,13 @@ public class RentalService {
 				? deliveryAmount.setScale(2, RoundingMode.HALF_UP) : BigDecimal.ZERO;
 		String addrTrimmed = (deliveryAddress != null && !deliveryAddress.isBlank()) ? deliveryAddress.trim() : null;
 		boolean needsDelivery = deliveryRequested || delAmt.compareTo(BigDecimal.ZERO) > 0 || addrTrimmed != null;
-		BigDecimal totalSum = baseSum.add(addServ).add(delAmt).setScale(2, RoundingMode.HALF_UP);
+		// Форма и UI передают в totalAmount полный итог (техника + доп + доставка), а не только сумму по тарифам.
+		BigDecimal totalSum;
+		if (manualTotal != null && manualTotal.compareTo(BigDecimal.ZERO) > 0) {
+			totalSum = manualTotal.setScale(2, RoundingMode.HALF_UP);
+		} else {
+			totalSum = computedEquipmentTotal.add(addServ).add(delAmt).setScale(2, RoundingMode.HALF_UP);
+		}
 
 		Rental rental = new Rental();
 		rental.setClient(client);

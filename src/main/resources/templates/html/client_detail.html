@@ -59,7 +59,8 @@
   <div th:if="${param.error}" class="alert alert-danger alert-dismissible fade show">
     <i class="bi bi-exclamation-triangle-fill me-2"></i>
     <span th:if="${param.error[0] == 'no_file'}">Выберите файл для загрузки.</span>
-    <span th:if="${param.error[0] == 'not_image'}">Разрешены только изображения (jpg, png).</span>
+    <span th:if="${param.error[0] == 'not_image'}">Файл не похож на изображение. Допустимы JPG, PNG, WebP, GIF, BMP (и похожие по расширению).</span>
+    <span th:if="${param.error[0] == 'cannot_decode_image'}">Файл не удалось открыть как картинку (часто так бывает с HEIC с iPhone). Сохраните фото как JPEG в галерее и загрузите снова.</span>
     <span th:if="${param.error[0] == 'upload_failed'}">Не удалось сохранить фото. Попробуйте другой файл (JPG, PNG) или повторите позже.</span>
     <span th:if="${param.error[0] == 'invalid_score'}">Оценка должна быть от 1 до 10.</span>
     <span th:if="${param.error[0] == 'review_not_found'}">Отзыв не найден.</span>
@@ -97,6 +98,7 @@
               <span th:text="${client.rating + ' / 10'}">10 / 10</span>
             </span>
             <form th:action="@{/clients/{id}/toggle-blacklist(id=${client.id})}" method="post" class="d-inline">
+              <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
               <input type="hidden" name="version" th:value="${client.version}">
               <button type="submit" class="btn btn-sm ms-2"
                       th:classappend="${client.blacklisted} ? 'btn-outline-secondary' : 'btn-outline-danger'">
@@ -185,6 +187,7 @@
         <p class="reviews-hint text-muted mb-3">Рейтинг в шапке — среднее по оценкам отзывов. Вручную не меняется.</p>
         <div class="reviews-add-card rounded-3 p-3 mb-4">
           <form th:action="@{/clients/{id}/reviews/add(id=${client.id})}" method="post">
+            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
             <div class="row g-3 align-items-end">
               <div class="col-md-2">
                 <label class="form-label small text-muted mb-1">Оценка (1–10)</label>
@@ -228,6 +231,7 @@
               <form th:action="@{/clients/{id}/reviews/delete(id=${client.id})}" method="post" class="d-inline"
                     th:if="${currentUser.role.name() != 'WORKER' or (r.author != null and currentUser.login == r.author.login)}"
                     onsubmit="return confirm('Удалить отзыв?')">
+                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
                 <input type="hidden" name="reviewId" th:value="${r.id}">
                 <button type="submit" class="btn btn-sm btn-outline-danger border-0" title="Удалить отзыв">
                   <i class="bi bi-trash"></i>
@@ -295,6 +299,7 @@
             </button>
             <form th:action="@{/clients/{id}/delete-photo(id=${client.id})}" method="post"
                   onsubmit="return confirm('Удалить фото паспорта?')">
+              <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
               <input type="hidden" name="version" th:value="${client.version}">
               <button type="submit" class="btn btn-sm btn-outline-danger">
                 <i class="bi bi-trash"></i>
@@ -304,6 +309,7 @@
           <div class="collapse mt-3" id="uploadForm">
             <form th:action="@{/clients/{id}/upload-photo(id=${client.id})}"
                   method="post" enctype="multipart/form-data">
+              <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
               <input type="hidden" name="version" th:value="${client.version}">
               <input type="file" name="photo" class="form-control form-control-sm mb-2"
                      accept="image/*" required>
@@ -321,6 +327,7 @@
           </div>
           <form th:action="@{/clients/{id}/upload-photo(id=${client.id})}"
                 method="post" enctype="multipart/form-data">
+            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
             <input type="hidden" name="version" th:value="${client.version}">
             <input type="file" name="photo" class="form-control form-control-sm mb-2"
                    accept="image/*" required>

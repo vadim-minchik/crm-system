@@ -8,10 +8,35 @@ import java.util.List;
 
 @Entity
 @Table(name = "equipment")
-@NamedEntityGraph(
-		name = "Equipment.withOwners",
-		attributeNodes = @NamedAttributeNode("owners")
-)
+@NamedEntityGraphs({
+		@NamedEntityGraph(
+				name = "Equipment.withOwners",
+				attributeNodes = {
+						@NamedAttributeNode("owners"),
+						@NamedAttributeNode("point")
+				}
+		),
+		@NamedEntityGraph(
+				name = "Equipment.forUnitDetail",
+				attributeNodes = {
+						@NamedAttributeNode("owners"),
+						@NamedAttributeNode("point"),
+						@NamedAttributeNode(value = "toolName", subgraph = "ToolName.forUnitDetail")
+				},
+				subgraphs = {
+						@NamedSubgraph(
+								name = "ToolName.forUnitDetail",
+								attributeNodes = {
+										@NamedAttributeNode(value = "category", subgraph = "Category.forUnitDetail")
+								}
+						),
+						@NamedSubgraph(
+								name = "Category.forUnitDetail",
+								attributeNodes = @NamedAttributeNode("preCategory")
+						)
+				}
+		)
+})
 public class Equipment {
 
 	@Id

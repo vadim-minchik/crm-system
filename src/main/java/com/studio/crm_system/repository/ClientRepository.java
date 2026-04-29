@@ -1,6 +1,7 @@
 package com.studio.crm_system.repository;
 
 import com.studio.crm_system.entity.Client;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -10,9 +11,14 @@ import java.util.Optional;
 
 public interface ClientRepository extends JpaRepository<Client, Long> {
 
+	@EntityGraph(attributePaths = "addedBy")
 	List<Client> findByIsDeletedFalse();
 
+	@EntityGraph(attributePaths = "addedBy")
 	List<Client> findByIsDeletedFalseAndBlacklistedOrderBySurnameAscNameAsc(Boolean blacklisted);
+
+	@EntityGraph(attributePaths = "addedBy")
+	Optional<Client> findById(Long id);
 
 	Optional<Client> findByIdAndIsDeletedFalse(Long id);
 
@@ -29,6 +35,7 @@ public interface ClientRepository extends JpaRepository<Client, Long> {
 			"OR LOWER(c.identificationNumber) LIKE LOWER(CONCAT('%', :q, '%')) " +
 			"OR LOWER(c.addressStreet) LIKE LOWER(CONCAT('%', :q, '%'))) " +
 			"ORDER BY c.surname, c.name")
+	@EntityGraph(attributePaths = "addedBy")
 	List<Client> searchClients(@Param("q") String q, @Param("blacklistedOnly") Boolean blacklistedOnly);
 
 	

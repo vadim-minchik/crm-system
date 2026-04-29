@@ -18,9 +18,11 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
+import java.util.Locale;
 
 @Controller
 @RequestMapping("/clients")
@@ -65,6 +67,21 @@ public class ClientController {
 	private String addr(String value) {
 		if (value == null || value.trim().isEmpty()) return "-";
 		return value.trim();
+	}
+
+	private static boolean looksLikeImageUpload(MultipartFile photo) {
+		String ct = photo.getContentType();
+		if (ct != null && !ct.isBlank() && ct.toLowerCase(Locale.ROOT).startsWith("image/")) {
+			return true;
+		}
+		String name = photo.getOriginalFilename();
+		if (name == null || name.isBlank()) {
+			return false;
+		}
+		String lower = name.toLowerCase(Locale.ROOT);
+		return lower.endsWith(".jpg") || lower.endsWith(".jpeg") || lower.endsWith(".png")
+				|| lower.endsWith(".gif") || lower.endsWith(".webp") || lower.endsWith(".bmp")
+				|| lower.endsWith(".heic") || lower.endsWith(".heif");
 	}
 
 	private String capitalize(String s) {
@@ -393,8 +410,7 @@ public class ClientController {
 
 		if (photo.isEmpty()) return "redirect:/clients/" + id + "?error=no_file";
 
-		String contentType = photo.getContentType();
-		if (contentType == null || !contentType.startsWith("image/")) {
+		if (!looksLikeImageUpload(photo)) {
 			return "redirect:/clients/" + id + "?error=not_image";
 		}
 
@@ -405,6 +421,12 @@ public class ClientController {
 			String url = storageService.uploadPassportPhoto(photo, id);
 			client.setPassportPhotoUrl(url);
 			clientRepository.save(client);
+		} catch (IOException e) {
+			if (e.getMessage() != null && e.getMessage().contains("Не удалось прочитать")) {
+				return "redirect:/clients/" + id + "?error=cannot_decode_image";
+			}
+			e.printStackTrace();
+			return "redirect:/clients/" + id + "?error=upload_failed";
 		} catch (Exception e) {
 			e.printStackTrace();
 			return "redirect:/clients/" + id + "?error=upload_failed";
